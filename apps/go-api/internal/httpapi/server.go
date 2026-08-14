@@ -11,7 +11,7 @@ import (
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
 
-const serviceVersion = "0.4.0"
+const serviceVersion = "0.5.0"
 
 type server struct {
 	cfg       config.Config

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: HIMS go-api
-  version: 0.4.0
+  version: 0.5.0
   description: Core service API for the Divine Hands HMS (identity, RBAC, sessions, audit).
 servers:
   - url: http://localhost:8080
@@ -18,6 +18,8 @@ tags:
     description: Doctor orders, lifecycle, and medication administration.
   - name: clinical
     description: Notes, observations, tasks, reports, triage, and assignments.
+  - name: pharmacy
+    description: Medicines, inventory, dispensing, adjustments, and approvals.
 paths:
   /health:
     get:
@@ -1028,6 +1030,456 @@ paths:
                 departmentId: { type: string, format: uuid }
       responses:
         "201": { description: Assigned }
+  /api/v1/pharmacy/medicines:
+    get:
+      operationId: listMedicines
+      summary: List medicines
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Medicines
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Medicine" }
+    post:
+      operationId: createMedicine
+      summary: Create a medicine
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [genericName]
+              properties:
+                genericName: { type: string }
+                brand: { type: string }
+                strength: { type: string }
+                dosageForm: { type: string }
+                category: { type: string }
+                supplier: { type: string }
+                reorderLevel: { type: number }
+                storageLocation: { type: string }
+                unitCost: { type: number }
+                sellingPrice: { type: number }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Medicine" }
+  /api/v1/pharmacy/medicines/{id}:
+    get:
+      operationId: getMedicine
+      summary: Get a medicine with its batches
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Medicine and batches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  medicine: { $ref: "#/components/schemas/Medicine" }
+                  batches:
+                    type: array
+                    items: { $ref: "#/components/schemas/Batch" }
+    patch:
+      operationId: updateMedicine
+      summary: Update a medicine (price changes audited)
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                genericName: { type: string }
+                brand: { type: string }
+                strength: { type: string }
+                dosageForm: { type: string }
+                category: { type: string }
+                supplier: { type: string }
+                reorderLevel: { type: number }
+                storageLocation: { type: string }
+                unitCost: { type: number }
+                sellingPrice: { type: number }
+                active: { type: boolean }
+      responses:
+        "204": { description: Updated }
+  /api/v1/pharmacy/medicines/{id}/batches:
+    get:
+      operationId: listBatches
+      summary: List a medicine's batches
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Batches
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Batch" }
+  /api/v1/pharmacy/receipts:
+    post:
+      operationId: receiveStock
+      summary: Receive stock into a batch
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [medicineId, batchNumber, quantity]
+              properties:
+                medicineId: { type: string, format: uuid }
+                batchNumber: { type: string }
+                manufacturingDate: { type: string, format: date }
+                expiryDate: { type: string, format: date }
+                quantity: { type: number }
+                purchaseCost: { type: number }
+                sellingPrice: { type: number }
+                supplier: { type: string }
+      responses:
+        "201":
+          description: Received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Batch" }
+  /api/v1/pharmacy/dispense:
+    post:
+      operationId: dispense
+      summary: Dispense a prescription (FEFO)
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId, items]
+              properties:
+                orderId: { type: string, format: uuid }
+                notes: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [medicineId, quantity]
+                    properties:
+                      medicineId: { type: string, format: uuid }
+                      quantity: { type: number }
+      responses:
+        "201":
+          description: Dispensed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dispensation" }
+  /api/v1/pharmacy/dispensations:
+    get:
+      operationId: listDispensations
+      summary: List dispensing history
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Dispensations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Dispensation" }
+  /api/v1/pharmacy/dispensations/{id}:
+    get:
+      operationId: getDispensation
+      summary: Get a dispensation
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Dispensation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dispensation" }
+  /api/v1/pharmacy/adjustments:
+    post:
+      operationId: createAdjustment
+      summary: Create a stock adjustment (may require approval)
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [medicineId, batchId, quantity, reason]
+              properties:
+                medicineId: { type: string, format: uuid }
+                batchId: { type: string, format: uuid }
+                quantity: { type: number }
+                reason: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  adjustment: { $ref: "#/components/schemas/Adjustment" }
+                  approval: { $ref: "#/components/schemas/Approval" }
+    get:
+      operationId: listAdjustments
+      summary: List adjustments
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Adjustments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Adjustment" }
+  /api/v1/approvals:
+    get:
+      operationId: listApprovals
+      summary: List approval requests
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Approval" }
+  /api/v1/approvals/{id}/approve:
+    post:
+      operationId: approveApproval
+      summary: Approve a pending approval request
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: Approved }
+  /api/v1/approvals/{id}/reject:
+    post:
+      operationId: rejectApproval
+      summary: Reject a pending approval request
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: Rejected }
+  /api/v1/pharmacy/batches/{id}/return:
+    post:
+      operationId: returnStock
+      summary: Return quantity to a batch
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, reason]
+              properties:
+                quantity: { type: number }
+                reason: { type: string }
+      responses:
+        "204": { description: Returned }
+  /api/v1/pharmacy/batches/{id}/damage:
+    post:
+      operationId: damageStock
+      summary: Write off damaged quantity
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, reason]
+              properties:
+                quantity: { type: number }
+                reason: { type: string }
+      responses:
+        "204": { description: Written off }
+  /api/v1/pharmacy/batches/{id}/quarantine:
+    post:
+      operationId: quarantineBatch
+      summary: Quarantine a batch
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "204": { description: Quarantined }
+  /api/v1/pharmacy/transfers:
+    post:
+      operationId: transferStock
+      summary: Transfer quantity between batches
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromBatchId, toBatchId, quantity, reason]
+              properties:
+                fromBatchId: { type: string, format: uuid }
+                toBatchId: { type: string, format: uuid }
+                quantity: { type: number }
+                reason: { type: string }
+      responses:
+        "204": { description: Transferred }
+  /api/v1/pharmacy/counts:
+    post:
+      operationId: stockCount
+      summary: Record a physical count and reconcile variance
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batchId, countedQuantity]
+              properties:
+                batchId: { type: string, format: uuid }
+                countedQuantity: { type: number }
+      responses:
+        "201":
+          description: Counted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StockCount" }
+  /api/v1/pharmacy/movements:
+    get:
+      operationId: listMovements
+      summary: List stock movements
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: medicineId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Movement" }
+  /api/v1/pharmacy/alerts:
+    get:
+      operationId: pharmacyAlerts
+      summary: Low-stock and expiry alerts
+      tags: [pharmacy]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lowStock:
+                    type: array
+                    items: { type: object }
+                  expiring:
+                    type: array
+                    items: { type: object }
+                  expired:
+                    type: array
+                    items: { type: object }
 components:
   securitySchemes:
     bearerAuth:
@@ -1502,6 +1954,125 @@ components:
               type: object
               additionalProperties: true
             createdAt: { type: string, format: date-time }
+    Medicine:
+      type: object
+      required: [id, code, genericName, active]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        genericName: { type: string }
+        brand: { type: string }
+        strength: { type: string }
+        dosageForm: { type: string }
+        category: { type: string }
+        supplier: { type: string }
+        reorderLevel: { type: number }
+        storageLocation: { type: string }
+        unitCost: { type: number }
+        sellingPrice: { type: number }
+        active: { type: boolean }
+    Batch:
+      type: object
+      required: [id, medicineId, batchNumber, quantityOnHand, status]
+      properties:
+        id: { type: string, format: uuid }
+        medicineId: { type: string, format: uuid }
+        batchNumber: { type: string }
+        manufacturingDate: { type: string, format: date, nullable: true }
+        expiryDate: { type: string, format: date, nullable: true }
+        quantityOnHand: { type: number }
+        purchaseCost: { type: number }
+        sellingPrice: { type: number }
+        supplier: { type: string }
+        status: { type: string, enum: [active, quarantined] }
+        receivedAt: { type: string, format: date-time }
+    Movement:
+      type: object
+      required:
+        [
+          id,
+          medicineId,
+          movementType,
+          quantity,
+          quantityBefore,
+          quantityAfter,
+          performedBy,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        medicineId: { type: string, format: uuid }
+        batchId: { type: string, format: uuid, nullable: true }
+        movementType: { type: string }
+        quantity: { type: number }
+        quantityBefore: { type: number }
+        quantityAfter: { type: number }
+        reason: { type: string }
+        referenceType: { type: string }
+        performedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    Adjustment:
+      type: object
+      required: [id, medicineId, batchId, quantity, reason, status, requestedBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        medicineId: { type: string, format: uuid }
+        batchId: { type: string, format: uuid }
+        quantity: { type: number }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        approvalRequestId: { type: string, format: uuid, nullable: true }
+        requestedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    Approval:
+      type: object
+      required: [id, subjectType, subjectId, requestedBy, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        subjectType: { type: string }
+        subjectId: { type: string, format: uuid }
+        action: { type: string }
+        requestedBy: { type: string, format: uuid }
+        status: { type: string, enum: [pending, approved, rejected] }
+        details:
+          type: object
+          additionalProperties: true
+        reason: { type: string }
+        decidedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+    Dispensation:
+      type: object
+      required:
+        [id, dispensationNo, prescriptionOrderId, patientId, dispensedBy, totalAmount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        dispensationNo: { type: string }
+        prescriptionOrderId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+        dispensedBy: { type: string, format: uuid }
+        totalAmount: { type: number }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            required: [medicineId, batchId, quantity, unitPrice]
+            properties:
+              medicineId: { type: string, format: uuid }
+              batchId: { type: string, format: uuid }
+              quantity: { type: number }
+              unitPrice: { type: number }
+    StockCount:
+      type: object
+      required: [id, batchId, systemQuantity, countedQuantity, variance, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        batchId: { type: string, format: uuid }
+        systemQuantity: { type: number }
+        countedQuantity: { type: number }
+        variance: { type: number }
+        createdAt: { type: string, format: date-time }
     ErrorEnvelope:
       type: object
       required: [error]

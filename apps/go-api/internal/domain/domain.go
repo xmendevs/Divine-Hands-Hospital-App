@@ -355,7 +355,179 @@ const (
 	EventReportCreated          = "report_created"
 	EventTriage                 = "triage"
 	EventAssigned               = "assigned"
+
+	EventMedicineDispensed = "medicine_dispensed"
+	EventStockReceived     = "stock_received"
+	EventStockAdjusted     = "stock_adjusted"
+	EventStockCounted      = "stock_counted"
+
+	ActionMedicineCreate    = "medicine.create"
+	ActionMedicineUpdate    = "medicine.update"
+	ActionInventoryReceipt  = "inventory.receipt"
+	ActionInventoryDispense = "inventory.dispense"
+	ActionInventoryAdjust   = "inventory.adjust"
+	ActionInventoryApprove  = "inventory.approve"
+	ActionInventoryReject   = "inventory.reject"
+	ActionInventoryTransfer = "inventory.transfer"
+	ActionInventoryCount    = "inventory.count"
+	ActionInventoryReturn   = "inventory.return"
+	ActionInventoryDamage   = "inventory.damage"
+	ActionInventoryViewed   = "inventory.viewed"
 )
+
+// Medicine is the medicine master record.
+type Medicine struct {
+	ID              string
+	Code            string
+	GenericName     string
+	Brand           string
+	Strength        string
+	DosageForm      string
+	Category        string
+	Supplier        string
+	ReorderLevel    float64
+	StorageLocation string
+	UnitCost        float64
+	SellingPrice    float64
+	Active          bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// Batch statuses.
+const (
+	BatchStatusActive      = "active"
+	BatchStatusQuarantined = "quarantined"
+)
+
+// Batch is a medicine batch inventory record.
+type Batch struct {
+	ID                string
+	MedicineID        string
+	BatchNumber       string
+	ManufacturingDate *string // ISO date; nil when unknown
+	ExpiryDate        *string // ISO date; nil when none
+	QuantityOnHand    float64
+	PurchaseCost      float64
+	SellingPrice      float64
+	Supplier          string
+	Status            string
+	ReceivedAt        time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+// Stock movement types.
+const (
+	MovementReceipt       = "receipt"
+	MovementDispense      = "dispense"
+	MovementReturn        = "return"
+	MovementAdjustment    = "adjustment"
+	MovementDamage        = "damage"
+	MovementTransferIn    = "transfer_in"
+	MovementTransferOut   = "transfer_out"
+	MovementCountVariance = "count_variance"
+)
+
+// StockMovement is an immutable stock movement record.
+type StockMovement struct {
+	ID             string
+	MedicineID     string
+	BatchID        *string
+	MovementType   string
+	Quantity       float64
+	QuantityBefore float64
+	QuantityAfter  float64
+	Reason         string
+	ReferenceType  string
+	ReferenceID    *string
+	PerformedBy    string
+	CreatedAt      time.Time
+}
+
+// Adjustment statuses.
+const (
+	AdjustmentStatusPending  = "pending"
+	AdjustmentStatusApproved = "approved"
+	AdjustmentStatusRejected = "rejected"
+)
+
+// StockAdjustment is a signed stock delta that may require approval.
+type StockAdjustment struct {
+	ID                string
+	MedicineID        string
+	BatchID           string
+	Quantity          float64
+	Reason            string
+	Status            string
+	ApprovalRequestID *string
+	RequestedBy       string
+	DecidedBy         *string
+	DecidedAt         *time.Time
+	CreatedAt         time.Time
+}
+
+// Approval subject types.
+const (
+	ApprovalSubjectStockAdjustment = "stock_adjustment"
+)
+
+// Approval statuses.
+const (
+	ApprovalStatusPending  = "pending"
+	ApprovalStatusApproved = "approved"
+	ApprovalStatusRejected = "rejected"
+)
+
+// ApprovalRequest is a reusable approval record.
+type ApprovalRequest struct {
+	ID          string
+	SubjectType string
+	SubjectID   string
+	Action      string
+	RequestedBy string
+	Status      string
+	Details     []byte
+	Reason      string
+	DecidedBy   *string
+	DecidedAt   *time.Time
+	CreatedAt   time.Time
+}
+
+// Dispensation is a dispensing transaction header.
+type Dispensation struct {
+	ID                  string
+	DispensationNo      string
+	PrescriptionOrderID string
+	PatientID           string
+	DispensedBy         string
+	TotalAmount         float64
+	Notes               string
+	CreatedAt           time.Time
+	Items               []DispensationItem
+}
+
+// DispensationItem is a dispensing line item.
+type DispensationItem struct {
+	ID             string
+	DispensationID string
+	MedicineID     string
+	BatchID        string
+	Quantity       float64
+	UnitPrice      float64
+}
+
+// StockCount records a physical count and its variance.
+type StockCount struct {
+	ID              string
+	MedicineID      string
+	BatchID         string
+	SystemQuantity  float64
+	CountedQuantity float64
+	Variance        float64
+	CountedBy       string
+	CreatedAt       time.Time
+}
 
 // RegistrationType drives the business-ID prefix: normal (DHH), antenatal
 // (DHHA), emergency (DHHE). Family profiles use their own DHHF prefix.

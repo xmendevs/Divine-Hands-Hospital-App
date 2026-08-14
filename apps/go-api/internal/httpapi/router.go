@@ -128,5 +128,28 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/clinical/queue", s.perm("assignments.view", s.handleMyQueue))
 	mux.Handle("POST /api/v1/patients/{id}/assignments", s.perm("assignments.manage", s.handleAssignPatient))
 
+	// Pharmacy & inventory.
+	mux.Handle("GET /api/v1/pharmacy/medicines", s.perm("medicines.view", s.handleListMedicines))
+	mux.Handle("POST /api/v1/pharmacy/medicines", s.perm("medicines.manage", s.handleCreateMedicine))
+	mux.Handle("GET /api/v1/pharmacy/medicines/{id}", s.perm("medicines.view", s.handleGetMedicine))
+	mux.Handle("PATCH /api/v1/pharmacy/medicines/{id}", s.perm("medicines.manage", s.handleUpdateMedicine))
+	mux.Handle("GET /api/v1/pharmacy/medicines/{id}/batches", s.perm("medicines.view", s.handleListBatches))
+	mux.Handle("POST /api/v1/pharmacy/receipts", s.perm("inventory.receive", s.handleReceiveStock))
+	mux.Handle("POST /api/v1/pharmacy/dispense", s.perm("inventory.dispense", s.handleDispense))
+	mux.Handle("GET /api/v1/pharmacy/dispensations", s.perm("medicines.view", s.handleListDispensations))
+	mux.Handle("GET /api/v1/pharmacy/dispensations/{id}", s.perm("medicines.view", s.handleGetDispensation))
+	mux.Handle("POST /api/v1/pharmacy/adjustments", s.perm("inventory.adjust", s.handleCreateAdjustment))
+	mux.Handle("GET /api/v1/pharmacy/adjustments", s.perm("medicines.view", s.handleListAdjustments))
+	mux.Handle("GET /api/v1/approvals", s.perm("inventory.approve", s.handleListApprovals))
+	mux.Handle("POST /api/v1/approvals/{id}/approve", s.perm("inventory.approve", s.handleApproveApproval))
+	mux.Handle("POST /api/v1/approvals/{id}/reject", s.perm("inventory.approve", s.handleRejectApproval))
+	mux.Handle("POST /api/v1/pharmacy/batches/{id}/return", s.perm("inventory.receive", s.handleReturnStock))
+	mux.Handle("POST /api/v1/pharmacy/batches/{id}/damage", s.perm("inventory.adjust", s.handleDamageStock))
+	mux.Handle("POST /api/v1/pharmacy/batches/{id}/quarantine", s.perm("inventory.adjust", s.handleQuarantineBatch))
+	mux.Handle("POST /api/v1/pharmacy/transfers", s.perm("inventory.transfer", s.handleTransferStock))
+	mux.Handle("POST /api/v1/pharmacy/counts", s.perm("inventory.count", s.handleStockCount))
+	mux.Handle("GET /api/v1/pharmacy/movements", s.perm("medicines.view", s.handleListMovements))
+	mux.Handle("GET /api/v1/pharmacy/alerts", s.perm("medicines.view", s.handleGetAlerts))
+
 	return withMiddleware(mux, logger)
 }

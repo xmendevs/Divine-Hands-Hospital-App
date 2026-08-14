@@ -81,6 +81,20 @@ Critical clinical actions (`order.*`, `note.*`, `medication.administered`,
 entries. Order ownership (doctor submit/cancel own orders) is enforced
 server-side. See `docs/clinical.md`.
 
+## Pharmacy (Phase 05)
+
+Phase 05 adds a `pharmacist` role holding `medicines.*` and `inventory.*`
+permissions. Nurses cannot edit prescriptions (no such endpoint + no
+`orders.create`), and pharmacists hold no clinical permissions (cannot view
+notes or alter diagnoses).
+
+- Stock movements are append-only and every movement is audited.
+- Price changes (`medicine.update`) record before/after values.
+- Stock adjustments require a reason and, when
+  `pharmacy.adjustment_approval_required` is `true`, go through a reusable
+  `approval_requests` flow (`pending → approved/rejected`) with separation of
+  duties (no self-approval). See `docs/pharmacy.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in

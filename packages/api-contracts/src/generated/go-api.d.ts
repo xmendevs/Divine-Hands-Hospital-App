@@ -660,6 +660,315 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pharmacy/medicines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List medicines */
+        get: operations["listMedicines"];
+        put?: never;
+        /** Create a medicine */
+        post: operations["createMedicine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/medicines/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a medicine with its batches */
+        get: operations["getMedicine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a medicine (price changes audited) */
+        patch: operations["updateMedicine"];
+        trace?: never;
+    };
+    "/api/v1/pharmacy/medicines/{id}/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a medicine's batches */
+        get: operations["listBatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive stock into a batch */
+        post: operations["receiveStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/dispense": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dispense a prescription (FEFO) */
+        post: operations["dispense"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/dispensations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List dispensing history */
+        get: operations["listDispensations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/dispensations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a dispensation */
+        get: operations["getDispensation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List adjustments */
+        get: operations["listAdjustments"];
+        put?: never;
+        /** Create a stock adjustment (may require approval) */
+        post: operations["createAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List approval requests */
+        get: operations["listApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending approval request */
+        post: operations["approveApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending approval request */
+        post: operations["rejectApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/batches/{id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Return quantity to a batch */
+        post: operations["returnStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/batches/{id}/damage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write off damaged quantity */
+        post: operations["damageStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/batches/{id}/quarantine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Quarantine a batch */
+        post: operations["quarantineBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer quantity between batches */
+        post: operations["transferStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a physical count and reconcile variance */
+        post: operations["stockCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List stock movements */
+        get: operations["listMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Low-stock and expiry alerts */
+        get: operations["pharmacyAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1063,6 +1372,131 @@ export interface components {
                 /** Format: date-time */
                 createdAt: string;
             };
+        };
+        Medicine: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            genericName: string;
+            brand?: string;
+            strength?: string;
+            dosageForm?: string;
+            category?: string;
+            supplier?: string;
+            reorderLevel?: number;
+            storageLocation?: string;
+            unitCost?: number;
+            sellingPrice?: number;
+            active: boolean;
+        };
+        Batch: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            medicineId: string;
+            batchNumber: string;
+            /** Format: date */
+            manufacturingDate?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            quantityOnHand: number;
+            purchaseCost?: number;
+            sellingPrice?: number;
+            supplier?: string;
+            /** @enum {string} */
+            status: "active" | "quarantined";
+            /** Format: date-time */
+            receivedAt?: string;
+        };
+        Movement: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            medicineId: string;
+            /** Format: uuid */
+            batchId?: string | null;
+            movementType: string;
+            quantity: number;
+            quantityBefore: number;
+            quantityAfter: number;
+            reason?: string;
+            referenceType?: string;
+            /** Format: uuid */
+            performedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Adjustment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            medicineId: string;
+            /** Format: uuid */
+            batchId: string;
+            quantity: number;
+            reason: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            /** Format: uuid */
+            approvalRequestId?: string | null;
+            /** Format: uuid */
+            requestedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Approval: {
+            /** Format: uuid */
+            id: string;
+            subjectType: string;
+            /** Format: uuid */
+            subjectId: string;
+            action?: string;
+            /** Format: uuid */
+            requestedBy: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            details?: {
+                [key: string]: unknown;
+            };
+            reason?: string;
+            /** Format: uuid */
+            decidedBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Dispensation: {
+            /** Format: uuid */
+            id: string;
+            dispensationNo: string;
+            /** Format: uuid */
+            prescriptionOrderId: string;
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            dispensedBy: string;
+            totalAmount: number;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+            items?: {
+                /** Format: uuid */
+                medicineId: string;
+                /** Format: uuid */
+                batchId: string;
+                quantity: number;
+                unitPrice: number;
+            }[];
+        };
+        StockCount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            batchId: string;
+            systemQuantity: number;
+            countedQuantity: number;
+            variance: number;
+            /** Format: date-time */
+            createdAt: string;
         };
         ErrorEnvelope: {
             error: {
@@ -2382,6 +2816,568 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listMedicines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Medicines */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Medicine"][];
+                };
+            };
+        };
+    };
+    createMedicine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    genericName: string;
+                    brand?: string;
+                    strength?: string;
+                    dosageForm?: string;
+                    category?: string;
+                    supplier?: string;
+                    reorderLevel?: number;
+                    storageLocation?: string;
+                    unitCost?: number;
+                    sellingPrice?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Medicine"];
+                };
+            };
+        };
+    };
+    getMedicine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Medicine and batches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        medicine?: components["schemas"]["Medicine"];
+                        batches?: components["schemas"]["Batch"][];
+                    };
+                };
+            };
+        };
+    };
+    updateMedicine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    genericName?: string;
+                    brand?: string;
+                    strength?: string;
+                    dosageForm?: string;
+                    category?: string;
+                    supplier?: string;
+                    reorderLevel?: number;
+                    storageLocation?: string;
+                    unitCost?: number;
+                    sellingPrice?: number;
+                    active?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Batches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"][];
+                };
+            };
+        };
+    };
+    receiveStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    medicineId: string;
+                    batchNumber: string;
+                    /** Format: date */
+                    manufacturingDate?: string;
+                    /** Format: date */
+                    expiryDate?: string;
+                    quantity: number;
+                    purchaseCost?: number;
+                    sellingPrice?: number;
+                    supplier?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Received */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"];
+                };
+            };
+        };
+    };
+    dispense: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    orderId: string;
+                    notes?: string;
+                    items: {
+                        /** Format: uuid */
+                        medicineId: string;
+                        quantity: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Dispensed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispensation"];
+                };
+            };
+        };
+    };
+    listDispensations: {
+        parameters: {
+            query?: {
+                patientId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispensations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispensation"][];
+                };
+            };
+        };
+    };
+    getDispensation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispensation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispensation"];
+                };
+            };
+        };
+    };
+    listAdjustments: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Adjustments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Adjustment"][];
+                };
+            };
+        };
+    };
+    createAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    medicineId: string;
+                    /** Format: uuid */
+                    batchId: string;
+                    quantity: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        adjustment?: components["schemas"]["Adjustment"];
+                        approval?: components["schemas"]["Approval"];
+                    };
+                };
+            };
+        };
+    };
+    listApprovals: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approvals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Approval"][];
+                };
+            };
+        };
+    };
+    approveApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rejectApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    returnStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Returned */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    damageStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Written off */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    quarantineBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Quarantined */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    transferStock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fromBatchId: string;
+                    /** Format: uuid */
+                    toBatchId: string;
+                    quantity: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Transferred */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    stockCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    batchId: string;
+                    countedQuantity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Counted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockCount"];
+                };
+            };
+        };
+    };
+    listMovements: {
+        parameters: {
+            query: {
+                medicineId: string;
+                batchId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Movements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Movement"][];
+                };
+            };
+        };
+    };
+    pharmacyAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Alerts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        lowStock?: Record<string, never>[];
+                        expiring?: Record<string, never>[];
+                        expired?: Record<string, never>[];
+                    };
+                };
             };
         };
     };
