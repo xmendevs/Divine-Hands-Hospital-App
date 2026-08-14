@@ -2814,6 +2814,21 @@ paths:
           content:
             text/html:
               schema: { type: string }
+  /api/v1/billing/receipts/{id}/pdf:
+    get:
+      operationId: getReceiptPDF
+      summary: Downloadable PDF receipt
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ReceiptId" }
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
   /api/v1/billing/receipts/{id}/share:
     post:
       operationId: shareReceipt

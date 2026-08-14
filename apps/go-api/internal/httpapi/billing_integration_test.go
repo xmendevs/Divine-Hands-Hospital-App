@@ -252,6 +252,18 @@ func TestBillingInvoiceLifecycle(t *testing.T) {
 		t.Fatal("HTML receipt is not printable")
 	}
 
+	// Downloadable PDF receipt.
+	rr = doJSON(t, http.MethodGet, "/api/v1/billing/receipts/"+receiptID+"/pdf", cashierTok, nil)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("receipt pdf status = %d", rr.Code)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "application/pdf" {
+		t.Fatalf("receipt pdf content-type = %q, want application/pdf", ct)
+	}
+	if !bytes.HasPrefix(rr.Body.Bytes(), []byte("%PDF")) {
+		t.Fatal("receipt pdf does not start with %PDF magic")
+	}
+
 	// Record a WhatsApp share.
 	rr = doJSON(t, http.MethodPost, "/api/v1/billing/receipts/"+receiptID+"/share", cashierTok, map[string]any{
 		"shareVia": "whatsapp", "recipient": "08090001111",
