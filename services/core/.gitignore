@@ -1,0 +1,3 @@
+# Local Go build artifacts
+/server
+/bin/
