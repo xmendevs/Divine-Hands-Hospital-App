@@ -307,3 +307,107 @@ func queryBool(r *http.Request, key string) bool {
 	}
 	return b
 }
+
+type rosterResponse struct {
+	ID         string `json:"id"`
+	StaffID    string `json:"staffId"`
+	StaffName  string `json:"staffName,omitempty"`
+	EmployeeNo string `json:"employeeNo,omitempty"`
+	ShiftID    string `json:"shiftId"`
+	ShiftName  string `json:"shiftName,omitempty"`
+	ShiftCode  string `json:"shiftCode,omitempty"`
+	WorkDate   string `json:"workDate"`
+	Notes      string `json:"notes,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+func newRosterResponse(ro *domain.StaffRoster) rosterResponse {
+	return rosterResponse{
+		ID:         ro.ID,
+		StaffID:    ro.StaffID,
+		StaffName:  ro.StaffName,
+		EmployeeNo: ro.EmployeeNo,
+		ShiftID:    ro.ShiftID,
+		ShiftName:  ro.ShiftName,
+		ShiftCode:  ro.ShiftCode,
+		WorkDate:   ro.WorkDate,
+		Notes:      ro.Notes,
+		CreatedAt:  ro.CreatedAt.UTC().Format(timeRFC3339),
+	}
+}
+
+type assignRosterRequest struct {
+	StaffID  string `json:"staffId"`
+	ShiftID  string `json:"shiftId"`
+	WorkDate string `json:"workDate"`
+	Notes    string `json:"notes"`
+}
+
+// handleAssignRoster schedules a staff member to a shift on a date.
+func (s *server) handleAssignRoster(w http.ResponseWriter, r *http.Request) {
+	var req assignRosterRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.StaffID == "" || req.ShiftID == "" || req.WorkDate == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "staffId, shiftId and workDate are required")
+		return
+	}
+	actor := userFromContext(r.Context())
+	ro, err := s.store.AssignRoster(r.Context(), store.AssignRosterParams{
+		StaffID:   req.StaffID,
+		ShiftID:   req.ShiftID,
+		WorkDate:  req.WorkDate,
+		Notes:     req.Notes,
+		CreatedBy: actor.ID,
+	})
+	if err != nil {
+		if errors.Is(err, store.ErrRosterDuplicate) {
+			writeError(w, r, http.StatusConflict, "duplicate_roster", "staff already scheduled for this shift on this date")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionRosterAssign, "staff_roster", ro.ID, nil, map[string]any{
+		"staffId": ro.StaffID, "shiftId": ro.ShiftID, "workDate": ro.WorkDate,
+	})
+	writeJSON(w, http.StatusCreated, newRosterResponse(ro))
+}
+
+// handleListRoster lists roster assignments.
+func (s *server) handleListRoster(w http.ResponseWriter, r *http.Request) {
+	limit, offset := pagination(r)
+	roster, err := s.store.ListRoster(r.Context(), store.ListRosterParams{
+		Date:    r.URL.Query().Get("date"),
+		StaffID: r.URL.Query().Get("staffId"),
+		ShiftID: r.URL.Query().Get("shiftId"),
+		Limit:   limit,
+		Offset:  offset,
+	})
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]rosterResponse, 0, len(roster))
+	for i := range roster {
+		out = append(out, newRosterResponse(&roster[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleDeleteRoster removes a roster assignment.
+func (s *server) handleDeleteRoster(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.store.DeleteRoster(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "roster assignment not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionRosterRemove, "staff_roster", id, nil, nil)
+	w.WriteHeader(http.StatusNoContent)
+}

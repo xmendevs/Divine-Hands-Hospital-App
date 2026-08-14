@@ -3360,6 +3360,72 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/AttendanceReportRow" }
+  /api/v1/attendance/rosters:
+    post:
+      operationId: assignRoster
+      summary: Schedule a staff member to a shift on a date
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId, shiftId, workDate]
+              properties:
+                staffId: { type: string, format: uuid }
+                shiftId: { type: string, format: uuid }
+                workDate: { type: string, format: date }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Scheduled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffRoster" }
+    get:
+      operationId: listRoster
+      summary: List roster assignments
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: staffId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: shiftId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Roster assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffRoster" }
+  /api/v1/attendance/rosters/{id}:
+    delete:
+      operationId: deleteRoster
+      summary: Remove a roster assignment
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterId" }
+      responses:
+        "204":
+          description: Removed
   /api/v1/handovers:
     post:
       operationId: createHandover
@@ -3637,6 +3703,14 @@ components:
       in: path
       required: true
       description: Handover note internal UUID.
+      schema:
+        type: string
+        format: uuid
+    RosterId:
+      name: id
+      in: path
+      required: true
+      description: Staff roster assignment internal UUID.
       schema:
         type: string
         format: uuid
@@ -4889,6 +4963,20 @@ components:
         status: { type: string }
         clockInAt: { type: string, format: date-time, nullable: true }
         clockOutAt: { type: string, format: date-time, nullable: true }
+    StaffRoster:
+      type: object
+      required: [id, staffId, shiftId, workDate, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        staffId: { type: string, format: uuid }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        shiftId: { type: string, format: uuid }
+        shiftName: { type: string }
+        shiftCode: { type: string }
+        workDate: { type: string, format: date }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
     HandoverNote:
       type: object
       required: [id, handoverNo, outgoingStaffId, status, createdAt, updatedAt]

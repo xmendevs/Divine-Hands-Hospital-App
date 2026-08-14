@@ -408,23 +408,25 @@ func (s *Store) AttendanceReport(ctx context.Context, date string) ([]domain.Att
 		out = append(out, row)
 	}
 
-	// Active staff with no record that day: missed, or on approved leave.
+	// Roster entries with no attendance that day: missed, or on approved leave.
 	rows, err := s.pool.Query(ctx, `
-		SELECT st.id::text, COALESCE(st.employee_no, ''), COALESCE(st.first_name || ' ' || st.last_name, ''),
-		       COALESCE(d.name, ''),
+		SELECT r.staff_id::text, COALESCE(st.employee_no, ''), COALESCE(st.first_name || ' ' || st.last_name, ''),
+		       COALESCE(d.name, ''), r.shift_id::text, COALESCE(sh.name, ''),
 		       CASE WHEN EXISTS (
 		           SELECT 1 FROM staff_leave sl
-		           WHERE sl.staff_id = st.id AND sl.status = 'approved'
+		           WHERE sl.staff_id = r.staff_id AND sl.status = 'approved'
 		             AND $1::date BETWEEN sl.start_date AND sl.end_date
 		       ) THEN $2 ELSE $3 END
-		FROM staff st
+		FROM staff_rosters r
+		JOIN staff st ON st.id = r.staff_id
+		JOIN staff_shifts sh ON sh.id = r.shift_id
 		LEFT JOIN departments d ON d.id = st.department_id
-		WHERE st.employment_status = 'active'
+		WHERE r.work_date = $1::date
 		  AND NOT EXISTS (
 		      SELECT 1 FROM attendance_records a
-		      WHERE a.staff_id = st.id AND a.work_date = $1::date
+		      WHERE a.staff_id = r.staff_id AND a.shift_id = r.shift_id AND a.work_date = r.work_date
 		  )
-		ORDER BY st.employee_no ASC`,
+		ORDER BY st.employee_no ASC, sh.name ASC`,
 		date, domain.AttendanceReportOnLeave, domain.AttendanceReportMissed)
 	if err != nil {
 		return nil, err
@@ -433,10 +435,141 @@ func (s *Store) AttendanceReport(ctx context.Context, date string) ([]domain.Att
 
 	for rows.Next() {
 		var row domain.AttendanceReportRow
-		if err := rows.Scan(&row.StaffID, &row.EmployeeNo, &row.StaffName, &row.Department, &row.Status); err != nil {
+		if err := rows.Scan(&row.StaffID, &row.EmployeeNo, &row.StaffName, &row.Department, &row.ShiftID, &row.ShiftName, &row.Status); err != nil {
 			return nil, err
 		}
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+// ---- staff rosters ----
+
+// ErrRosterDuplicate is returned when scheduling the same staff/shift/date twice.
+var ErrRosterDuplicate = errors.New("staff already scheduled for this shift on this date")
+
+const staffRosterCols = `r.id::text, r.staff_id::text, r.shift_id::text, r.work_date::text,
+	r.notes, r.created_by::text, r.created_at,
+	COALESCE(st.first_name || ' ' || st.last_name, ''), COALESCE(st.employee_no, ''),
+	COALESCE(sh.name, ''), COALESCE(sh.code, '')`
+
+const staffRosterFrom = ` FROM staff_rosters r
+	JOIN staff st ON st.id = r.staff_id
+	JOIN staff_shifts sh ON sh.id = r.shift_id`
+
+func scanStaffRoster(r pgx.Row) (*domain.StaffRoster, error) {
+	var ro domain.StaffRoster
+	err := r.Scan(&ro.ID, &ro.StaffID, &ro.ShiftID, &ro.WorkDate,
+		&ro.Notes, &ro.CreatedBy, &ro.CreatedAt,
+		&ro.StaffName, &ro.EmployeeNo, &ro.ShiftName, &ro.ShiftCode)
+	if err != nil {
+		return nil, err
+	}
+	return &ro, nil
+}
+
+// AssignRosterParams carries a roster assignment.
+type AssignRosterParams struct {
+	StaffID   string
+	ShiftID   string
+	WorkDate  string
+	Notes     string
+	CreatedBy string
+}
+
+// AssignRoster schedules a staff member to a shift on a date.
+func (s *Store) AssignRoster(ctx context.Context, p AssignRosterParams) (*domain.StaffRoster, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var dup bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM staff_rosters WHERE staff_id = $1::uuid AND shift_id = $2::uuid AND work_date = $3::date)`, p.StaffID, p.ShiftID, p.WorkDate).
+		Scan(&dup); err != nil {
+		return nil, err
+	}
+	if dup {
+		return nil, ErrRosterDuplicate
+	}
+
+	var id string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO staff_rosters (staff_id, shift_id, work_date, notes, created_by)
+		VALUES ($1::uuid, $2::uuid, $3::date, $4, $5::uuid)
+		RETURNING id::text`,
+		p.StaffID, p.ShiftID, p.WorkDate, p.Notes, p.CreatedBy).Scan(&id); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return s.GetRoster(ctx, id)
+}
+
+// GetRoster returns a single roster assignment.
+func (s *Store) GetRoster(ctx context.Context, id string) (*domain.StaffRoster, error) {
+	ro, err := scanStaffRoster(s.pool.QueryRow(ctx, `SELECT `+staffRosterCols+staffRosterFrom+` WHERE r.id = $1::uuid`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return ro, err
+}
+
+// ListRosterParams filters roster assignments.
+type ListRosterParams struct {
+	Date    string
+	StaffID string
+	ShiftID string
+	Limit   int
+	Offset  int
+}
+
+// ListRoster returns roster assignments, ordered by date then staff.
+func (s *Store) ListRoster(ctx context.Context, p ListRosterParams) ([]domain.StaffRoster, error) {
+	q := `SELECT ` + staffRosterCols + staffRosterFrom + ` WHERE true`
+	args := []any{}
+	if p.Date != "" {
+		args = append(args, p.Date)
+		q += ` AND r.work_date = $` + itoa(len(args)) + `::date`
+	}
+	if p.StaffID != "" {
+		args = append(args, p.StaffID)
+		q += ` AND r.staff_id = $` + itoa(len(args)) + `::uuid`
+	}
+	if p.ShiftID != "" {
+		args = append(args, p.ShiftID)
+		q += ` AND r.shift_id = $` + itoa(len(args)) + `::uuid`
+	}
+	q += ` ORDER BY r.work_date DESC, st.employee_no ASC LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
+	args = append(args, p.Limit, p.Offset)
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.StaffRoster
+	for rows.Next() {
+		ro, err := scanStaffRoster(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *ro)
+	}
+	return out, rows.Err()
+}
+
+// DeleteRoster removes a roster assignment.
+func (s *Store) DeleteRoster(ctx context.Context, id string) error {
+	ct, err := s.pool.Exec(ctx, `DELETE FROM staff_rosters WHERE id = $1::uuid`, id)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

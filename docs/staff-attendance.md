@@ -17,6 +17,8 @@ attendance, leave, and nursing shift handover.
   per day. Records the work date, clock-in/out timestamps, method and device.
   `is_late` is computed at clock-in (after shift start + grace);
   `is_early_leave` is computed at clock-out (before shift end).
+- **staff_rosters** — staff scheduled to a shift on a date; the source of
+  truth for who was expected to work.
 - **handover_notes** — structured nursing handover authored by an outgoing
   nurse: patient list, current condition, medications, pending investigations,
   pending orders, important observations, tasks, incidents and instructions.
@@ -37,13 +39,14 @@ clock-in ──▶ clocked_in ──clock-out──▶ completed
   staff/shift/date.
 - Handover self-acknowledgement is blocked (422 `self_acknowledgement`).
 
-## Attendance report
+## Attendance report & roster
 
-`GET /api/v1/attendance/report?date=YYYY-MM-DD` returns one row per recorded
-attendance (`late`, `early`, `completed`, or `clocked_in`) plus a
-`missed` row for every active staff member with no record that day — or
-`on_leave` when they have an approved leave covering the date. This satisfies
-the late/early/missed identification requirement.
+Staff are scheduled via the roster (`POST /attendance/rosters`, one staff per
+shift per date). `GET /api/v1/attendance/report?date=YYYY-MM-DD` returns one
+row per recorded attendance (`late`, `early`, `completed`, or `clocked_in`)
+plus a `missed` row for every roster entry with no matching attendance that
+day — or `on_leave` when the staff member has an approved leave covering the
+date. This satisfies the late/early/missed identification requirement.
 
 ## Permissions
 
@@ -62,7 +65,7 @@ clinical/operational role can clock in and request leave. See
 Every mutation is audited: `staff.update`, `staff.leave_request`,
 `staff.leave_approve`, `staff.leave_reject`, `attendance.shift_create`,
 `attendance.clock_in`, `attendance.clock_out`, `handover.create`,
-`handover.acknowledge`.
+`handover.acknowledge`, `attendance.roster_assign`, `attendance.roster_remove`.
 
 ## Endpoints
 
@@ -81,6 +84,9 @@ Every mutation is audited: `staff.update`, `staff.leave_request`,
 | POST   | `/api/v1/attendance/clock-out`              | `attendance.clock`       |
 | GET    | `/api/v1/attendance`                        | `attendance.view`        |
 | GET    | `/api/v1/attendance/report`                 | `attendance.view`        |
+| POST   | `/api/v1/attendance/rosters`                | `attendance.manage`      |
+| GET    | `/api/v1/attendance/rosters`                | `attendance.view`        |
+| DELETE | `/api/v1/attendance/rosters/{id}`           | `attendance.manage`      |
 | POST   | `/api/v1/handovers`                         | `handover.create`        |
 | GET    | `/api/v1/handovers`                         | `handover.view`          |
 | GET    | `/api/v1/handovers/{id}`                    | `handover.view`          |
