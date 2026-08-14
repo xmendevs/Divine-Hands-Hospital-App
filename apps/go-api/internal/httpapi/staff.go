@@ -9,23 +9,24 @@ import (
 )
 
 type staffResponse struct {
-	ID               string   `json:"id"`
-	UserID           string   `json:"userId"`
-	Username         string   `json:"username,omitempty"`
-	DepartmentID     *string  `json:"departmentId,omitempty"`
-	DepartmentName   string   `json:"departmentName,omitempty"`
-	EmployeeNo       string   `json:"employeeNo"`
-	FirstName        string   `json:"firstName"`
-	LastName         string   `json:"lastName"`
-	JobTitle         string   `json:"jobTitle,omitempty"`
-	ContactPhone     string   `json:"contactPhone,omitempty"`
-	ContactEmail     string   `json:"contactEmail,omitempty"`
-	EmploymentStatus string   `json:"employmentStatus"`
-	Availability     string   `json:"availability,omitempty"`
-	Skills           []string `json:"skills,omitempty"`
-	Certifications   []string `json:"certifications,omitempty"`
-	HireDate         *string  `json:"hireDate,omitempty"`
-	Roles            []string `json:"roles,omitempty"`
+	ID               string                   `json:"id"`
+	UserID           string                   `json:"userId"`
+	Username         string                   `json:"username,omitempty"`
+	DepartmentID     *string                  `json:"departmentId,omitempty"`
+	DepartmentName   string                   `json:"departmentName,omitempty"`
+	EmployeeNo       string                   `json:"employeeNo"`
+	FirstName        string                   `json:"firstName"`
+	LastName         string                   `json:"lastName"`
+	JobTitle         string                   `json:"jobTitle,omitempty"`
+	ContactPhone     string                   `json:"contactPhone,omitempty"`
+	ContactEmail     string                   `json:"contactEmail,omitempty"`
+	EmploymentStatus string                   `json:"employmentStatus"`
+	Availability     string                   `json:"availability,omitempty"`
+	Skills           []string                 `json:"skills,omitempty"`
+	Certifications   []string                 `json:"certifications,omitempty"`
+	HireDate         *string                  `json:"hireDate,omitempty"`
+	Roles            []string                 `json:"roles,omitempty"`
+	ShiftPreferences []domain.ShiftPreference `json:"shiftPreferences,omitempty"`
 }
 
 func newStaffResponse(st *domain.Staff) staffResponse {
@@ -79,6 +80,8 @@ func (s *server) handleGetStaff(w http.ResponseWriter, r *http.Request) {
 	for _, rl := range roles {
 		resp.Roles = append(resp.Roles, rl.Code)
 	}
+	prefs, _ := s.store.ListShiftPreferences(r.Context(), st.ID)
+	resp.ShiftPreferences = prefs
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -92,6 +95,10 @@ type updateStaffRequest struct {
 	Skills           []string `json:"skills"`
 	Certifications   []string `json:"certifications"`
 	HireDate         string   `json:"hireDate"`
+	ShiftPreferences []struct {
+		ShiftID string `json:"shiftId"`
+		Rank    int    `json:"rank"`
+	} `json:"shiftPreferences"`
 }
 
 // handleUpdateStaff updates a staff member's workforce fields.
@@ -134,6 +141,16 @@ func (s *server) handleUpdateStaff(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
+	}
+	if req.ShiftPreferences != nil {
+		prefs := make([]store.ShiftPreferenceInput, 0, len(req.ShiftPreferences))
+		for _, p := range req.ShiftPreferences {
+			prefs = append(prefs, store.ShiftPreferenceInput{ShiftID: p.ShiftID, Rank: p.Rank})
+		}
+		if err := s.store.ReplaceShiftPreferences(r.Context(), id, prefs); err != nil {
+			writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
 	}
 	s.recordAudit(r, domain.ActionStaffUpdate, "staff", id, nil, map[string]any{"employmentStatus": req.EmploymentStatus})
 	writeJSON(w, http.StatusOK, map[string]any{"id": id})
@@ -291,4 +308,92 @@ func (s *server) decideLeave(w http.ResponseWriter, r *http.Request, status, act
 	}
 	s.recordAudit(r, action, "staff_leave", id, nil, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"id": id, "status": status})
+}
+
+// ---- staff unavailability ----
+
+type unavailabilityResponse struct {
+	ID         string `json:"id"`
+	StaffID    string `json:"staffId"`
+	StaffName  string `json:"staffName,omitempty"`
+	EmployeeNo string `json:"employeeNo,omitempty"`
+	WorkDate   string `json:"workDate"`
+	Reason     string `json:"reason,omitempty"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+func newUnavailabilityResponse(u *domain.StaffUnavailability) unavailabilityResponse {
+	return unavailabilityResponse{
+		ID:         u.ID,
+		StaffID:    u.StaffID,
+		StaffName:  u.StaffName,
+		EmployeeNo: u.EmployeeNo,
+		WorkDate:   u.WorkDate,
+		Reason:     u.Reason,
+		CreatedAt:  u.CreatedAt.UTC().Format(timeRFC3339),
+	}
+}
+
+type markUnavailableRequest struct {
+	StaffID  string `json:"staffId"`
+	WorkDate string `json:"workDate"`
+	Reason   string `json:"reason"`
+}
+
+// handleMarkUnavailable records a staff member unavailable for a day.
+func (s *server) handleMarkUnavailable(w http.ResponseWriter, r *http.Request) {
+	var req markUnavailableRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.StaffID == "" || req.WorkDate == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "staffId and workDate are required")
+		return
+	}
+	actor := userFromContext(r.Context())
+	u, err := s.store.MarkUnavailable(r.Context(), req.StaffID, req.WorkDate, req.Reason, actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionStaffUpdate, "staff_unavailability", u.ID, nil, map[string]any{
+		"staffId": u.StaffID, "workDate": u.WorkDate,
+	})
+	writeJSON(w, http.StatusCreated, newUnavailabilityResponse(u))
+}
+
+// handleListUnavailability lists unavailability records.
+func (s *server) handleListUnavailability(w http.ResponseWriter, r *http.Request) {
+	limit, offset := pagination(r)
+	records, err := s.store.ListUnavailability(r.Context(), store.ListUnavailabilityParams{
+		StaffID: r.URL.Query().Get("staffId"),
+		Date:    r.URL.Query().Get("date"),
+		Limit:   limit,
+		Offset:  offset,
+	})
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]unavailabilityResponse, 0, len(records))
+	for i := range records {
+		out = append(out, newUnavailabilityResponse(&records[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleDeleteUnavailability removes an unavailability record.
+func (s *server) handleDeleteUnavailability(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.store.DeleteUnavailability(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "unavailability record not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionStaffUpdate, "staff_unavailability", id, nil, nil)
+	w.WriteHeader(http.StatusNoContent)
 }
