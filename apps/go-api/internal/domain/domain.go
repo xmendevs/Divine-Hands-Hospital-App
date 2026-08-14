@@ -1075,3 +1075,265 @@ type LabCriticalNotification struct {
 	Status               string
 	CreatedAt            time.Time
 }
+
+// Billing constants (Phase 08).
+const (
+	BillingInvoiceStatusDraft         = "draft"
+	BillingInvoiceStatusIssued        = "issued"
+	BillingInvoiceStatusPartiallyPaid = "partially_paid"
+	BillingInvoiceStatusPaid          = "paid"
+	BillingInvoiceStatusVoided        = "voided"
+)
+
+const (
+	BillingBillToPatient   = "patient"
+	BillingBillToInsurance = "insurance"
+	BillingBillToCorporate = "corporate"
+)
+
+const (
+	BillingPriceListActive   = "active"
+	BillingPriceListInactive = "inactive"
+)
+
+const (
+	BillingPaymentMethodCash      = "cash"
+	BillingPaymentMethodTransfer  = "transfer"
+	BillingPaymentMethodPOS       = "pos"
+	BillingPaymentMethodCard      = "card"
+	BillingPaymentMethodOnline    = "online"
+	BillingPaymentMethodInsurance = "insurance"
+	BillingPaymentMethodCorporate = "corporate"
+)
+
+const (
+	BillingRefundStatusPending   = "pending"
+	BillingRefundStatusApproved  = "approved"
+	BillingRefundStatusRejected  = "rejected"
+	BillingRefundStatusProcessed = "processed"
+)
+
+const (
+	BillingShiftOpen   = "open"
+	BillingShiftClosed = "closed"
+)
+
+const (
+	ReceiptShareEmail    = "email"
+	ReceiptShareWhatsApp = "whatsapp"
+)
+
+// Billing audit actions.
+const (
+	ActionBillingPriceListCreate = "billing.price_list_create"
+	ActionBillingPriceListUpdate = "billing.price_list_update"
+	ActionBillingItemCreate      = "billing.item_create"
+	ActionBillingItemUpdate      = "billing.item_update"
+	ActionBillingInvoiceCreate   = "billing.invoice_create"
+	ActionBillingInvoiceIssue    = "billing.invoice_issue"
+	ActionBillingInvoiceVoid     = "billing.invoice_void"
+	ActionBillingPaymentReceive  = "billing.payment_receive"
+	ActionBillingReceiptShare    = "billing.receipt_share"
+	ActionBillingRefundRequest   = "billing.refund_request"
+	ActionBillingRefundApprove   = "billing.refund_approve"
+	ActionBillingRefundReject    = "billing.refund_reject"
+	ActionBillingRefundProcess   = "billing.refund_process"
+	ActionBillingShiftOpen       = "billing.shift_open"
+	ActionBillingShiftClose      = "billing.shift_close"
+	ActionBillingViewed          = "billing.viewed"
+)
+
+// Patient timeline events (billing, Phase 08).
+const (
+	EventBillingInvoiceIssued = "billing_invoice_issued"
+	EventBillingPaymentMade   = "billing_payment_received"
+)
+
+// PriceList is a billable services price catalogue.
+type PriceList struct {
+	ID          string
+	Name        string
+	Currency    string
+	Description string
+	ValidFrom   *string // ISO date; nil when none
+	ValidTo     *string // ISO date; nil when none
+	Status      string
+	CreatedBy   *string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// PriceListItem is one billable service within a price list.
+type PriceListItem struct {
+	ID          string
+	PriceListID string
+	Code        string
+	Name        string
+	Category    string
+	Unit        string
+	Price       float64
+	TaxRate     float64
+	Active      bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// InvoiceItem is a snapshot line on an invoice.
+type InvoiceItem struct {
+	ID              string
+	InvoiceID       string
+	PriceListItemID *string
+	Code            string
+	Name            string
+	Category        string
+	Unit            string
+	Quantity        float64
+	UnitPrice       float64
+	TaxRate         float64
+	LineTotal       float64
+	TaxAmount       float64
+}
+
+// Invoice is the central billing document.
+type Invoice struct {
+	ID             string
+	InvoiceNo      string
+	PatientID      *string
+	PriceListID    *string
+	Currency       string
+	BillTo         string
+	PayerName      string
+	PolicyNumber   string
+	Subtotal       float64
+	DiscountAmount float64
+	TaxAmount      float64
+	TotalAmount    float64
+	AmountPaid     float64
+	Status         string
+	IssuedBy       *string
+	IssuedAt       *time.Time
+	VoidReason     string
+	VoidedBy       *string
+	VoidedAt       *time.Time
+	CreatedBy      *string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Items          []InvoiceItem
+	PatientNo      string
+	PatientName    string
+}
+
+// Payment is an append-only payment received against an invoice.
+type Payment struct {
+	ID          string
+	PaymentNo   string
+	InvoiceID   string
+	PatientID   *string
+	ShiftID     *string
+	Amount      float64
+	Method      string
+	Reference   string
+	ReceivedBy  string
+	ReceivedAt  time.Time
+	CreatedAt   time.Time
+	Notes       string
+	InvoiceNo   string
+	PatientName string
+}
+
+// Receipt is the printable document generated for a payment.
+type Receipt struct {
+	ID          string
+	ReceiptNo   string
+	PaymentID   string
+	InvoiceID   string
+	PatientID   *string
+	Amount      float64
+	Method      string
+	Reference   string
+	IssuedBy    string
+	IssuedAt    time.Time
+	InvoiceNo   string
+	Currency    string
+	PatientName string
+	BillTo      string
+	PayerName   string
+	ReceivedBy  string
+	Items       []InvoiceItem
+	TotalAmount float64
+	AmountPaid  float64
+}
+
+// RefundRequest is an approval-tracked refund request against a payment.
+type RefundRequest struct {
+	ID              string
+	RefundNo        string
+	PaymentID       string
+	InvoiceID       string
+	PatientID       *string
+	Amount          float64
+	Reason          string
+	Status          string
+	RequestedBy     string
+	RequestedAt     time.Time
+	ApprovedBy      *string
+	ApprovedAt      *time.Time
+	RejectionReason string
+	ProcessedBy     *string
+	ProcessedAt     *time.Time
+	PaymentNo       string
+	InvoiceNo       string
+	PatientName     string
+}
+
+// Refund is a processed (posted) refund that reverses part of a payment.
+type Refund struct {
+	ID              string
+	RefundNo        string
+	RefundRequestID string
+	PaymentID       string
+	InvoiceID       string
+	PatientID       *string
+	ShiftID         *string
+	Amount          float64
+	Reason          string
+	ProcessedBy     string
+	ProcessedAt     time.Time
+	InvoiceNo       string
+	PaymentNo       string
+	PatientName     string
+}
+
+// CashierShift tracks a cashier session for end-of-shift reconciliation.
+type CashierShift struct {
+	ID           string
+	ShiftNo      string
+	CashierID    string
+	OpenedAt     time.Time
+	ClosedAt     *time.Time
+	OpeningCash  float64
+	ClosingCash  *float64
+	ExpectedCash *float64
+	Variance     *float64
+	Status       string
+	Payments     []Payment
+	Refunds      []Refund
+}
+
+// ShiftTotals is the per-method transaction summary of a shift.
+type ShiftTotals struct {
+	Method   string  `json:"method"`
+	Payments float64 `json:"payments"`
+	Refunds  float64 `json:"refunds"`
+	Net      float64 `json:"net"`
+}
+
+// ReceiptShare records a user-initiated receipt sharing action.
+type ReceiptShare struct {
+	ID        string
+	ReceiptID string
+	ShareVia  string
+	Recipient string
+	SharedBy  string
+	SharedAt  time.Time
+}

@@ -121,6 +121,31 @@ from entry — high-risk tests (`verification_required`) reject self-verificatio
 (`lab_specimen_events`), and critical-result notifications record who was
 notified, by whom they were acknowledged, and when.
 
+## Billing, cashier, payments & receipts (Phase 08)
+
+Phase 08 adds seven `billing.*` permissions (`billing.view`, `billing.create`,
+`billing.manage`, `billing.collect`, `billing.refund`, `billing.approve`,
+`billing.reconcile`) and three system roles:
+
+- **cashier** — `billing.view`, `billing.collect`, `billing.refund`,
+  `billing.reconcile` (opens/closes shifts, takes payments, processes
+  approved refunds; cannot create invoices, edit price lists, or approve
+  refunds).
+- **billing_officer** — `billing.view`, `billing.create`, `billing.manage`,
+  `billing.refund` (creates and issues invoices, maintains price lists).
+- **billing_supervisor** — `billing.view`, `billing.refund`,
+  `billing.approve`, `billing.reconcile` (approves/rejects refund requests;
+  cannot create invoices or collect payments).
+
+Existing roles are extended minimally: **doctor** gains `billing.view` +
+`billing.create` (invoices for orders); **admin** gains `billing.view` only.
+Cashier duties are separated from approval duties: approving your own refund
+request is blocked (422 `self_approval`), and the cashier who received a
+payment can never approve its refund (no `billing.approve`). Payments are
+append-only (DB trigger rejects UPDATE/DELETE), refund processing requires an
+open shift and reverses the invoice balance, and every billing action is
+audited (`billing.*` actions). See `docs/billing.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in
