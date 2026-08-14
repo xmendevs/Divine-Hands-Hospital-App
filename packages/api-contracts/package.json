@@ -1,0 +1,12 @@
+{
+  "name": "@hims/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Versioned OpenAPI contracts shared by the Go and FastAPI services",
+  "scripts": {
+    "generate": "openapi-typescript openapi/v1/go-api.openapi.yaml -o src/generated/go-api.d.ts && openapi-typescript openapi/v1/fastapi.openapi.yaml -o src/generated/fastapi.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.8.0"
+  }
+}

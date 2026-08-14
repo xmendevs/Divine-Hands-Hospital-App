@@ -1,0 +1,8 @@
+node_modules
+dist
+target
+.turbo
+.venv
+coverage
+pnpm-lock.yaml
+packages/api-contracts/src/generated
