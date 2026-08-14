@@ -681,3 +681,181 @@ const (
 	EventFamilyLinked      = "family_linked"
 	EventDocumentAdded     = "document_added"
 )
+
+// Asset tracking types.
+const (
+	AssetTrackingUnit     = "unit"
+	AssetTrackingQuantity = "quantity"
+)
+
+// Asset statuses.
+const (
+	AssetStatusAvailable        = "available"
+	AssetStatusInUse            = "in_use"
+	AssetStatusUnderMaintenance = "under_maintenance"
+	AssetStatusDamaged          = "damaged"
+	AssetStatusLost             = "lost"
+	AssetStatusDisposed         = "disposed"
+)
+
+// Asset conditions.
+const (
+	AssetConditionNew  = "new"
+	AssetConditionGood = "good"
+	AssetConditionFair = "fair"
+	AssetConditionPoor = "poor"
+)
+
+// Asset movement types (auditable ledger, mirroring stock movements).
+const (
+	AssetMovementReceipt       = "receipt"
+	AssetMovementAdjustment    = "adjustment"
+	AssetMovementCountVariance = "count_variance"
+	AssetMovementTransferIn    = "transfer_in"
+	AssetMovementTransferOut   = "transfer_out"
+	AssetMovementDispose       = "dispose"
+)
+
+// Audit action names (general inventory, Phase 06).
+const (
+	ActionAssetCreate         = "asset.create"
+	ActionAssetUpdate         = "asset.update"
+	ActionAssetStatusChange   = "asset.status_change"
+	ActionAssetTransfer       = "asset.transfer"
+	ActionAssetAdjust         = "asset.adjust"
+	ActionAssetCount          = "asset.count"
+	ActionAssetViewed         = "assets.viewed"
+	ActionMaintenanceRecord   = "maintenance.record"
+	ActionMaintenanceSchedule = "maintenance.schedule"
+	ActionProviderCreate      = "maintenance.provider_create"
+)
+
+// AssetCategory is a seeded asset classification with a tracking mode.
+type AssetCategory struct {
+	ID       string
+	Code     string
+	Name     string
+	Tracking string
+}
+
+// Asset is a general-inventory item: unit-tracked (instrument/equipment) or
+// quantity-tracked (consumable stock). asset_no is the business ID.
+type Asset struct {
+	ID             string
+	AssetNo        string
+	Name           string
+	CategoryID     string
+	CategoryCode   string
+	CategoryName   string
+	Tracking       string
+	SerialNumber   string
+	Manufacturer   string
+	Supplier       string
+	PurchaseDate   *string // ISO date; nil when unknown
+	Cost           float64
+	Location       string
+	DepartmentID   *string
+	DepartmentName string
+	CustodianID    *string
+	Condition      string
+	WarrantyExpiry *string // ISO date; nil when none
+	Status         string
+	QuantityOnHand float64
+	Notes          string
+	CreatedBy      string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+// AssetMovement is an immutable asset quantity movement.
+type AssetMovement struct {
+	ID             string
+	AssetID        string
+	MovementType   string
+	Quantity       float64
+	QuantityBefore float64
+	QuantityAfter  float64
+	Reason         string
+	ReferenceType  string
+	ReferenceID    *string
+	PerformedBy    string
+	CreatedAt      time.Time
+}
+
+// AssetTransfer records relocation and/or custody reassignment.
+type AssetTransfer struct {
+	ID             string
+	AssetID        string
+	Quantity       float64
+	FromDepartment *string
+	ToDepartment   *string
+	FromLocation   string
+	ToLocation     string
+	FromCustodian  *string
+	ToCustodian    *string
+	Reason         string
+	TransferredBy  string
+	CreatedAt      time.Time
+}
+
+// AssetStatusChange is an immutable, attributable status transition.
+type AssetStatusChange struct {
+	ID         string
+	AssetID    string
+	FromStatus string
+	ToStatus   string
+	Reason     string
+	ChangedBy  string
+	CreatedAt  time.Time
+}
+
+// AssetStockCount records a physical count and its variance.
+type AssetStockCount struct {
+	ID              string
+	AssetID         string
+	SystemQuantity  float64
+	CountedQuantity float64
+	Variance        float64
+	CountedBy       string
+	CreatedAt       time.Time
+}
+
+// ServiceProvider is a maintenance service provider.
+type ServiceProvider struct {
+	ID           string
+	Name         string
+	ContactPhone string
+	ContactEmail string
+	Address      string
+	Notes        string
+	Active       bool
+	CreatedAt    time.Time
+}
+
+// MaintenanceSchedule is a recurring maintenance plan for an asset.
+type MaintenanceSchedule struct {
+	ID              string
+	AssetID         string
+	ServiceType     string
+	FrequencyDays   int
+	NextServiceDate string // ISO date
+	Active          bool
+	CreatedBy       string
+	CreatedAt       time.Time
+}
+
+// MaintenanceRecord is one completed maintenance event.
+type MaintenanceRecord struct {
+	ID                string
+	AssetID           string
+	ScheduleID        *string
+	ServiceProviderID *string
+	ServiceType       string
+	Description       string
+	ServiceDate       string // ISO date
+	DowntimeHours     float64
+	Cost              float64
+	NextServiceDate   *string // ISO date; nil when none
+	PerformedBy       string
+	CreatedAt         time.Time
+}

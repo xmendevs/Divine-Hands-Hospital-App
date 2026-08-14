@@ -84,7 +84,14 @@ server-side. See `docs/clinical.md`.
 ## Pharmacy (Phase 05)
 
 Phase 05 adds a `pharmacist` role holding `medicines.*` and `inventory.*`
-permissions. Nurses cannot edit prescriptions (no such endpoint + no
+permissions.
+
+## General inventory (Phase 06)
+
+Phase 06 adds a `storekeeper` role holding the `assets.*` permissions
+(`assets.view`, `assets.manage`, `assets.transfer`, `assets.adjust`,
+`assets.count`, `assets.maintain`); `admin` holds `assets.view` only.
+Super admin receives every permission automatically (see `docs/assets.md`). Nurses cannot edit prescriptions (no such endpoint + no
 `orders.create`), and pharmacists hold no clinical permissions (cannot view
 notes or alter diagnoses).
 

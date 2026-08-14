@@ -43,3 +43,12 @@ func nullableUUID(s *string) any {
 	}
 	return *s
 }
+
+// nullableTextPtr returns nil for nil pointers, deferring to nullableText for
+// empty strings.
+func nullableTextPtr(s *string) any {
+	if s == nil {
+		return nil
+	}
+	return nullableText(*s)
+}

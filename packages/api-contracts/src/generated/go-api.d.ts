@@ -969,6 +969,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List asset categories */
+        get: operations["listAssetCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List assets */
+        get: operations["listAssets"];
+        put?: never;
+        /** Register an asset */
+        post: operations["createAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List an asset's movement ledger */
+        get: operations["listAssetMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a physical count and reconcile variance */
+        post: operations["assetCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an asset with movements and status history */
+        get: operations["getAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an asset master record */
+        patch: operations["updateAsset"];
+        trace?: never;
+    };
+    "/api/v1/assets/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change an asset's status (loss/damage/disposal auditable) */
+        post: operations["changeAssetStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer quantity and/or custody of an asset */
+        post: operations["transferAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{id}/adjust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply a signed quantity delta (quantity-tracked assets) */
+        post: operations["adjustAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/assets/{id}/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List an asset's maintenance history */
+        get: operations["listMaintenanceRecords"];
+        put?: never;
+        /** Record completed maintenance work */
+        post: operations["createMaintenanceRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/maintenance/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List maintenance schedules (optionally due only) */
+        get: operations["listMaintenanceSchedules"];
+        put?: never;
+        /** Plan recurring maintenance for an asset */
+        post: operations["createMaintenanceSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/maintenance/service-providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List active maintenance service providers */
+        get: operations["listServiceProviders"];
+        put?: never;
+        /** Register a maintenance service provider */
+        post: operations["createServiceProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1495,6 +1687,162 @@ export interface components {
             systemQuantity: number;
             countedQuantity: number;
             variance: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AssetCategory: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            /** @enum {string} */
+            tracking: "unit" | "quantity";
+        };
+        Asset: {
+            /** Format: uuid */
+            id: string;
+            assetNo: string;
+            name: string;
+            /** Format: uuid */
+            categoryId: string;
+            categoryCode: string;
+            categoryName: string;
+            /** @enum {string} */
+            tracking: "unit" | "quantity";
+            serialNumber?: string;
+            manufacturer?: string;
+            supplier?: string;
+            /** Format: date */
+            purchaseDate?: string | null;
+            cost?: number;
+            location?: string;
+            /** Format: uuid */
+            departmentId?: string | null;
+            departmentName?: string;
+            /** Format: uuid */
+            custodianId?: string | null;
+            /** @enum {string} */
+            condition: "new" | "good" | "fair" | "poor";
+            /** Format: date */
+            warrantyExpiry?: string | null;
+            /** @enum {string} */
+            status: "available" | "in_use" | "under_maintenance" | "damaged" | "lost" | "disposed";
+            quantityOnHand: number;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AssetMovement: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            /** @enum {string} */
+            movementType: "receipt" | "adjustment" | "count_variance" | "transfer_in" | "transfer_out" | "dispose";
+            quantity: number;
+            quantityBefore: number;
+            quantityAfter: number;
+            reason?: string;
+            referenceType?: string;
+            /** Format: uuid */
+            performedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AssetTransfer: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            quantity: number;
+            /** Format: uuid */
+            fromDepartmentId?: string | null;
+            /** Format: uuid */
+            departmentId?: string | null;
+            fromLocation?: string;
+            location?: string;
+            /** Format: uuid */
+            fromCustodianId?: string | null;
+            /** Format: uuid */
+            custodianId?: string | null;
+            reason?: string;
+            /** Format: uuid */
+            transferredBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AssetStatusChange: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            /** @enum {string} */
+            fromStatus: "available" | "in_use" | "under_maintenance" | "damaged" | "lost" | "disposed";
+            /** @enum {string} */
+            toStatus: "available" | "in_use" | "under_maintenance" | "damaged" | "lost" | "disposed";
+            reason?: string;
+            /** Format: uuid */
+            changedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AssetStockCount: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            systemQuantity: number;
+            countedQuantity: number;
+            variance: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ServiceProvider: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            contactPhone?: string;
+            contactEmail?: string;
+            address?: string;
+            notes?: string;
+            active: boolean;
+        };
+        MaintenanceSchedule: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            serviceType: string;
+            frequencyDays: number;
+            /** Format: date */
+            nextServiceDate: string;
+            active: boolean;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        MaintenanceRecord: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            assetId: string;
+            /** Format: uuid */
+            scheduleId?: string | null;
+            /** Format: uuid */
+            serviceProviderId?: string | null;
+            serviceType: string;
+            description?: string;
+            /** Format: date */
+            serviceDate: string;
+            downtimeHours: number;
+            cost: number;
+            /** Format: date */
+            nextServiceDate?: string | null;
+            /** Format: uuid */
+            performedBy: string;
             /** Format: date-time */
             createdAt: string;
         };
@@ -3377,6 +3725,481 @@ export interface operations {
                         expiring?: Record<string, never>[];
                         expired?: Record<string, never>[];
                     };
+                };
+            };
+        };
+    };
+    listAssetCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Categories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetCategory"][];
+                };
+            };
+        };
+    };
+    listAssets: {
+        parameters: {
+            query?: {
+                categoryId?: string;
+                status?: "available" | "in_use" | "under_maintenance" | "damaged" | "lost" | "disposed";
+                departmentId?: string;
+                /** @description Search by name, serial number, or asset number. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Assets */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Asset"][];
+                };
+            };
+        };
+    };
+    createAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: uuid */
+                    categoryId: string;
+                    serialNumber?: string;
+                    manufacturer?: string;
+                    supplier?: string;
+                    /** Format: date */
+                    purchaseDate?: string;
+                    cost?: number;
+                    location?: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                    /** Format: uuid */
+                    custodianId?: string;
+                    /** @enum {string} */
+                    condition?: "new" | "good" | "fair" | "poor";
+                    /** Format: date */
+                    warrantyExpiry?: string;
+                    quantityOnHand?: number;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Asset"];
+                };
+            };
+        };
+    };
+    listAssetMovements: {
+        parameters: {
+            query: {
+                assetId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Movements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetMovement"][];
+                };
+            };
+        };
+    };
+    assetCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    assetId: string;
+                    countedQuantity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Counted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetStockCount"];
+                };
+            };
+        };
+    };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Asset detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        asset?: components["schemas"]["Asset"];
+                        movements?: components["schemas"]["AssetMovement"][];
+                        statusHistory?: components["schemas"]["AssetStatusChange"][];
+                    };
+                };
+            };
+        };
+    };
+    updateAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    serialNumber?: string;
+                    manufacturer?: string;
+                    supplier?: string;
+                    /** Format: date */
+                    purchaseDate?: string | null;
+                    cost?: number;
+                    location?: string;
+                    /** Format: uuid */
+                    departmentId?: string | null;
+                    /** Format: uuid */
+                    custodianId?: string | null;
+                    /** @enum {string} */
+                    condition?: "new" | "good" | "fair" | "poor";
+                    /** Format: date */
+                    warrantyExpiry?: string | null;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    changeAssetStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "available" | "in_use" | "under_maintenance" | "damaged" | "lost" | "disposed";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Status changed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetStatusChange"];
+                };
+            };
+        };
+    };
+    transferAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity?: number;
+                    /** Format: uuid */
+                    fromDepartmentId?: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                    fromLocation?: string;
+                    location?: string;
+                    /** Format: uuid */
+                    fromCustodianId?: string;
+                    /** Format: uuid */
+                    custodianId?: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Transferred */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetTransfer"];
+                };
+            };
+        };
+    };
+    adjustAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Adjusted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMaintenanceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Maintenance records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceRecord"][];
+                };
+            };
+        };
+    };
+    createMaintenanceRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    scheduleId?: string;
+                    /** Format: uuid */
+                    serviceProviderId?: string;
+                    serviceType: string;
+                    description?: string;
+                    /** Format: date */
+                    serviceDate?: string;
+                    downtimeHours?: number;
+                    cost?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceRecord"];
+                };
+            };
+        };
+    };
+    listMaintenanceSchedules: {
+        parameters: {
+            query?: {
+                assetId?: string;
+                dueOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Schedules */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceSchedule"][];
+                };
+            };
+        };
+    };
+    createMaintenanceSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    assetId: string;
+                    serviceType: string;
+                    frequencyDays: number;
+                    /** Format: date */
+                    nextServiceDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Scheduled */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceSchedule"];
+                };
+            };
+        };
+    };
+    listServiceProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Providers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProvider"][];
+                };
+            };
+        };
+    };
+    createServiceProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    contactPhone?: string;
+                    contactEmail?: string;
+                    address?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceProvider"];
                 };
             };
         };

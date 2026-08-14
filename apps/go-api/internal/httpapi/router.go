@@ -151,5 +151,23 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/pharmacy/movements", s.perm("medicines.view", s.handleListMovements))
 	mux.Handle("GET /api/v1/pharmacy/alerts", s.perm("medicines.view", s.handleGetAlerts))
 
+	// General inventory, instruments, equipment & maintenance (Phase 06).
+	mux.Handle("GET /api/v1/assets/categories", s.perm("assets.view", s.handleListAssetCategories))
+	mux.Handle("GET /api/v1/assets", s.perm("assets.view", s.handleListAssets))
+	mux.Handle("POST /api/v1/assets", s.perm("assets.manage", s.handleCreateAsset))
+	mux.Handle("GET /api/v1/assets/movements", s.perm("assets.view", s.handleListAssetMovements))
+	mux.Handle("POST /api/v1/assets/counts", s.perm("assets.count", s.handleAssetCount))
+	mux.Handle("GET /api/v1/assets/{id}", s.perm("assets.view", s.handleGetAsset))
+	mux.Handle("PATCH /api/v1/assets/{id}", s.perm("assets.manage", s.handleUpdateAsset))
+	mux.Handle("POST /api/v1/assets/{id}/status", s.perm("assets.adjust", s.handleChangeAssetStatus))
+	mux.Handle("POST /api/v1/assets/{id}/transfer", s.perm("assets.transfer", s.handleTransferAsset))
+	mux.Handle("POST /api/v1/assets/{id}/adjust", s.perm("assets.adjust", s.handleAdjustAsset))
+	mux.Handle("GET /api/v1/assets/{id}/maintenance", s.perm("assets.view", s.handleListMaintenanceRecords))
+	mux.Handle("POST /api/v1/assets/{id}/maintenance", s.perm("assets.maintain", s.handleCreateMaintenanceRecord))
+	mux.Handle("GET /api/v1/maintenance/schedules", s.perm("assets.view", s.handleListMaintenanceSchedules))
+	mux.Handle("POST /api/v1/maintenance/schedules", s.perm("assets.maintain", s.handleCreateMaintenanceSchedule))
+	mux.Handle("GET /api/v1/maintenance/service-providers", s.perm("assets.view", s.handleListServiceProviders))
+	mux.Handle("POST /api/v1/maintenance/service-providers", s.perm("assets.maintain", s.handleCreateServiceProvider))
+
 	return withMiddleware(mux, logger)
 }

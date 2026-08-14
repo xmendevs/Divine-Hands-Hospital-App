@@ -1480,6 +1480,402 @@ paths:
                   expired:
                     type: array
                     items: { type: object }
+  /api/v1/assets/categories:
+    get:
+      operationId: listAssetCategories
+      summary: List asset categories
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssetCategory" }
+  /api/v1/assets:
+    get:
+      operationId: listAssets
+      summary: List assets
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, in_use, under_maintenance, damaged, lost, disposed]
+        - name: departmentId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          required: false
+          description: Search by name, serial number, or asset number.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Asset" }
+    post:
+      operationId: createAsset
+      summary: Register an asset
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, categoryId]
+              properties:
+                name: { type: string }
+                categoryId: { type: string, format: uuid }
+                serialNumber: { type: string }
+                manufacturer: { type: string }
+                supplier: { type: string }
+                purchaseDate: { type: string, format: date }
+                cost: { type: number }
+                location: { type: string }
+                departmentId: { type: string, format: uuid }
+                custodianId: { type: string, format: uuid }
+                condition:
+                  type: string
+                  enum: [new, good, fair, poor]
+                warrantyExpiry: { type: string, format: date }
+                quantityOnHand: { type: number }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Asset" }
+  /api/v1/assets/movements:
+    get:
+      operationId: listAssetMovements
+      summary: List an asset's movement ledger
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssetMovement" }
+  /api/v1/assets/counts:
+    post:
+      operationId: assetCount
+      summary: Record a physical count and reconcile variance
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId, countedQuantity]
+              properties:
+                assetId: { type: string, format: uuid }
+                countedQuantity: { type: number }
+      responses:
+        "201":
+          description: Counted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetStockCount" }
+  /api/v1/assets/{id}:
+    get:
+      operationId: getAsset
+      summary: Get an asset with movements and status history
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Asset detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset: { $ref: "#/components/schemas/Asset" }
+                  movements:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetMovement" }
+                  statusHistory:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetStatusChange" }
+    patch:
+      operationId: updateAsset
+      summary: Update an asset master record
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                serialNumber: { type: string }
+                manufacturer: { type: string }
+                supplier: { type: string }
+                purchaseDate: { type: string, format: date, nullable: true }
+                cost: { type: number }
+                location: { type: string }
+                departmentId: { type: string, format: uuid, nullable: true }
+                custodianId: { type: string, format: uuid, nullable: true }
+                condition:
+                  type: string
+                  enum: [new, good, fair, poor]
+                warrantyExpiry: { type: string, format: date, nullable: true }
+                notes: { type: string }
+      responses:
+        "204": { description: Updated }
+  /api/v1/assets/{id}/status:
+    post:
+      operationId: changeAssetStatus
+      summary: Change an asset's status (loss/damage/disposal auditable)
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [available, in_use, under_maintenance, damaged, lost, disposed]
+                reason: { type: string }
+      responses:
+        "201":
+          description: Status changed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetStatusChange" }
+  /api/v1/assets/{id}/transfer:
+    post:
+      operationId: transferAsset
+      summary: Transfer quantity and/or custody of an asset
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity: { type: number }
+                fromDepartmentId: { type: string, format: uuid }
+                departmentId: { type: string, format: uuid }
+                fromLocation: { type: string }
+                location: { type: string }
+                fromCustodianId: { type: string, format: uuid }
+                custodianId: { type: string, format: uuid }
+                reason: { type: string }
+      responses:
+        "201":
+          description: Transferred
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetTransfer" }
+  /api/v1/assets/{id}/adjust:
+    post:
+      operationId: adjustAsset
+      summary: Apply a signed quantity delta (quantity-tracked assets)
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, reason]
+              properties:
+                quantity: { type: number }
+                reason: { type: string }
+      responses:
+        "204": { description: Adjusted }
+  /api/v1/assets/{id}/maintenance:
+    get:
+      operationId: listMaintenanceRecords
+      summary: List an asset's maintenance history
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Maintenance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MaintenanceRecord" }
+    post:
+      operationId: createMaintenanceRecord
+      summary: Record completed maintenance work
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serviceType]
+              properties:
+                scheduleId: { type: string, format: uuid }
+                serviceProviderId: { type: string, format: uuid }
+                serviceType: { type: string }
+                description: { type: string }
+                serviceDate: { type: string, format: date }
+                downtimeHours: { type: number }
+                cost: { type: number }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MaintenanceRecord" }
+  /api/v1/maintenance/schedules:
+    get:
+      operationId: listMaintenanceSchedules
+      summary: List maintenance schedules (optionally due only)
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: dueOnly
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: Schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MaintenanceSchedule" }
+    post:
+      operationId: createMaintenanceSchedule
+      summary: Plan recurring maintenance for an asset
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId, serviceType, frequencyDays, nextServiceDate]
+              properties:
+                assetId: { type: string, format: uuid }
+                serviceType: { type: string }
+                frequencyDays: { type: integer, minimum: 1 }
+                nextServiceDate: { type: string, format: date }
+      responses:
+        "201":
+          description: Scheduled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MaintenanceSchedule" }
+  /api/v1/maintenance/service-providers:
+    get:
+      operationId: listServiceProviders
+      summary: List active maintenance service providers
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ServiceProvider" }
+    post:
+      operationId: createServiceProvider
+      summary: Register a maintenance service provider
+      tags: [assets]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                contactPhone: { type: string }
+                contactEmail: { type: string }
+                address: { type: string }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ServiceProvider" }
 components:
   securitySchemes:
     bearerAuth:
@@ -2072,6 +2468,154 @@ components:
         systemQuantity: { type: number }
         countedQuantity: { type: number }
         variance: { type: number }
+        createdAt: { type: string, format: date-time }
+    AssetCategory:
+      type: object
+      required: [id, code, name, tracking]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        tracking: { type: string, enum: [unit, quantity] }
+    Asset:
+      type: object
+      required:
+        [
+          id,
+          assetNo,
+          name,
+          categoryId,
+          categoryCode,
+          categoryName,
+          tracking,
+          condition,
+          status,
+          quantityOnHand,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        assetNo: { type: string }
+        name: { type: string }
+        categoryId: { type: string, format: uuid }
+        categoryCode: { type: string }
+        categoryName: { type: string }
+        tracking: { type: string, enum: [unit, quantity] }
+        serialNumber: { type: string }
+        manufacturer: { type: string }
+        supplier: { type: string }
+        purchaseDate: { type: string, format: date, nullable: true }
+        cost: { type: number }
+        location: { type: string }
+        departmentId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        custodianId: { type: string, format: uuid, nullable: true }
+        condition: { type: string, enum: [new, good, fair, poor] }
+        warrantyExpiry: { type: string, format: date, nullable: true }
+        status:
+          { type: string, enum: [available, in_use, under_maintenance, damaged, lost, disposed] }
+        quantityOnHand: { type: number }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AssetMovement:
+      type: object
+      required:
+        [id, assetId, movementType, quantity, quantityBefore, quantityAfter, performedBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        movementType:
+          type: string
+          enum: [receipt, adjustment, count_variance, transfer_in, transfer_out, dispose]
+        quantity: { type: number }
+        quantityBefore: { type: number }
+        quantityAfter: { type: number }
+        reason: { type: string }
+        referenceType: { type: string }
+        performedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    AssetTransfer:
+      type: object
+      required: [id, assetId, quantity, transferredBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        quantity: { type: number }
+        fromDepartmentId: { type: string, format: uuid, nullable: true }
+        departmentId: { type: string, format: uuid, nullable: true }
+        fromLocation: { type: string }
+        location: { type: string }
+        fromCustodianId: { type: string, format: uuid, nullable: true }
+        custodianId: { type: string, format: uuid, nullable: true }
+        reason: { type: string }
+        transferredBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    AssetStatusChange:
+      type: object
+      required: [id, assetId, fromStatus, toStatus, changedBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        fromStatus:
+          type: string
+          enum: [available, in_use, under_maintenance, damaged, lost, disposed]
+        toStatus:
+          type: string
+          enum: [available, in_use, under_maintenance, damaged, lost, disposed]
+        reason: { type: string }
+        changedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    AssetStockCount:
+      type: object
+      required: [id, assetId, systemQuantity, countedQuantity, variance, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        systemQuantity: { type: number }
+        countedQuantity: { type: number }
+        variance: { type: number }
+        createdAt: { type: string, format: date-time }
+    ServiceProvider:
+      type: object
+      required: [id, name, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        contactPhone: { type: string }
+        contactEmail: { type: string }
+        address: { type: string }
+        notes: { type: string }
+        active: { type: boolean }
+    MaintenanceSchedule:
+      type: object
+      required:
+        [id, assetId, serviceType, frequencyDays, nextServiceDate, active, createdBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        serviceType: { type: string }
+        frequencyDays: { type: integer }
+        nextServiceDate: { type: string, format: date }
+        active: { type: boolean }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    MaintenanceRecord:
+      type: object
+      required: [id, assetId, serviceType, serviceDate, downtimeHours, cost, performedBy, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        assetId: { type: string, format: uuid }
+        scheduleId: { type: string, format: uuid, nullable: true }
+        serviceProviderId: { type: string, format: uuid, nullable: true }
+        serviceType: { type: string }
+        description: { type: string }
+        serviceDate: { type: string, format: date }
+        downtimeHours: { type: number }
+        cost: { type: number }
+        nextServiceDate: { type: string, format: date, nullable: true }
+        performedBy: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
     ErrorEnvelope:
       type: object
