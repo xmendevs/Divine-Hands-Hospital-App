@@ -146,6 +146,25 @@ append-only (DB trigger rejects UPDATE/DELETE), refund processing requires an
 open shift and reverses the invoice balance, and every billing action is
 audited (`billing.*` actions). See `docs/billing.md`.
 
+## Staff, attendance & handover (Phase 09)
+
+Phase 09 adds eight permissions across three modules: `attendance.clock`,
+`attendance.view`, `attendance.manage`; `handover.create`, `handover.view`,
+`handover.acknowledge`; and `staff.leave_request`, `staff.leave_manage`.
+
+- **nurse** — clocks in/out and creates/views/acknowledges handover.
+- **doctor** — clocks in/out and creates/views handover.
+- **matron** & **admin** — `attendance.view` + `attendance.manage` and
+  `staff.leave_manage` (reporting and leave decisions).
+- Every clinical/operational role gains `attendance.clock` +
+  `staff.leave_request`.
+
+Clock-in/out is self-service and bound to the caller's staff profile; methods
+must be approved (`attendance.allowed_methods` setting). Duplicate/invalid
+clock-ins are blocked by unique indexes, handover self-acknowledgement is
+blocked (422 `self_acknowledgement`), and every action is audited
+(`staff.*`, `attendance.*`, `handover.*`). See `docs/staff-attendance.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in

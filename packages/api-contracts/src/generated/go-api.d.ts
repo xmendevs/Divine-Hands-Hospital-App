@@ -1850,6 +1850,231 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List staff profiles */
+        get: operations["listStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one staff profile with roles */
+        get: operations["getStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a staff member's workforce fields */
+        patch: operations["updateStaff"];
+        trace?: never;
+    };
+    "/api/v1/staff/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List leave requests */
+        get: operations["listLeave"];
+        put?: never;
+        /** Request leave for the caller (or on behalf of staff with manage) */
+        post: operations["requestLeave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/leave/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending leave request */
+        post: operations["approveLeave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/leave/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending leave request */
+        post: operations["rejectLeave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List staff shift definitions */
+        get: operations["listStaffShifts"];
+        put?: never;
+        /** Create a staff shift definition */
+        post: operations["createStaffShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/clock-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clock in for a shift */
+        post: operations["clockIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/clock-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clock out of the open shift */
+        post: operations["clockOut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List attendance records */
+        get: operations["listAttendance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Per-day attendance report (late, early, missed, on leave) */
+        get: operations["attendanceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/handovers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List handover notes */
+        get: operations["listHandovers"];
+        put?: never;
+        /** Create a shift handover note */
+        post: operations["createHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/handovers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one handover note */
+        get: operations["getHandover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/handovers/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge receipt of a handover note */
+        post: operations["acknowledgeHandover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2932,6 +3157,142 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        Staff: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            username?: string;
+            /** Format: uuid */
+            departmentId?: string | null;
+            departmentName?: string;
+            employeeNo: string;
+            firstName: string;
+            lastName: string;
+            jobTitle?: string;
+            contactPhone?: string;
+            contactEmail?: string;
+            /** @enum {string} */
+            employmentStatus: "active" | "on_leave" | "terminated" | "suspended";
+            availability?: string;
+            skills?: string[];
+            certifications?: string[];
+            /** Format: date */
+            hireDate?: string | null;
+            roles?: string[];
+        };
+        StaffLeave: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            staffId: string;
+            staffName?: string;
+            employeeNo?: string;
+            leaveType: string;
+            /** Format: date */
+            startDate: string;
+            /** Format: date */
+            endDate: string;
+            reason?: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            /** Format: uuid */
+            requestedBy: string;
+            /** Format: uuid */
+            approvedBy?: string | null;
+            /** Format: date-time */
+            decidedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        StaffShift: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            startTime: string;
+            endTime: string;
+            lateGraceMinutes: number;
+        };
+        AttendanceRecord: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            staffId: string;
+            staffName?: string;
+            employeeNo?: string;
+            /** Format: uuid */
+            shiftId: string;
+            shiftName?: string;
+            shiftCode?: string;
+            departmentName?: string;
+            /** Format: date */
+            workDate: string;
+            /** Format: date-time */
+            clockInAt: string;
+            /** Format: date-time */
+            clockOutAt?: string | null;
+            clockInMethod: string;
+            clockOutMethod?: string;
+            clockInDevice?: string;
+            clockOutDevice?: string;
+            isLate: boolean;
+            isEarlyLeave: boolean;
+            /** @enum {string} */
+            status: "clocked_in" | "completed";
+            notes?: string;
+        };
+        AttendanceReportRow: {
+            /** Format: uuid */
+            staffId: string;
+            employeeNo?: string;
+            staffName: string;
+            department?: string;
+            /** Format: uuid */
+            shiftId?: string;
+            shiftName?: string;
+            status: string;
+            /** Format: date-time */
+            clockInAt?: string | null;
+            /** Format: date-time */
+            clockOutAt?: string | null;
+        };
+        HandoverNote: {
+            /** Format: uuid */
+            id: string;
+            handoverNo: string;
+            /** Format: uuid */
+            outgoingStaffId: string;
+            outgoingStaffName?: string;
+            /** Format: uuid */
+            departmentId?: string | null;
+            departmentName?: string;
+            /** Format: uuid */
+            shiftId?: string | null;
+            shiftName?: string;
+            patientIds?: string[];
+            currentCondition?: string;
+            medications?: string;
+            pendingInvestigations?: string;
+            pendingOrders?: string;
+            importantObservations?: string;
+            tasks?: string;
+            incidents?: string;
+            instructions?: string;
+            /** @enum {string} */
+            status: "created" | "acknowledged";
+            /** Format: uuid */
+            acknowledgedBy?: string | null;
+            acknowledgedByName?: string;
+            /** Format: date-time */
+            acknowledgedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         ErrorEnvelope: {
             error: {
                 code: string;
@@ -2976,6 +3337,16 @@ export interface components {
         RefundRequestId: string;
         /** @description Cashier shift internal UUID. */
         ShiftId: string;
+        /** @description Staff member internal UUID. */
+        StaffId: string;
+        /** @description Staff shift definition internal UUID. */
+        StaffShiftId: string;
+        /** @description Leave request internal UUID. */
+        LeaveId: string;
+        /** @description Attendance record internal UUID. */
+        AttendanceId: string;
+        /** @description Handover note internal UUID. */
+        HandoverId: string;
     };
     requestBodies: never;
     headers: never;
@@ -6754,6 +7125,484 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CashierShift"];
+                };
+            };
+        };
+    };
+    listStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Staff profiles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Staff"][];
+                };
+            };
+        };
+    };
+    getStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Staff member internal UUID. */
+                id: components["parameters"]["StaffId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Staff profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Staff"];
+                };
+            };
+        };
+    };
+    updateStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Staff member internal UUID. */
+                id: components["parameters"]["StaffId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    departmentId?: string;
+                    jobTitle?: string;
+                    contactPhone?: string;
+                    contactEmail?: string;
+                    /** @enum {string} */
+                    employmentStatus: "active" | "on_leave" | "terminated" | "suspended";
+                    availability?: string;
+                    skills?: string[];
+                    certifications?: string[];
+                    /** Format: date */
+                    hireDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                    };
+                };
+            };
+        };
+    };
+    listLeave: {
+        parameters: {
+            query?: {
+                staffId?: string;
+                status?: "pending" | "approved" | "rejected";
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Leave requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffLeave"][];
+                };
+            };
+        };
+    };
+    requestLeave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    staffId?: string;
+                    leaveType?: string;
+                    /** Format: date */
+                    startDate: string;
+                    /** Format: date */
+                    endDate: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Requested */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffLeave"];
+                };
+            };
+        };
+    };
+    approveLeave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Leave request internal UUID. */
+                id: components["parameters"]["LeaveId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    rejectLeave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Leave request internal UUID. */
+                id: components["parameters"]["LeaveId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    listStaffShifts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shift definitions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffShift"][];
+                };
+            };
+        };
+    };
+    createStaffShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    startTime: string;
+                    endTime: string;
+                    lateGraceMinutes?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffShift"];
+                };
+            };
+        };
+    };
+    clockIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    shiftId: string;
+                    /** Format: date */
+                    workDate?: string;
+                    method: string;
+                    device?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Clocked in */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"];
+                };
+            };
+        };
+    };
+    clockOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    method: string;
+                    device?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Clocked out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"];
+                };
+            };
+        };
+    };
+    listAttendance: {
+        parameters: {
+            query?: {
+                staffId?: string;
+                date?: string;
+                status?: "clocked_in" | "completed";
+                late?: boolean;
+                early?: boolean;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attendance records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceRecord"][];
+                };
+            };
+        };
+    };
+    attendanceReport: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Report rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceReportRow"][];
+                };
+            };
+        };
+    };
+    listHandovers: {
+        parameters: {
+            query?: {
+                status?: "created" | "acknowledged";
+                departmentId?: string;
+                staffId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Handover notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverNote"][];
+                };
+            };
+        };
+    };
+    createHandover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    departmentId?: string;
+                    /** Format: uuid */
+                    shiftId?: string;
+                    patientIds?: string[];
+                    currentCondition?: string;
+                    medications?: string;
+                    pendingInvestigations?: string;
+                    pendingOrders?: string;
+                    importantObservations?: string;
+                    tasks?: string;
+                    incidents?: string;
+                    instructions?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverNote"];
+                };
+            };
+        };
+    };
+    getHandover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Handover note internal UUID. */
+                id: components["parameters"]["HandoverId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Handover note */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HandoverNote"];
+                };
+            };
+        };
+    };
+    acknowledgeHandover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Handover note internal UUID. */
+                id: components["parameters"]["HandoverId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Acknowledged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
                 };
             };
         };

@@ -194,15 +194,11 @@ func (s *Store) UpdateLastLogin(ctx context.Context, id string) error {
 
 // GetStaffByUserID returns a user's staff profile.
 func (s *Store) GetStaffByUserID(ctx context.Context, userID string) (*domain.Staff, error) {
-	var st domain.Staff
-	err := s.pool.QueryRow(ctx, `
-		SELECT id::text, user_id::text, department_id::text, employee_no, first_name, last_name, job_title
-		FROM staff WHERE user_id = $1::uuid`, userID).
-		Scan(&st.ID, &st.UserID, &st.DepartmentID, &st.EmployeeNo, &st.FirstName, &st.LastName, &st.JobTitle)
+	st, err := scanStaff(s.pool.QueryRow(ctx, `SELECT `+staffCols+staffFrom+` WHERE st.user_id = $1::uuid`, userID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
-	return &st, err
+	return st, err
 }
 
 // UpdateStaff updates a user's staff profile fields.

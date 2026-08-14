@@ -28,13 +28,22 @@ type User struct {
 }
 
 type Staff struct {
-	ID           string
-	UserID       string
-	DepartmentID *string
-	EmployeeNo   string
-	FirstName    string
-	LastName     string
-	JobTitle     string
+	ID               string
+	UserID           string
+	DepartmentID     *string
+	EmployeeNo       string
+	FirstName        string
+	LastName         string
+	JobTitle         string
+	ContactPhone     string
+	ContactEmail     string
+	EmploymentStatus string
+	Availability     string
+	Skills           []string
+	Certifications   []string
+	HireDate         *string // ISO date; nil when none
+	DepartmentName   string  // populated on list/get joins
+	Username         string  // populated on list/get joins
 }
 
 type Role struct {
@@ -1336,4 +1345,150 @@ type ReceiptShare struct {
 	Recipient string
 	SharedBy  string
 	SharedAt  time.Time
+}
+
+// Staff employment statuses (Phase 09).
+const (
+	StaffEmploymentActive     = "active"
+	StaffEmploymentOnLeave    = "on_leave"
+	StaffEmploymentTerminated = "terminated"
+	StaffEmploymentSuspended  = "suspended"
+)
+
+// Staff leave statuses (Phase 09).
+const (
+	StaffLeaveStatusPending  = "pending"
+	StaffLeaveStatusApproved = "approved"
+	StaffLeaveStatusRejected = "rejected"
+)
+
+// Attendance record statuses (Phase 09).
+const (
+	AttendanceStatusClockedIn = "clocked_in"
+	AttendanceStatusCompleted = "completed"
+)
+
+// Attendance report derived statuses (Phase 09).
+const (
+	AttendanceReportOnTime    = "on_time"
+	AttendanceReportLate      = "late"
+	AttendanceReportEarly     = "early"
+	AttendanceReportCompleted = "completed"
+	AttendanceReportMissed    = "missed"
+	AttendanceReportOnLeave   = "on_leave"
+)
+
+// Handover note statuses (Phase 09).
+const (
+	HandoverStatusCreated      = "created"
+	HandoverStatusAcknowledged = "acknowledged"
+)
+
+// Staff / attendance / handover audit actions (Phase 09).
+const (
+	ActionStaffUpdate           = "staff.update"
+	ActionLeaveRequest          = "staff.leave_request"
+	ActionLeaveApprove          = "staff.leave_approve"
+	ActionLeaveReject           = "staff.leave_reject"
+	ActionAttendanceShiftCreate = "attendance.shift_create"
+	ActionAttendanceClockIn     = "attendance.clock_in"
+	ActionAttendanceClockOut    = "attendance.clock_out"
+	ActionHandoverCreate        = "handover.create"
+	ActionHandoverAcknowledge   = "handover.acknowledge"
+)
+
+// StaffLeave is a leave request/record against a staff member.
+type StaffLeave struct {
+	ID          string
+	StaffID     string
+	LeaveType   string
+	StartDate   string // ISO date
+	EndDate     string // ISO date
+	Reason      string
+	Status      string
+	RequestedBy string
+	ApprovedBy  *string
+	DecidedAt   *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	StaffName   string // joined
+	EmployeeNo  string // joined
+}
+
+// StaffShift is a named work shift definition used for attendance.
+type StaffShift struct {
+	ID               string
+	Code             string
+	Name             string
+	StartTime        string // HH:MM
+	EndTime          string // HH:MM
+	LateGraceMinutes int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+// AttendanceRecord is one clock-in/out event for a staff member.
+type AttendanceRecord struct {
+	ID             string
+	StaffID        string
+	ShiftID        string
+	WorkDate       string // ISO date
+	ClockInAt      time.Time
+	ClockOutAt     *time.Time
+	ClockInMethod  string
+	ClockOutMethod string
+	ClockInDevice  string
+	ClockOutDevice string
+	IsLate         bool
+	IsEarlyLeave   bool
+	Status         string
+	Notes          string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	StaffName      string // joined
+	EmployeeNo     string // joined
+	ShiftName      string // joined
+	ShiftCode      string // joined
+	DepartmentName string // joined
+}
+
+// HandoverNote is a structured nursing shift handover.
+type HandoverNote struct {
+	ID                    string
+	HandoverNo            string
+	OutgoingStaffID       string
+	DepartmentID          *string
+	ShiftID               *string
+	PatientIDs            []string
+	CurrentCondition      string
+	Medications           string
+	PendingInvestigations string
+	PendingOrders         string
+	ImportantObservations string
+	Tasks                 string
+	Incidents             string
+	Instructions          string
+	Status                string
+	CreatedBy             string
+	AcknowledgedBy        *string
+	AcknowledgedAt        *time.Time
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	OutgoingStaffName     string // joined
+	DepartmentName        string // joined
+	ShiftName             string // joined
+	AcknowledgedByName    string // joined
+}
+
+// AttendanceReportRow is one row of a per-day attendance report.
+type AttendanceReportRow struct {
+	StaffID    string
+	EmployeeNo string
+	StaffName  string
+	Department string
+	ShiftID    string
+	ShiftName  string
+	Status     string // on_time | late | early | completed | clocked_in | missed | on_leave
+	ClockInAt  *time.Time
+	ClockOutAt *time.Time
 }
