@@ -1608,3 +1608,137 @@ type ShiftPreference struct {
 	ShiftName string `json:"shiftName,omitempty"`
 	Rank      int    `json:"rank"`
 }
+
+// Notification categories (Phase 11).
+const (
+	NotificationCategoryCriticalClinical = "critical_clinical"
+	NotificationCategoryRoster           = "roster"
+	NotificationCategoryStock            = "stock"
+	NotificationCategoryPayment          = "payment"
+	NotificationCategoryReminder         = "reminder"
+	NotificationCategorySystem           = "system"
+	NotificationCategoryMessage          = "message"
+	NotificationCategoryAnnouncement     = "announcement"
+)
+
+// Notification delivery channels (Phase 11).
+const (
+	NotificationChannelInApp = "in_app"
+	NotificationChannelEmail = "email"
+	NotificationChannelBoth  = "both"
+)
+
+// Notification email delivery statuses (Phase 11).
+const (
+	NotificationEmailNone    = "none"
+	NotificationEmailPending = "pending"
+	NotificationEmailSent    = "sent"
+	NotificationEmailFailed  = "failed"
+)
+
+// Communication channel types (Phase 11).
+const (
+	CommsChannelDepartment = "department"
+	CommsChannelShift      = "shift"
+)
+
+// Message kinds (Phase 11).
+const (
+	MessageKindDirect       = "direct"
+	MessageKindChannel      = "channel"
+	MessageKindAnnouncement = "announcement"
+)
+
+// Notifications & communications audit actions (Phase 11).
+const (
+	ActionNotificationSend       = "notifications.send"
+	ActionNotificationRead       = "notifications.read"
+	ActionCommsChannelCreate     = "communications.channel_create"
+	ActionCommsChannelUpdate     = "communications.channel_update"
+	ActionCommsMemberAdd         = "communications.member_add"
+	ActionCommsMemberRemove      = "communications.member_remove"
+	ActionCommsMessageSend       = "communications.message_send"
+	ActionCommsAnnouncementPost  = "communications.announcement_post"
+	ActionCommsAdminAccess       = "communications.admin_access"
+	ActionCommsComplianceSearch  = "communications.compliance_search"
+	ActionCommsRetentionRun      = "communications.retention_run"
+	ActionCommsPolicyAcknowledge = "communications.policy_acknowledge"
+)
+
+// Notification is a persisted in-app or email notification for a user.
+type Notification struct {
+	ID          string
+	UserID      string
+	Category    string
+	Title       string
+	Body        string
+	Link        string
+	Channel     string
+	EmailStatus string
+	ReadAt      *time.Time
+	DeliveredAt *time.Time
+	CreatedAt   time.Time
+}
+
+// CommsChannel is a department or shift messaging channel.
+type CommsChannel struct {
+	ID             string
+	Name           string
+	Type           string
+	DepartmentID   *string
+	ShiftID        *string
+	DepartmentName string // joined
+	ShiftName      string // joined
+	Description    string
+	CreatedBy      string
+	CreatedAt      time.Time
+	MemberCount    int
+	IsMember       bool
+}
+
+// CommsChannelMember is one user's membership in a channel.
+type CommsChannelMember struct {
+	ID         string
+	ChannelID  string
+	UserID     string
+	AddedBy    *string
+	AddedAt    time.Time
+	Username   string // joined
+	StaffName  string // joined
+	EmployeeNo string // joined
+}
+
+// MessageAttachment is a policy-governed attachment metadata record.
+type MessageAttachment struct {
+	ID         string
+	MessageID  string
+	FileName   string
+	MimeType   string
+	SizeBytes  int64
+	StorageRef string
+	CreatedAt  time.Time
+}
+
+// Message is a direct, channel, or announcement message.
+type Message struct {
+	ID             string
+	Kind           string
+	SenderID       string
+	RecipientID    *string
+	ChannelID      *string
+	Body           string
+	CreatedAt      time.Time
+	SenderName     string // joined
+	SenderUsername string // joined
+	RecipientName  string // joined
+	ChannelName    string // joined
+	Attachments    []MessageAttachment
+}
+
+// CommsPolicy is the governance notice surfaced to users.
+type CommsPolicy struct {
+	Notice             string
+	RetentionDays      int
+	AttachmentMaxBytes int64
+	Acknowledged       bool
+}

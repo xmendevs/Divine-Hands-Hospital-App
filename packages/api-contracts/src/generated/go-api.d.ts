@@ -2316,6 +2316,283 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's notifications */
+        get: operations["listNotifications"];
+        put?: never;
+        /** Send a notification to specific users */
+        post: operations["sendNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Unread notification count */
+        get: operations["unreadNotificationCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark all notifications read */
+        post: operations["markAllNotificationsRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark one notification read */
+        post: operations["markNotificationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Communications retention/audit policy and acknowledgement state */
+        get: operations["getCommsPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/policy/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge the communications policy */
+        post: operations["acknowledgeCommsPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List channels */
+        get: operations["listChannels"];
+        put?: never;
+        /** Create a department or shift channel */
+        post: operations["createChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one channel with members */
+        get: operations["getChannel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/channels/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a user to a channel */
+        post: operations["addChannelMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/channels/{id}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a user from a channel */
+        delete: operations["removeChannelMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/channels/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a channel's messages */
+        get: operations["listChannelMessages"];
+        put?: never;
+        /** Send a message to a channel */
+        post: operations["sendChannelMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the direct-message thread with a peer */
+        get: operations["listDirectMessages"];
+        put?: never;
+        /** Send a direct message */
+        post: operations["sendDirectMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List announcements */
+        get: operations["listAnnouncements"];
+        put?: never;
+        /** Post an announcement (global or channel-scoped) */
+        post: operations["createAnnouncement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/admin/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrative communications search (audited) */
+        get: operations["adminSearchMessages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/compliance/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Compliance investigation search (audited) */
+        get: operations["complianceSearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/communications/retention/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Purge communications older than the retention window */
+        post: operations["runRetention"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3638,6 +3915,118 @@ export interface components {
             assignments?: components["schemas"]["RosterAssignment"][];
             unmet?: components["schemas"]["UnmetRequirement"][];
         };
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            category: string;
+            title: string;
+            body?: string;
+            link?: string;
+            /** @enum {string} */
+            channel: "in_app" | "email" | "both";
+            /** @enum {string} */
+            emailStatus: "none" | "pending" | "sent" | "failed";
+            /** Format: date-time */
+            readAt?: string | null;
+            /** Format: date-time */
+            deliveredAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AttachmentInput: {
+            fileName: string;
+            mimeType?: string;
+            sizeBytes?: number;
+            storageRef?: string;
+        };
+        MessageAttachment: {
+            /** Format: uuid */
+            id: string;
+            fileName: string;
+            mimeType: string;
+            sizeBytes: number;
+            storageRef?: string;
+        };
+        Message: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "direct" | "channel" | "announcement";
+            /** Format: uuid */
+            senderId: string;
+            senderName?: string;
+            senderUsername?: string;
+            /** Format: uuid */
+            recipientId?: string | null;
+            recipientName?: string;
+            /** Format: uuid */
+            channelId?: string | null;
+            channelName?: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            attachments: components["schemas"]["MessageAttachment"][];
+        };
+        CommsChannel: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            type: "department" | "shift";
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: uuid */
+            shiftId?: string | null;
+            departmentName?: string;
+            shiftName?: string;
+            description?: string;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            memberCount: number;
+            isMember: boolean;
+        };
+        CommsChannelMember: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            username: string;
+            staffName?: string;
+            employeeNo?: string;
+            /** Format: uuid */
+            addedBy?: string | null;
+            /** Format: date-time */
+            addedAt: string;
+        };
+        CommsChannelDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            type: "department" | "shift";
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: uuid */
+            shiftId?: string | null;
+            departmentName?: string;
+            shiftName?: string;
+            description?: string;
+            /** Format: uuid */
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            memberCount: number;
+            isMember: boolean;
+            members: components["schemas"]["CommsChannelMember"][];
+        };
+        CommsPolicy: {
+            notice: string;
+            retentionDays: number;
+            attachmentMaxBytes: number;
+            acknowledged: boolean;
+        };
         ErrorEnvelope: {
             error: {
                 code: string;
@@ -3700,6 +4089,12 @@ export interface components {
         RosterAssignmentId: string;
         /** @description Staff unavailability record internal UUID. */
         UnavailabilityId: string;
+        /** @description Notification internal UUID. */
+        NotificationId: string;
+        /** @description Communications channel internal UUID. */
+        ChannelId: string;
+        /** @description Channel member user internal UUID. */
+        MemberUserId: string;
     };
     requestBodies: never;
     headers: never;
@@ -8415,6 +8810,565 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RosterPlan"];
+                };
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: {
+                category?: string;
+                unread?: boolean;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"][];
+                };
+            };
+        };
+    };
+    sendNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    userIds: string[];
+                    category: string;
+                    title: string;
+                    body?: string;
+                    link?: string;
+                    /** @enum {string} */
+                    channel?: "in_app" | "email" | "both";
+                };
+            };
+        };
+        responses: {
+            /** @description Delivered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivered?: number;
+                    };
+                };
+            };
+        };
+    };
+    unreadNotificationCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unread?: number;
+                    };
+                };
+            };
+        };
+    };
+    markAllNotificationsRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        read?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    markNotificationRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Notification internal UUID. */
+                id: components["parameters"]["NotificationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        read?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getCommsPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Policy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommsPolicy"];
+                };
+            };
+        };
+    };
+    acknowledgeCommsPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Acknowledged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        acknowledged?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    listChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Channels */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommsChannel"][];
+                };
+            };
+        };
+    };
+    createChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    type: "department" | "shift";
+                    /** Format: uuid */
+                    departmentId?: string;
+                    /** Format: uuid */
+                    shiftId?: string;
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommsChannel"];
+                };
+            };
+        };
+    };
+    getChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Communications channel internal UUID. */
+                id: components["parameters"]["ChannelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Channel */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommsChannelDetail"];
+                };
+            };
+        };
+    };
+    addChannelMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Communications channel internal UUID. */
+                id: components["parameters"]["ChannelId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    userId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        channelId?: string;
+                        /** Format: uuid */
+                        userId?: string;
+                    };
+                };
+            };
+        };
+    };
+    removeChannelMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Communications channel internal UUID. */
+                id: components["parameters"]["ChannelId"];
+                /** @description Channel member user internal UUID. */
+                userId: components["parameters"]["MemberUserId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listChannelMessages: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path: {
+                /** @description Communications channel internal UUID. */
+                id: components["parameters"]["ChannelId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"][];
+                };
+            };
+        };
+    };
+    sendChannelMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Communications channel internal UUID. */
+                id: components["parameters"]["ChannelId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                    attachments?: components["schemas"]["AttachmentInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Sent */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    listDirectMessages: {
+        parameters: {
+            query: {
+                recipientId: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"][];
+                };
+            };
+        };
+    };
+    sendDirectMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    recipientId: string;
+                    body: string;
+                    attachments?: components["schemas"]["AttachmentInput"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Sent */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    listAnnouncements: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Announcements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"][];
+                };
+            };
+        };
+    };
+    createAnnouncement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                    /** Format: uuid */
+                    channelId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Posted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+        };
+    };
+    adminSearchMessages: {
+        parameters: {
+            query?: {
+                senderId?: string;
+                recipientId?: string;
+                channelId?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"][];
+                };
+            };
+        };
+    };
+    complianceSearch: {
+        parameters: {
+            query?: {
+                senderId?: string;
+                recipientId?: string;
+                channelId?: string;
+                q?: string;
+                from?: string;
+                to?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"][];
+                };
+            };
+        };
+    };
+    runRetention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        messagesPurged?: number;
+                        notificationsPurged?: number;
+                    };
                 };
             };
         };

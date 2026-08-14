@@ -262,5 +262,29 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/roster/plans/{id}/reject", s.perm("roster.approve", s.handleRejectRoster))
 	mux.Handle("POST /api/v1/roster/plans/{id}/amend", s.perm("roster.plan", s.handleAmendRoster))
 
+	// Notifications & governed internal communications (Phase 11).
+	mux.Handle("GET /api/v1/notifications", s.perm("notifications.view", s.handleListNotifications))
+	mux.Handle("POST /api/v1/notifications", s.perm("notifications.send", s.handleSendNotification))
+	mux.Handle("GET /api/v1/notifications/unread-count", s.perm("notifications.view", s.handleUnreadNotificationCount))
+	mux.Handle("POST /api/v1/notifications/read-all", s.perm("notifications.view", s.handleMarkAllNotificationsRead))
+	mux.Handle("POST /api/v1/notifications/{id}/read", s.perm("notifications.view", s.handleMarkNotificationRead))
+
+	mux.Handle("GET /api/v1/communications/policy", s.requireAuth(http.HandlerFunc(s.handleGetCommsPolicy)))
+	mux.Handle("POST /api/v1/communications/policy/acknowledge", s.requireAuth(http.HandlerFunc(s.handleAcknowledgeCommsPolicy)))
+	mux.Handle("POST /api/v1/communications/channels", s.perm("comms.manage", s.handleCreateChannel))
+	mux.Handle("GET /api/v1/communications/channels", s.perm("comms.view", s.handleListChannels))
+	mux.Handle("GET /api/v1/communications/channels/{id}", s.perm("comms.view", s.handleGetChannel))
+	mux.Handle("POST /api/v1/communications/channels/{id}/members", s.perm("comms.manage", s.handleAddChannelMember))
+	mux.Handle("DELETE /api/v1/communications/channels/{id}/members/{userId}", s.perm("comms.manage", s.handleRemoveChannelMember))
+	mux.Handle("POST /api/v1/communications/channels/{id}/messages", s.perm("comms.send", s.handleSendChannelMessage))
+	mux.Handle("GET /api/v1/communications/channels/{id}/messages", s.perm("comms.view", s.handleListChannelMessages))
+	mux.Handle("POST /api/v1/communications/messages", s.perm("comms.send", s.handleSendDirectMessage))
+	mux.Handle("GET /api/v1/communications/messages", s.perm("comms.view", s.handleListDirectMessages))
+	mux.Handle("POST /api/v1/communications/announcements", s.perm("comms.announce", s.handleCreateAnnouncement))
+	mux.Handle("GET /api/v1/communications/announcements", s.perm("comms.view", s.handleListAnnouncements))
+	mux.Handle("GET /api/v1/communications/admin/messages", s.perm("comms.admin", s.handleAdminSearchMessages))
+	mux.Handle("GET /api/v1/communications/compliance/search", s.perm("comms.audit", s.handleComplianceSearch))
+	mux.Handle("POST /api/v1/communications/retention/run", s.perm("comms.admin", s.handleRunRetention))
+
 	return withMiddleware(mux, logger)
 }
