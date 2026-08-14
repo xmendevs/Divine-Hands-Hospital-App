@@ -15,6 +15,9 @@
 - **security_events** — authentication lifecycle events (login, logout, reset).
 - **audit_logs** — append-only record of privileged/sensitive actions.
 - **system_settings** — runtime configuration (key → JSON value).
+- **patients / families / patient_clinical_entries / patient_amendments /
+  patient_timeline / patient_documents** — the patient master record (Phase 03;
+  see `docs/patients.md`).
 
 ## Passwords & MFA
 
@@ -37,6 +40,28 @@
   reads (user listing, audit viewing) append `audit_logs` entries.
 - `audit_logs` is append-only: a database trigger rejects `UPDATE`/`DELETE`.
 - Entries carry actor, target, action, request ID, and source IP.
+
+## Clinical roles & patient permissions
+
+Phase 03 adds patient-module permissions (`patients.*`, `clinical.*`,
+`families.*`, `documents.*`) and four system roles:
+
+- **receptionist** — register + demographics + search + families (no clinical).
+- **nurse** — receptionist surface + `clinical.view`/`clinical.edit` + documents.
+- **matron** — nurse surface + `patients.amend` (record corrections).
+- **doctor** — clinical care + `patients.amend`, no staff administration.
+
+Clinical data (`clinical.view`) is never exposed to roles that lack it —
+server-side, regardless of the frontend.
+
+## Patient audit & amendments
+
+- Sensitive patient actions append audit entries: `patient.create`,
+  `patient.update`, `patient.amend`, `clinical.add`, `clinical.amend`,
+  `clinical.viewed`, `patient.viewed`, `family.create`, `document.add`.
+- Clinical corrections write an append-only `patient_amendments` record with
+  before/after values and a reason; clinical information is never silently
+  overwritten. See `docs/patients.md`.
 
 ## Endpoints
 

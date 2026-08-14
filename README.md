@@ -71,7 +71,9 @@ scripts/verify.sh
 - [Coding conventions](docs/coding-conventions.md)
 - [Migrations & rollback](docs/migrations.md)
 - [Identity, RBAC & audit](docs/rbac-audit.md)
+- [Patients & families](docs/patients.md)
 
 Go and FastAPI share versioned OpenAPI contracts so they never implement
 conflicting business rules (see `docs/architecture.md`). Identity, RBAC, sessions,
-and audit are implemented in the Go core service (Phase 02).
+audit (Phase 02) and the patient master record (Phase 03) are implemented in the
+Go core service.

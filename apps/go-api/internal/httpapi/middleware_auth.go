@@ -98,3 +98,8 @@ func (s *server) requirePermission(code string, next http.Handler) http.Handler 
 func (s *server) admin(perm string, h http.HandlerFunc) http.Handler {
 	return s.requireAuth(s.requirePermission(perm, h))
 }
+
+// perm chains requireAuth + requirePermission for non-admin protected endpoints.
+func (s *server) perm(perm string, h http.HandlerFunc) http.Handler {
+	return s.requireAuth(s.requirePermission(perm, h))
+}
