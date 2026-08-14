@@ -286,5 +286,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/communications/compliance/search", s.perm("comms.audit", s.handleComplianceSearch))
 	mux.Handle("POST /api/v1/communications/retention/run", s.perm("comms.admin", s.handleRunRetention))
 
+	// Reporting, dashboards & exports (Phase 12).
+	mux.Handle("GET /api/v1/reports/dashboard", s.perm("reports.admin", s.handleReportDashboard))
+	mux.Handle("GET /api/v1/reports/my", s.perm("reports.view", s.handleMyReport))
+	mux.Handle("GET /api/v1/reports/export", s.perm("reports.export", s.handleExportReport))
+
 	return withMiddleware(mux, logger)
 }

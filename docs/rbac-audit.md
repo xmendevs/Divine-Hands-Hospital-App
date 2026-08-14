@@ -207,6 +207,29 @@ rules (`comms.retention_days`) are applied at read time and by an audited purge
 (`communications.retention_run`); attachments are capped by
 `comms.attachment_max_bytes`. See `docs/notifications-comms.md`.
 
+## Reporting, dashboards & exports (Phase 12)
+
+Phase 12 adds `reports.admin` and `reports.export`, and extends `reports.view`
+(reused from Phase 04) to every operational role.
+
+- Every operational role (`nurse`, `matron`, `doctor`, `pharmacist`,
+  `lab_technician`, `lab_supervisor`, `storekeeper`, `cashier`,
+  `billing_officer`, `billing_supervisor`, `receptionist`, `admin`) holds
+  `reports.view` and sees a **role-scoped** report via
+  `GET /api/v1/reports/my`.
+- **admin** & **super_admin** hold `reports.admin` and see the aggregate
+  dashboard via `GET /api/v1/reports/dashboard` (admin also gets the dashboard
+  from `/reports/my`).
+- **admin** & **super_admin** hold `reports.export`: CSV/XLSX/PDF exports
+  (`GET /api/v1/reports/export`) of patients, invoices, payments,
+  dispensations, lab requests, attendance, medicines, and refunds. Every
+  export is audited with `reports.export` including report, format, date
+  range and row count; dashboard views are audited with `reports.viewed`.
+
+All metrics are computed live from the transactional tables (no stored
+aggregates), so reports always reflect the authoritative state. See
+`docs/reports.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in

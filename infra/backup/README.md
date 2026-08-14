@@ -1,7 +1,7 @@
 # Backup & disaster recovery
 
 Implementing the 3-2-1-oriented backup strategy from the Master Implementation
-Plan belongs to the Backup/DR phase (Phase 12). This directory will hold the
+Plan belongs to the Backup/DR phase (Phase 13; Phase 12 is reporting, dashboards & exports). This directory will hold the
 backup tooling, retention configuration, and restore-verification scripts.
 
 Key constraints (from the plan):

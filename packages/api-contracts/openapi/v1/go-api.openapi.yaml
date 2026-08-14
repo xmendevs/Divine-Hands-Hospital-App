@@ -36,6 +36,8 @@ tags:
     description: In-app and email notifications.
   - name: communications
     description: Governed internal messaging, channels, announcements, and policy.
+  - name: reports
+    description: Role-scoped dashboards, super admin reporting, and exports.
 paths:
   /health:
     get:
@@ -4277,6 +4279,94 @@ paths:
                 properties:
                   messagesPurged: { type: integer }
                   notificationsPurged: { type: integer }
+  /api/v1/reports/dashboard:
+    get:
+      operationId: reportDashboard
+      summary: Super admin aggregate dashboard across all modules
+      tags: [reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Aggregate dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /api/v1/reports/my:
+    get:
+      operationId: reportMy
+      summary: Role-scoped operational report for the caller
+      tags: [reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Role-specific report (doctor, nursing, pharmacy, lab, cashier, inventory, reception, or the aggregate dashboard for admins)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Dashboard"
+                  - $ref: "#/components/schemas/DoctorReport"
+                  - $ref: "#/components/schemas/NursingReport"
+                  - $ref: "#/components/schemas/PharmacyReport"
+                  - $ref: "#/components/schemas/LabReport"
+                  - $ref: "#/components/schemas/CashierReport"
+                  - $ref: "#/components/schemas/InventoryReport"
+                  - $ref: "#/components/schemas/ReceptionReport"
+  /api/v1/reports/export:
+    get:
+      operationId: exportReport
+      summary: Export a report as CSV, XLSX or PDF (audited)
+      tags: [reports]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: report
+          in: query
+          required: true
+          description: Report kind to export.
+          schema:
+            type: string
+            enum: [patients, invoices, payments, dispensations, lab_requests, attendance, medicines, refunds]
+        - name: format
+          in: query
+          required: false
+          description: Export format (default csv).
+          schema:
+            type: string
+            enum: [csv, xlsx, pdf]
+            default: csv
+        - name: from
+          in: query
+          required: false
+          description: Inclusive start date (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Inclusive end date (YYYY-MM-DD).
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Exported file
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
 components:
   securitySchemes:
     bearerAuth:
@@ -5938,6 +6028,120 @@ components:
         channelName: { type: string }
         body: { type: string }
         createdAt: { type: string, format: date-time }
+    NameValue:
+      type: object
+      required: [name, value]
+      properties:
+        name: { type: string }
+        value: { type: integer }
+    Dashboard:
+      type: object
+      properties:
+        patientRegistrations:
+          type: object
+          properties:
+            total: { type: integer }
+            today: { type: integer }
+        admissions:
+          type: object
+          properties:
+            active: { type: integer }
+            dischargedToday: { type: integer }
+        revenue:
+          type: object
+          properties:
+            collected: { type: number }
+            invoiced: { type: number }
+            outstanding: { type: number }
+        pharmacy:
+          type: object
+          properties:
+            medicineCount: { type: integer }
+            stockOnHand: { type: number }
+            expiringSoon: { type: integer }
+        inventoryVariance:
+          type: object
+          properties:
+            countsWithVariance: { type: integer }
+            totalVariance: { type: number }
+        attendance:
+          type: object
+          properties:
+            clockedIn: { type: integer }
+            missed: { type: integer }
+        rosterCoverage:
+          type: object
+          properties:
+            scheduled: { type: integer }
+            required: { type: integer }
+            coveragePct: { type: number }
+        labWorkload:
+          type: object
+          properties:
+            pendingRequests: { type: integer }
+            pendingVerification: { type: integer }
+        criticalAlerts:
+          type: object
+          properties:
+            unacknowledged: { type: integer }
+        securityEvents:
+          type: object
+          properties:
+            last24h: { type: integer }
+    DoctorReport:
+      type: object
+      properties:
+        assignedPatients: { type: integer }
+        pendingResults: { type: integer }
+        pendingOrders: { type: integer }
+    NursingReport:
+      type: object
+      properties:
+        admittedPatients: { type: integer }
+        handovers: { type: integer }
+        unacknowledgedHandovers: { type: integer }
+        onDutyToday: { type: integer }
+    PharmacyReport:
+      type: object
+      properties:
+        dispensedToday: { type: integer }
+        dispensedValueToday: { type: number }
+        lowStock: { type: integer }
+        stockOnHand: { type: number }
+        expiringSoon: { type: integer }
+        recentAdjustments: { type: integer }
+    LabReport:
+      type: object
+      properties:
+        requestsByStatus:
+          type: array
+          items: { $ref: "#/components/schemas/NameValue" }
+        pendingVerification: { type: integer }
+        avgTurnaroundMinutes: { type: number }
+    CashierReport:
+      type: object
+      properties:
+        collectedToday: { type: number }
+        paymentsToday: { type: integer }
+        outstanding: { type: number }
+        refundedToday: { type: number }
+        openShifts: { type: integer }
+        shiftVariance: { type: number }
+    InventoryReport:
+      type: object
+      properties:
+        lowStock: { type: integer }
+        expiringSoon: { type: integer }
+        stockOnHand: { type: number }
+        countsWithVariance: { type: integer }
+        totalVariance: { type: number }
+    ReceptionReport:
+      type: object
+      properties:
+        registeredToday: { type: integer }
+        admittedToday: { type: integer }
+        dischargedToday: { type: integer }
+        triageToday: { type: integer }
         attachments:
           type: array
           items: { $ref: "#/components/schemas/MessageAttachment" }
