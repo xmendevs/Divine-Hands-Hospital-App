@@ -70,5 +70,21 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/admin/settings", s.admin("settings.view", s.handleListSettings))
 	mux.Handle("PUT /api/v1/admin/settings/{key}", s.admin("settings.edit", s.handleSetSetting))
 
+	// Patients & families (authenticated + permission-checked).
+	mux.Handle("POST /api/v1/patients", s.perm("patients.create", s.handleRegisterPatient))
+	mux.Handle("GET /api/v1/patients/search", s.perm("patients.search", s.handleSearchPatients))
+	mux.Handle("GET /api/v1/patients/{id}", s.perm("patients.view", s.handleGetPatient))
+	mux.Handle("PATCH /api/v1/patients/{id}", s.perm("patients.edit", s.handleUpdatePatient))
+	mux.Handle("POST /api/v1/patients/{id}/amend", s.perm("patients.amend", s.handleAmendPatient))
+	mux.Handle("GET /api/v1/patients/{id}/clinical", s.perm("clinical.view", s.handleListClinical))
+	mux.Handle("POST /api/v1/patients/{id}/clinical", s.perm("clinical.edit", s.handleAddClinical))
+	mux.Handle("PATCH /api/v1/patients/{id}/clinical/{entryId}", s.perm("patients.amend", s.handleAmendClinical))
+	mux.Handle("GET /api/v1/patients/{id}/timeline", s.perm("patients.view", s.handleListTimeline))
+	mux.Handle("GET /api/v1/patients/{id}/documents", s.perm("documents.view", s.handleListDocuments))
+	mux.Handle("POST /api/v1/patients/{id}/documents", s.perm("documents.upload", s.handleAddDocument))
+
+	mux.Handle("POST /api/v1/families", s.perm("families.create", s.handleCreateFamily))
+	mux.Handle("GET /api/v1/families/{id}", s.perm("families.view", s.handleGetFamily))
+
 	return withMiddleware(mux, logger)
 }

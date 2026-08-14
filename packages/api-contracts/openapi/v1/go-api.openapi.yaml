@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: HIMS go-api
-  version: 0.2.0
+  version: 0.3.0
   description: Core service API for the Divine Hands HMS (identity, RBAC, sessions, audit).
 servers:
   - url: http://localhost:8080
@@ -10,6 +10,10 @@ tags:
     description: Health, readiness, and metadata endpoints.
   - name: auth
     description: Authentication, sessions, and MFA.
+  - name: patients
+    description: Patient registration, master record, clinical, timeline, documents.
+  - name: families
+    description: Family profiles and membership.
 paths:
   /health:
     get:
@@ -191,6 +195,313 @@ paths:
       responses:
         "204":
           description: MFA enabled
+  /api/v1/patients:
+    post:
+      operationId: registerPatient
+      summary: Register a patient
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPatientRequest"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "409":
+          description: Duplicate patient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/patients/search:
+    get:
+      operationId: searchPatients
+      summary: Search patients by ID or permitted demographics
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PatientSummary"
+  /api/v1/patients/{id}:
+    get:
+      operationId: getPatient
+      summary: Get a patient (clinical only with clinical.view)
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Patient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePatient
+      summary: Update patient demographics
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatientRequest"
+      responses:
+        "204":
+          description: Updated
+  /api/v1/patients/{id}/amend:
+    post:
+      operationId: amendPatient
+      summary: Correct a patient-level field (records an amendment)
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fieldName, newValue, reason]
+              properties:
+                fieldName:
+                  type: string
+                newValue:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        "204":
+          description: Amended
+  /api/v1/patients/{id}/clinical:
+    get:
+      operationId: listClinical
+      summary: List a patient's clinical entries
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Clinical entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClinicalEntry"
+    post:
+      operationId: addClinical
+      summary: Add a clinical entry
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section, summary]
+              properties:
+                section:
+                  type: string
+                  enum:
+                    [
+                      allergy,
+                      medical_history,
+                      surgical_history,
+                      chronic_condition,
+                      medication,
+                      family_history,
+                      social_history,
+                    ]
+                summary:
+                  type: string
+                details:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "201":
+          description: Created
+  /api/v1/patients/{id}/clinical/{entryId}:
+    patch:
+      operationId: amendClinical
+      summary: Correct a clinical entry (records an amendment)
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                summary:
+                  type: string
+                details:
+                  type: object
+                  additionalProperties: true
+                reason:
+                  type: string
+      responses:
+        "204":
+          description: Amended
+  /api/v1/patients/{id}/timeline:
+    get:
+      operationId: listTimeline
+      summary: List a patient's timeline
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimelineEvent"
+  /api/v1/patients/{id}/documents:
+    get:
+      operationId: listDocuments
+      summary: List a patient's documents
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: addDocument
+      summary: Record document metadata
+      tags: [patients]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                documentType:
+                  type: string
+                title:
+                  type: string
+                fileName:
+                  type: string
+                contentType:
+                  type: string
+                fileSize:
+                  type: integer
+                  format: int64
+      responses:
+        "201":
+          description: Created
+  /api/v1/families:
+    post:
+      operationId: createFamily
+      summary: Create a family profile
+      tags: [families]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [familyName]
+              properties:
+                familyName:
+                  type: string
+                headPatientId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Family"
+  /api/v1/families/{id}:
+    get:
+      operationId: getFamily
+      summary: Get a family profile with members
+      tags: [families]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Family
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Family"
+        "404":
+          description: Not found
 components:
   securitySchemes:
     bearerAuth:
@@ -204,6 +515,14 @@ components:
       description: Correlation ID echoed back on the response and in logs.
       schema:
         type: string
+    Id:
+      name: id
+      in: path
+      required: true
+      description: Resource internal UUID.
+      schema:
+        type: string
+        format: uuid
   schemas:
     HealthResponse:
       type: object
@@ -325,6 +644,201 @@ components:
           type: array
           items:
             type: string
+    RegisterPatientRequest:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        registrationType:
+          type: string
+          enum: [normal, antenatal, emergency]
+        familyId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+        gender:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        bloodGroup:
+          type: string
+        genotype:
+          type: string
+        maritalStatus:
+          type: string
+        occupation:
+          type: string
+        phone:
+          type: string
+        alternatePhone:
+          type: string
+        email:
+          type: string
+        addressLine1:
+          type: string
+        addressLine2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+        identificationType:
+          type: string
+        identificationNumber:
+          type: string
+        nextOfKinName:
+          type: string
+        nextOfKinRelationship:
+          type: string
+        nextOfKinPhone:
+          type: string
+        consentGiven:
+          type: boolean
+        privacyNotes:
+          type: string
+        force:
+          type: boolean
+          description: Bypass the soft duplicate check (the database still enforces uniqueness).
+    UpdatePatientRequest:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        middleName: { type: string }
+        gender: { type: string }
+        dateOfBirth: { type: string, format: date }
+        bloodGroup: { type: string }
+        genotype: { type: string }
+        maritalStatus: { type: string }
+        occupation: { type: string }
+        phone: { type: string }
+        alternatePhone: { type: string }
+        email: { type: string }
+        addressLine1: { type: string }
+        addressLine2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        postalCode: { type: string }
+        country: { type: string }
+        identificationType: { type: string }
+        identificationNumber: { type: string }
+        nextOfKinName: { type: string }
+        nextOfKinRelationship: { type: string }
+        nextOfKinPhone: { type: string }
+        consentGiven: { type: boolean }
+        privacyNotes: { type: string }
+    Patient:
+      type: object
+      required: [id, patientNo, registrationType, firstName, lastName, status]
+      properties:
+        id: { type: string, format: uuid }
+        patientNo: { type: string }
+        registrationType: { type: string, enum: [normal, antenatal, emergency] }
+        familyId: { type: string, format: uuid, nullable: true }
+        firstName: { type: string }
+        lastName: { type: string }
+        middleName: { type: string }
+        gender: { type: string }
+        dateOfBirth: { type: string, format: date, nullable: true }
+        bloodGroup: { type: string }
+        genotype: { type: string }
+        maritalStatus: { type: string }
+        occupation: { type: string }
+        phone: { type: string }
+        alternatePhone: { type: string }
+        email: { type: string }
+        addressLine1: { type: string }
+        addressLine2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        postalCode: { type: string }
+        country: { type: string }
+        identificationType: { type: string }
+        identificationNumber: { type: string }
+        nextOfKinName: { type: string }
+        nextOfKinRelationship: { type: string }
+        nextOfKinPhone: { type: string }
+        consentGiven: { type: boolean }
+        consentDate: { type: string, format: date-time, nullable: true }
+        privacyNotes: { type: string }
+        status: { type: string, enum: [active, inactive, deceased, merged] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        clinical:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClinicalEntry"
+    PatientSummary:
+      type: object
+      required: [id, patientNo, registrationType, firstName, lastName]
+      properties:
+        id: { type: string, format: uuid }
+        patientNo: { type: string }
+        registrationType: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        gender: { type: string }
+        dateOfBirth: { type: string }
+        phone: { type: string }
+    ClinicalEntry:
+      type: object
+      required: [id, section, summary]
+      properties:
+        id: { type: string, format: uuid }
+        section: { type: string }
+        summary: { type: string }
+        details:
+          type: object
+          additionalProperties: true
+        recordedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TimelineEvent:
+      type: object
+      required: [id, eventType, summary, occurredAt]
+      properties:
+        id: { type: string, format: uuid }
+        eventType: { type: string }
+        summary: { type: string }
+        data:
+          type: object
+          additionalProperties: true
+        actorUserId: { type: string, format: uuid, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    Document:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string, format: uuid }
+        documentType: { type: string }
+        title: { type: string }
+        fileName: { type: string }
+        contentType: { type: string }
+        fileSize: { type: integer, format: int64 }
+        uploadedBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+    Family:
+      type: object
+      required: [id, familyNo, familyName]
+      properties:
+        id: { type: string, format: uuid }
+        familyNo: { type: string }
+        familyName: { type: string }
+        headPatientId: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PatientSummary"
     ErrorEnvelope:
       type: object
       required: [error]

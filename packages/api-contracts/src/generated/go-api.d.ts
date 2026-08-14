@@ -174,6 +174,179 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a patient */
+        post: operations["registerPatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search patients by ID or permitted demographics */
+        get: operations["searchPatients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a patient (clinical only with clinical.view) */
+        get: operations["getPatient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update patient demographics */
+        patch: operations["updatePatient"];
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct a patient-level field (records an amendment) */
+        post: operations["amendPatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/clinical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's clinical entries */
+        get: operations["listClinical"];
+        put?: never;
+        /** Add a clinical entry */
+        post: operations["addClinical"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/clinical/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Correct a clinical entry (records an amendment) */
+        patch: operations["amendClinical"];
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's timeline */
+        get: operations["listTimeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's documents */
+        get: operations["listDocuments"];
+        put?: never;
+        /** Record document metadata */
+        post: operations["addDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/families": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a family profile */
+        post: operations["createFamily"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/families/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a family profile with members */
+        get: operations["getFamily"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -242,6 +415,176 @@ export interface components {
             roles: components["schemas"]["Role"][];
             permissions: string[];
         };
+        RegisterPatientRequest: {
+            /** @enum {string} */
+            registrationType?: "normal" | "antenatal" | "emergency";
+            /** Format: uuid */
+            familyId?: string;
+            firstName: string;
+            lastName: string;
+            middleName?: string;
+            gender?: string;
+            /** Format: date */
+            dateOfBirth?: string;
+            bloodGroup?: string;
+            genotype?: string;
+            maritalStatus?: string;
+            occupation?: string;
+            phone?: string;
+            alternatePhone?: string;
+            email?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+            country?: string;
+            identificationType?: string;
+            identificationNumber?: string;
+            nextOfKinName?: string;
+            nextOfKinRelationship?: string;
+            nextOfKinPhone?: string;
+            consentGiven?: boolean;
+            privacyNotes?: string;
+            /** @description Bypass the soft duplicate check (the database still enforces uniqueness). */
+            force?: boolean;
+        };
+        UpdatePatientRequest: {
+            firstName?: string;
+            lastName?: string;
+            middleName?: string;
+            gender?: string;
+            /** Format: date */
+            dateOfBirth?: string;
+            bloodGroup?: string;
+            genotype?: string;
+            maritalStatus?: string;
+            occupation?: string;
+            phone?: string;
+            alternatePhone?: string;
+            email?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+            country?: string;
+            identificationType?: string;
+            identificationNumber?: string;
+            nextOfKinName?: string;
+            nextOfKinRelationship?: string;
+            nextOfKinPhone?: string;
+            consentGiven?: boolean;
+            privacyNotes?: string;
+        };
+        Patient: {
+            /** Format: uuid */
+            id: string;
+            patientNo: string;
+            /** @enum {string} */
+            registrationType: "normal" | "antenatal" | "emergency";
+            /** Format: uuid */
+            familyId?: string | null;
+            firstName: string;
+            lastName: string;
+            middleName?: string;
+            gender?: string;
+            /** Format: date */
+            dateOfBirth?: string | null;
+            bloodGroup?: string;
+            genotype?: string;
+            maritalStatus?: string;
+            occupation?: string;
+            phone?: string;
+            alternatePhone?: string;
+            email?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            city?: string;
+            state?: string;
+            postalCode?: string;
+            country?: string;
+            identificationType?: string;
+            identificationNumber?: string;
+            nextOfKinName?: string;
+            nextOfKinRelationship?: string;
+            nextOfKinPhone?: string;
+            consentGiven?: boolean;
+            /** Format: date-time */
+            consentDate?: string | null;
+            privacyNotes?: string;
+            /** @enum {string} */
+            status: "active" | "inactive" | "deceased" | "merged";
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            clinical?: components["schemas"]["ClinicalEntry"][];
+        };
+        PatientSummary: {
+            /** Format: uuid */
+            id: string;
+            patientNo: string;
+            registrationType: string;
+            firstName: string;
+            lastName: string;
+            gender?: string;
+            dateOfBirth?: string;
+            phone?: string;
+        };
+        ClinicalEntry: {
+            /** Format: uuid */
+            id: string;
+            section: string;
+            summary: string;
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Format: uuid */
+            recordedBy?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        TimelineEvent: {
+            /** Format: uuid */
+            id: string;
+            eventType: string;
+            summary: string;
+            data?: {
+                [key: string]: unknown;
+            };
+            /** Format: uuid */
+            actorUserId?: string | null;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        Document: {
+            /** Format: uuid */
+            id: string;
+            documentType?: string;
+            title: string;
+            fileName?: string;
+            contentType?: string;
+            /** Format: int64 */
+            fileSize?: number;
+            /** Format: uuid */
+            uploadedBy?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        Family: {
+            /** Format: uuid */
+            id: string;
+            familyNo: string;
+            familyName: string;
+            /** Format: uuid */
+            headPatientId?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+            members?: components["schemas"]["PatientSummary"][];
+        };
         ErrorEnvelope: {
             error: {
                 code: string;
@@ -254,6 +597,8 @@ export interface components {
     parameters: {
         /** @description Correlation ID echoed back on the response and in logs. */
         RequestId: string;
+        /** @description Resource internal UUID. */
+        Id: string;
     };
     requestBodies: never;
     headers: never;
@@ -508,6 +853,368 @@ export interface operations {
         responses: {
             /** @description MFA enabled */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    registerPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPatientRequest"];
+            };
+        };
+        responses: {
+            /** @description Registered */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Patient"];
+                };
+            };
+            /** @description Duplicate patient */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchPatients: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching patients */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientSummary"][];
+                };
+            };
+        };
+    };
+    getPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Patient */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Patient"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updatePatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePatientRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    amendPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fieldName: string;
+                    newValue: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Amended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listClinical: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clinical entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalEntry"][];
+                };
+            };
+        };
+    };
+    addClinical: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    section: "allergy" | "medical_history" | "surgical_history" | "chronic_condition" | "medication" | "family_history" | "social_history";
+                    summary: string;
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    amendClinical: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    summary?: string;
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Amended */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listTimeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Timeline events */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"][];
+                };
+            };
+        };
+    };
+    listDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Documents */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"][];
+                };
+            };
+        };
+    };
+    addDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    documentType?: string;
+                    title: string;
+                    fileName?: string;
+                    contentType?: string;
+                    /** Format: int64 */
+                    fileSize?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createFamily: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    familyName: string;
+                    /** Format: uuid */
+                    headPatientId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Family"];
+                };
+            };
+        };
+    };
+    getFamily: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Family */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Family"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
