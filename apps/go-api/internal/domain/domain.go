@@ -859,3 +859,219 @@ type MaintenanceRecord struct {
 	PerformedBy       string
 	CreatedAt         time.Time
 }
+
+// Lab client types.
+const (
+	LabClientExternal = "external"
+	LabClientReferral = "referral"
+)
+
+// Lab payment statuses (finance-module integration point).
+const (
+	LabPaymentPending       = "pending"
+	LabPaymentPreauthorized = "preauthorized"
+	LabPaymentPaid          = "paid"
+	LabPaymentWaived        = "waived"
+)
+
+// Lab request workflow: REQUESTED → PAYMENT/PREAUTH → SPECIMEN_COLLECTED →
+// RECEIVED → PROCESSING → RESULT_ENTERED → VERIFIED → RELEASED.
+const (
+	LabStatusRequested         = "requested"
+	LabStatusPayment           = "payment"
+	LabStatusSpecimenCollected = "specimen_collected"
+	LabStatusReceived          = "received"
+	LabStatusProcessing        = "processing"
+	LabStatusResultEntered     = "result_entered"
+	LabStatusVerified          = "verified"
+	LabStatusReleased          = "released"
+	LabStatusCancelled         = "cancelled"
+)
+
+// Lab request priorities.
+const (
+	LabPriorityRoutine = "routine"
+	LabPriorityUrgent  = "urgent"
+	LabPriorityStat    = "stat"
+)
+
+// Specimen statuses.
+const (
+	SpecimenStatusCollected = "collected"
+	SpecimenStatusReceived  = "received"
+	SpecimenStatusRejected  = "rejected"
+)
+
+// Specimen chain-of-custody event types.
+const (
+	SpecimenEventCollected   = "collected"
+	SpecimenEventReceived    = "received"
+	SpecimenEventStored      = "stored"
+	SpecimenEventTransferred = "transferred"
+	SpecimenEventRejected    = "rejected"
+)
+
+// Critical result notification statuses.
+const (
+	CriticalStatusPending      = "pending"
+	CriticalStatusAcknowledged = "acknowledged"
+)
+
+// Lab audit actions.
+const (
+	ActionLabClientCreate    = "lab.client_create"
+	ActionLabTestCreate      = "lab.test_create"
+	ActionLabTestUpdate      = "lab.test_update"
+	ActionLabRequestCreate   = "lab.request_create"
+	ActionLabRequestStatus   = "lab.request_status"
+	ActionLabRequestCancel   = "lab.request_cancel"
+	ActionLabSpecimenCollect = "lab.specimen_collect"
+	ActionLabSpecimenReceive = "lab.specimen_receive"
+	ActionLabSpecimenReject  = "lab.specimen_reject"
+	ActionLabResultEnter     = "lab.result_enter"
+	ActionLabResultVerify    = "lab.result_verify"
+	ActionLabResultRelease   = "lab.result_release"
+	ActionLabCriticalAck     = "lab.critical_acknowledge"
+	ActionLabViewed          = "lab.viewed"
+)
+
+// Patient timeline events (lab, Phase 07).
+const (
+	EventLabRequested = "lab_requested"
+	EventLabReleased  = "lab_released"
+)
+
+// LabClient is an external or referral lab client with a complete demographic
+// record. client_no is the business ID (LBC000001).
+type LabClient struct {
+	ID                 string
+	ClientNo           string
+	ClientType         string
+	FirstName          string
+	LastName           string
+	Gender             string
+	DateOfBirth        *string // ISO date; nil when unknown
+	Phone              string
+	Email              string
+	AddressLine1       string
+	AddressLine2       string
+	City               string
+	State              string
+	Country            string
+	ReferringFacility  string
+	ReferringPhysician string
+	Notes              string
+	CreatedBy          string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+// LabTest is a catalogue entry for a laboratory test.
+type LabTest struct {
+	ID                   string
+	Code                 string
+	Name                 string
+	Category             string
+	Price                float64
+	SpecimenType         string
+	Container            string
+	TurnaroundMinutes    int
+	Units                string
+	ReferenceRanges      []byte // JSONB
+	VerificationRequired bool
+	Active               bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+// LabRequest is a lab order for a hospital patient or lab client.
+type LabRequest struct {
+	ID            string
+	RequestNo     string
+	PatientID     *string
+	ClientID      *string
+	PatientNo     string
+	PatientName   string
+	ClientNo      string
+	ClientName    string
+	OrderedBy     string
+	OrderedByName string
+	Priority      string
+	ClinicalNotes string
+	PaymentStatus string
+	Status        string
+	CancelReason  string
+	RequestedAt   time.Time
+	ReleasedAt    *time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Items         []LabRequestItem
+	Specimens     []LabSpecimen
+}
+
+// LabRequestItem is a requested test with its structured result.
+type LabRequestItem struct {
+	ID                   string
+	RequestID            string
+	TestID               string
+	TestCode             string
+	TestName             string
+	VerificationRequired bool
+	SpecimenType         string
+	Price                float64
+	SpecimenID           *string
+	ResultValue          []byte // JSONB
+	ResultText           string
+	Critical             bool
+	ResultEnteredBy      *string
+	ResultEnteredAt      *time.Time
+	ResultVerifiedBy     *string
+	ResultVerifiedAt     *time.Time
+}
+
+// LabSpecimen is one collected specimen with its chain of custody.
+type LabSpecimen struct {
+	ID              string
+	SpecimenNo      string
+	RequestID       string
+	ItemID          string
+	SpecimenType    string
+	CollectedBy     string
+	CollectedAt     time.Time
+	ReceivedBy      *string
+	ReceivedAt      *time.Time
+	Condition       string
+	StorageLocation string
+	Status          string
+	RejectionReason string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
+// LabSpecimenEvent is an append-only chain-of-custody event.
+type LabSpecimenEvent struct {
+	ID         string
+	SpecimenID string
+	EventType  string
+	Actor      string
+	Notes      string
+	CreatedAt  time.Time
+}
+
+// LabCriticalNotification records a critical result notification and its
+// acknowledgement.
+type LabCriticalNotification struct {
+	ID                   string
+	ItemID               string
+	RequestID            string
+	PatientID            *string
+	ClientID             *string
+	NotifiedToUserID     *string
+	NotifiedToName       string
+	NotifiedAt           time.Time
+	AcknowledgedBy       *string
+	AcknowledgedAt       *time.Time
+	AcknowledgementNotes string
+	Status               string
+	CreatedAt            time.Time
+}

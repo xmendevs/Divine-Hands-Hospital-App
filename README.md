@@ -75,9 +75,11 @@ scripts/verify.sh
 - [Clinical workflows & orders](docs/clinical.md)
 - [Pharmacy & medicine inventory](docs/pharmacy.md)
 - [General inventory, instruments & maintenance](docs/assets.md)
+- [Laboratory information system](docs/lab.md)
 
 Go and FastAPI share versioned OpenAPI contracts so they never implement
 conflicting business rules (see `docs/architecture.md`). Identity, RBAC, sessions,
 audit (Phase 02), the patient master record (Phase 03), clinical workflows
-(Phase 04), pharmacy/inventory (Phase 05), and general inventory, equipment &
-maintenance (Phase 06) are implemented in the Go core service.
+(Phase 04), pharmacy/inventory (Phase 05), general inventory, equipment &
+maintenance (Phase 06), and the laboratory information system (Phase 07) are
+implemented in the Go core service.
