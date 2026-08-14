@@ -222,5 +222,26 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/billing/shifts", s.perm("billing.view", s.handleListShifts))
 	mux.Handle("GET /api/v1/billing/shifts/{id}", s.perm("billing.view", s.handleGetShift))
 
+	// Staff, attendance, clock-in/out & handover (Phase 09).
+	mux.Handle("GET /api/v1/staff", s.perm("staff.view", s.handleListStaff))
+	mux.Handle("GET /api/v1/staff/{id}", s.perm("staff.view", s.handleGetStaff))
+	mux.Handle("PATCH /api/v1/staff/{id}", s.perm("staff.edit", s.handleUpdateStaff))
+	mux.Handle("POST /api/v1/staff/leave", s.perm("staff.leave_request", s.handleRequestLeave))
+	mux.Handle("GET /api/v1/staff/leave", s.perm("staff.leave_request", s.handleListLeave))
+	mux.Handle("POST /api/v1/staff/leave/{id}/approve", s.perm("staff.leave_manage", s.handleApproveLeave))
+	mux.Handle("POST /api/v1/staff/leave/{id}/reject", s.perm("staff.leave_manage", s.handleRejectLeave))
+
+	mux.Handle("POST /api/v1/attendance/shifts", s.perm("attendance.manage", s.handleCreateShift))
+	mux.Handle("GET /api/v1/attendance/shifts", s.perm("attendance.view", s.handleListStaffShifts))
+	mux.Handle("POST /api/v1/attendance/clock-in", s.perm("attendance.clock", s.handleClockIn))
+	mux.Handle("POST /api/v1/attendance/clock-out", s.perm("attendance.clock", s.handleClockOut))
+	mux.Handle("GET /api/v1/attendance", s.perm("attendance.view", s.handleListAttendance))
+	mux.Handle("GET /api/v1/attendance/report", s.perm("attendance.view", s.handleAttendanceReport))
+
+	mux.Handle("POST /api/v1/handovers", s.perm("handover.create", s.handleCreateHandover))
+	mux.Handle("GET /api/v1/handovers", s.perm("handover.view", s.handleListHandovers))
+	mux.Handle("GET /api/v1/handovers/{id}", s.perm("handover.view", s.handleGetHandover))
+	mux.Handle("POST /api/v1/handovers/{id}/acknowledge", s.perm("handover.acknowledge", s.handleAcknowledgeHandover))
+
 	return withMiddleware(mux, logger)
 }

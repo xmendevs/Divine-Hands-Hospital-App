@@ -1,0 +1,309 @@
+package httpapi
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
+)
+
+type staffShiftResponse struct {
+	ID               string `json:"id"`
+	Code             string `json:"code"`
+	Name             string `json:"name"`
+	StartTime        string `json:"startTime"`
+	EndTime          string `json:"endTime"`
+	LateGraceMinutes int    `json:"lateGraceMinutes"`
+}
+
+func newStaffShiftResponse(sh *domain.StaffShift) staffShiftResponse {
+	return staffShiftResponse{
+		ID:               sh.ID,
+		Code:             sh.Code,
+		Name:             sh.Name,
+		StartTime:        sh.StartTime,
+		EndTime:          sh.EndTime,
+		LateGraceMinutes: sh.LateGraceMinutes,
+	}
+}
+
+type createShiftRequest struct {
+	Code             string `json:"code"`
+	Name             string `json:"name"`
+	StartTime        string `json:"startTime"`
+	EndTime          string `json:"endTime"`
+	LateGraceMinutes int    `json:"lateGraceMinutes"`
+}
+
+// handleCreateShift creates a shift definition.
+func (s *server) handleCreateShift(w http.ResponseWriter, r *http.Request) {
+	var req createShiftRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.Code == "" || req.Name == "" || req.StartTime == "" || req.EndTime == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "code, name, startTime and endTime are required")
+		return
+	}
+	if req.LateGraceMinutes < 0 {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "lateGraceMinutes cannot be negative")
+		return
+	}
+	sh, err := s.store.CreateStaffShift(r.Context(), store.CreateShiftParams{
+		Code:             req.Code,
+		Name:             req.Name,
+		StartTime:        req.StartTime,
+		EndTime:          req.EndTime,
+		LateGraceMinutes: req.LateGraceMinutes,
+	})
+	if err != nil {
+		writeError(w, r, http.StatusConflict, "conflict", "shift code already exists")
+		return
+	}
+	s.recordAudit(r, domain.ActionAttendanceShiftCreate, "staff_shift", sh.ID, nil, map[string]any{"code": sh.Code})
+	writeJSON(w, http.StatusCreated, newStaffShiftResponse(sh))
+}
+
+// handleListStaffShifts lists shift definitions.
+func (s *server) handleListStaffShifts(w http.ResponseWriter, r *http.Request) {
+	shifts, err := s.store.ListStaffShifts(r.Context())
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]staffShiftResponse, 0, len(shifts))
+	for i := range shifts {
+		out = append(out, newStaffShiftResponse(&shifts[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type attendanceResponse struct {
+	ID             string  `json:"id"`
+	StaffID        string  `json:"staffId"`
+	StaffName      string  `json:"staffName,omitempty"`
+	EmployeeNo     string  `json:"employeeNo,omitempty"`
+	ShiftID        string  `json:"shiftId"`
+	ShiftName      string  `json:"shiftName,omitempty"`
+	ShiftCode      string  `json:"shiftCode,omitempty"`
+	DepartmentName string  `json:"departmentName,omitempty"`
+	WorkDate       string  `json:"workDate"`
+	ClockInAt      string  `json:"clockInAt"`
+	ClockOutAt     *string `json:"clockOutAt,omitempty"`
+	ClockInMethod  string  `json:"clockInMethod"`
+	ClockOutMethod string  `json:"clockOutMethod,omitempty"`
+	ClockInDevice  string  `json:"clockInDevice,omitempty"`
+	ClockOutDevice string  `json:"clockOutDevice,omitempty"`
+	IsLate         bool    `json:"isLate"`
+	IsEarlyLeave   bool    `json:"isEarlyLeave"`
+	Status         string  `json:"status"`
+	Notes          string  `json:"notes,omitempty"`
+}
+
+func newAttendanceResponse(a *domain.AttendanceRecord) attendanceResponse {
+	out := attendanceResponse{
+		ID:             a.ID,
+		StaffID:        a.StaffID,
+		StaffName:      a.StaffName,
+		EmployeeNo:     a.EmployeeNo,
+		ShiftID:        a.ShiftID,
+		ShiftName:      a.ShiftName,
+		ShiftCode:      a.ShiftCode,
+		DepartmentName: a.DepartmentName,
+		WorkDate:       a.WorkDate,
+		ClockInAt:      a.ClockInAt.UTC().Format(timeRFC3339),
+		ClockInMethod:  a.ClockInMethod,
+		ClockOutMethod: a.ClockOutMethod,
+		ClockInDevice:  a.ClockInDevice,
+		ClockOutDevice: a.ClockOutDevice,
+		IsLate:         a.IsLate,
+		IsEarlyLeave:   a.IsEarlyLeave,
+		Status:         a.Status,
+		Notes:          a.Notes,
+	}
+	if a.ClockOutAt != nil {
+		v := a.ClockOutAt.UTC().Format(timeRFC3339)
+		out.ClockOutAt = &v
+	}
+	return out
+}
+
+type clockInRequest struct {
+	ShiftID  string `json:"shiftId"`
+	WorkDate string `json:"workDate"`
+	Method   string `json:"method"`
+	Device   string `json:"device"`
+	Notes    string `json:"notes"`
+}
+
+// handleClockIn records a clock-in for the authenticated staff member.
+func (s *server) handleClockIn(w http.ResponseWriter, r *http.Request) {
+	var req clockInRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.ShiftID == "" || req.Method == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "shiftId and method are required")
+		return
+	}
+	actor := userFromContext(r.Context())
+	staff, err := s.store.GetStaffByUserID(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "staff profile not found")
+		return
+	}
+	rec, err := s.store.ClockIn(r.Context(), store.ClockInParams{
+		StaffID:  staff.ID,
+		ShiftID:  req.ShiftID,
+		WorkDate: req.WorkDate,
+		Method:   req.Method,
+		Device:   req.Device,
+		Notes:    req.Notes,
+	})
+	if err != nil {
+		s.writeAttendanceError(w, r, err)
+		return
+	}
+	s.recordAudit(r, domain.ActionAttendanceClockIn, "attendance", rec.ID, nil, map[string]any{
+		"shiftId": rec.ShiftID, "method": rec.ClockInMethod, "isLate": rec.IsLate,
+	})
+	writeJSON(w, http.StatusCreated, newAttendanceResponse(rec))
+}
+
+type clockOutRequest struct {
+	Method string `json:"method"`
+	Device string `json:"device"`
+	Notes  string `json:"notes"`
+}
+
+// handleClockOut closes the authenticated staff member's open clock-in.
+func (s *server) handleClockOut(w http.ResponseWriter, r *http.Request) {
+	var req clockOutRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.Method == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "method is required")
+		return
+	}
+	actor := userFromContext(r.Context())
+	staff, err := s.store.GetStaffByUserID(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "staff profile not found")
+		return
+	}
+	rec, err := s.store.ClockOut(r.Context(), store.ClockOutParams{
+		StaffID: staff.ID,
+		Method:  req.Method,
+		Device:  req.Device,
+		Notes:   req.Notes,
+	})
+	if err != nil {
+		s.writeAttendanceError(w, r, err)
+		return
+	}
+	s.recordAudit(r, domain.ActionAttendanceClockOut, "attendance", rec.ID, nil, map[string]any{
+		"shiftId": rec.ShiftID, "method": rec.ClockOutMethod, "isEarlyLeave": rec.IsEarlyLeave,
+	})
+	writeJSON(w, http.StatusOK, newAttendanceResponse(rec))
+}
+
+func (s *server) writeAttendanceError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		writeError(w, r, http.StatusNotFound, "not_found", "shift not found")
+	case errors.Is(err, store.ErrAlreadyClockedIn):
+		writeError(w, r, http.StatusConflict, "already_clocked_in", "staff already has an open clock-in")
+	case errors.Is(err, store.ErrDuplicateAttendance):
+		writeError(w, r, http.StatusConflict, "duplicate_attendance", "attendance already recorded for this staff and shift on this date")
+	case errors.Is(err, store.ErrNotClockedIn):
+		writeError(w, r, http.StatusConflict, "not_clocked_in", "no open clock-in to clock out")
+	case errors.Is(err, store.ErrInvalidAttendanceMethod):
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "unsupported clock-in method")
+	default:
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+	}
+}
+
+// handleListAttendance lists attendance records.
+func (s *server) handleListAttendance(w http.ResponseWriter, r *http.Request) {
+	limit, offset := pagination(r)
+	records, err := s.store.ListAttendance(r.Context(), store.ListAttendanceParams{
+		StaffID: r.URL.Query().Get("staffId"),
+		Date:    r.URL.Query().Get("date"),
+		Status:  r.URL.Query().Get("status"),
+		Late:    queryBool(r, "late"),
+		Early:   queryBool(r, "early"),
+		Limit:   limit,
+		Offset:  offset,
+	})
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]attendanceResponse, 0, len(records))
+	for i := range records {
+		out = append(out, newAttendanceResponse(&records[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type reportRowResponse struct {
+	StaffID    string  `json:"staffId"`
+	EmployeeNo string  `json:"employeeNo,omitempty"`
+	StaffName  string  `json:"staffName"`
+	Department string  `json:"department,omitempty"`
+	ShiftID    string  `json:"shiftId,omitempty"`
+	ShiftName  string  `json:"shiftName,omitempty"`
+	Status     string  `json:"status"`
+	ClockInAt  *string `json:"clockInAt,omitempty"`
+	ClockOutAt *string `json:"clockOutAt,omitempty"`
+}
+
+// handleAttendanceReport builds the per-day attendance report.
+func (s *server) handleAttendanceReport(w http.ResponseWriter, r *http.Request) {
+	rows, err := s.store.AttendanceReport(r.Context(), r.URL.Query().Get("date"))
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]reportRowResponse, 0, len(rows))
+	for _, row := range rows {
+		rr := reportRowResponse{
+			StaffID:    row.StaffID,
+			EmployeeNo: row.EmployeeNo,
+			StaffName:  row.StaffName,
+			Department: row.Department,
+			ShiftID:    row.ShiftID,
+			ShiftName:  row.ShiftName,
+			Status:     row.Status,
+		}
+		if row.ClockInAt != nil {
+			v := row.ClockInAt.UTC().Format(timeRFC3339)
+			rr.ClockInAt = &v
+		}
+		if row.ClockOutAt != nil {
+			v := row.ClockOutAt.UTC().Format(timeRFC3339)
+			rr.ClockOutAt = &v
+		}
+		out = append(out, rr)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func queryBool(r *http.Request, key string) bool {
+	v := r.URL.Query().Get(key)
+	if v == "" {
+		return false
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return v == "1"
+	}
+	return b
+}

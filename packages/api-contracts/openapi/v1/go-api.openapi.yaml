@@ -24,6 +24,12 @@ tags:
     description: General inventory, instruments, equipment, and maintenance.
   - name: lab
     description: Laboratory information system (clients, tests, specimens, results).
+  - name: staff
+    description: Staff profiles, leave, and workforce data.
+  - name: attendance
+    description: Shift definitions, clock-in/out, and attendance reporting.
+  - name: handover
+    description: Nursing shift handover notes and acknowledgement.
 paths:
   /health:
     get:
@@ -3049,6 +3055,407 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CashierShift" }
+  /api/v1/staff:
+    get:
+      operationId: listStaff
+      summary: List staff profiles
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Staff profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Staff" }
+  /api/v1/staff/{id}:
+    get:
+      operationId: getStaff
+      summary: Get one staff profile with roles
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/StaffId" }
+      responses:
+        "200":
+          description: Staff profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Staff" }
+    patch:
+      operationId: updateStaff
+      summary: Update a staff member's workforce fields
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/StaffId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employmentStatus]
+              properties:
+                departmentId: { type: string, format: uuid }
+                jobTitle: { type: string }
+                contactPhone: { type: string }
+                contactEmail: { type: string }
+                employmentStatus: { type: string, enum: [active, on_leave, terminated, suspended] }
+                availability: { type: string }
+                skills:
+                  type: array
+                  items: { type: string }
+                certifications:
+                  type: array
+                  items: { type: string }
+                hireDate: { type: string, format: date }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+  /api/v1/staff/leave:
+    post:
+      operationId: requestLeave
+      summary: Request leave for the caller (or on behalf of staff with manage)
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startDate, endDate]
+              properties:
+                staffId: { type: string, format: uuid }
+                leaveType: { type: string }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                reason: { type: string }
+      responses:
+        "201":
+          description: Requested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffLeave" }
+    get:
+      operationId: listLeave
+      summary: List leave requests
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: staffId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected] }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Leave requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffLeave" }
+  /api/v1/staff/leave/{id}/approve:
+    post:
+      operationId: approveLeave
+      summary: Approve a pending leave request
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LeaveId" }
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/staff/leave/{id}/reject:
+    post:
+      operationId: rejectLeave
+      summary: Reject a pending leave request
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LeaveId" }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/attendance/shifts:
+    post:
+      operationId: createStaffShift
+      summary: Create a staff shift definition
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, startTime, endTime]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                startTime: { type: string }
+                endTime: { type: string }
+                lateGraceMinutes: { type: integer, minimum: 0 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffShift" }
+    get:
+      operationId: listStaffShifts
+      summary: List staff shift definitions
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Shift definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffShift" }
+  /api/v1/attendance/clock-in:
+    post:
+      operationId: clockIn
+      summary: Clock in for a shift
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shiftId, method]
+              properties:
+                shiftId: { type: string, format: uuid }
+                workDate: { type: string, format: date }
+                method: { type: string }
+                device: { type: string }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Clocked in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceRecord" }
+  /api/v1/attendance/clock-out:
+    post:
+      operationId: clockOut
+      summary: Clock out of the open shift
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [method]
+              properties:
+                method: { type: string }
+                device: { type: string }
+                notes: { type: string }
+      responses:
+        "200":
+          description: Clocked out
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AttendanceRecord" }
+  /api/v1/attendance:
+    get:
+      operationId: listAttendance
+      summary: List attendance records
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: staffId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [clocked_in, completed] }
+        - name: late
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: early
+          in: query
+          required: false
+          schema: { type: boolean }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AttendanceRecord" }
+  /api/v1/attendance/report:
+    get:
+      operationId: attendanceReport
+      summary: Per-day attendance report (late, early, missed, on leave)
+      tags: [attendance]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Report rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AttendanceReportRow" }
+  /api/v1/handovers:
+    post:
+      operationId: createHandover
+      summary: Create a shift handover note
+      tags: [handover]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                departmentId: { type: string, format: uuid }
+                shiftId: { type: string, format: uuid }
+                patientIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                currentCondition: { type: string }
+                medications: { type: string }
+                pendingInvestigations: { type: string }
+                pendingOrders: { type: string }
+                importantObservations: { type: string }
+                tasks: { type: string }
+                incidents: { type: string }
+                instructions: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoverNote" }
+    get:
+      operationId: listHandovers
+      summary: List handover notes
+      tags: [handover]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [created, acknowledged] }
+        - name: departmentId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: staffId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Handover notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/HandoverNote" }
+  /api/v1/handovers/{id}:
+    get:
+      operationId: getHandover
+      summary: Get one handover note
+      tags: [handover]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/HandoverId" }
+      responses:
+        "200":
+          description: Handover note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HandoverNote" }
+  /api/v1/handovers/{id}/acknowledge:
+    post:
+      operationId: acknowledgeHandover
+      summary: Acknowledge receipt of a handover note
+      tags: [handover]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/HandoverId" }
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
 components:
   securitySchemes:
     bearerAuth:
@@ -3190,6 +3597,46 @@ components:
       in: path
       required: true
       description: Cashier shift internal UUID.
+      schema:
+        type: string
+        format: uuid
+    StaffId:
+      name: id
+      in: path
+      required: true
+      description: Staff member internal UUID.
+      schema:
+        type: string
+        format: uuid
+    StaffShiftId:
+      name: id
+      in: path
+      required: true
+      description: Staff shift definition internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LeaveId:
+      name: id
+      in: path
+      required: true
+      description: Leave request internal UUID.
+      schema:
+        type: string
+        format: uuid
+    AttendanceId:
+      name: id
+      in: path
+      required: true
+      description: Attendance record internal UUID.
+      schema:
+        type: string
+        format: uuid
+    HandoverId:
+      name: id
+      in: path
+      required: true
+      description: Handover note internal UUID.
       schema:
         type: string
         format: uuid
@@ -4351,6 +4798,126 @@ components:
         acknowledgementNotes: { type: string }
         status: { type: string, enum: [pending, acknowledged] }
         createdAt: { type: string, format: date-time }
+    Staff:
+      type: object
+      required: [id, userId, employeeNo, firstName, lastName, employmentStatus]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        username: { type: string }
+        departmentId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        employeeNo: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        jobTitle: { type: string }
+        contactPhone: { type: string }
+        contactEmail: { type: string }
+        employmentStatus: { type: string, enum: [active, on_leave, terminated, suspended] }
+        availability: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        certifications:
+          type: array
+          items: { type: string }
+        hireDate: { type: string, format: date, nullable: true }
+        roles:
+          type: array
+          items: { type: string }
+    StaffLeave:
+      type: object
+      required: [id, staffId, leaveType, startDate, endDate, status, requestedBy, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        staffId: { type: string, format: uuid }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        leaveType: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected] }
+        requestedBy: { type: string, format: uuid }
+        approvedBy: { type: string, format: uuid, nullable: true }
+        decidedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    StaffShift:
+      type: object
+      required: [id, code, name, startTime, endTime, lateGraceMinutes]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        startTime: { type: string }
+        endTime: { type: string }
+        lateGraceMinutes: { type: integer }
+    AttendanceRecord:
+      type: object
+      required: [id, staffId, shiftId, workDate, clockInAt, clockInMethod, isLate, isEarlyLeave, status]
+      properties:
+        id: { type: string, format: uuid }
+        staffId: { type: string, format: uuid }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        shiftId: { type: string, format: uuid }
+        shiftName: { type: string }
+        shiftCode: { type: string }
+        departmentName: { type: string }
+        workDate: { type: string, format: date }
+        clockInAt: { type: string, format: date-time }
+        clockOutAt: { type: string, format: date-time, nullable: true }
+        clockInMethod: { type: string }
+        clockOutMethod: { type: string }
+        clockInDevice: { type: string }
+        clockOutDevice: { type: string }
+        isLate: { type: boolean }
+        isEarlyLeave: { type: boolean }
+        status: { type: string, enum: [clocked_in, completed] }
+        notes: { type: string }
+    AttendanceReportRow:
+      type: object
+      required: [staffId, staffName, status]
+      properties:
+        staffId: { type: string, format: uuid }
+        employeeNo: { type: string }
+        staffName: { type: string }
+        department: { type: string }
+        shiftId: { type: string, format: uuid }
+        shiftName: { type: string }
+        status: { type: string }
+        clockInAt: { type: string, format: date-time, nullable: true }
+        clockOutAt: { type: string, format: date-time, nullable: true }
+    HandoverNote:
+      type: object
+      required: [id, handoverNo, outgoingStaffId, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        handoverNo: { type: string }
+        outgoingStaffId: { type: string, format: uuid }
+        outgoingStaffName: { type: string }
+        departmentId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        shiftId: { type: string, format: uuid, nullable: true }
+        shiftName: { type: string }
+        patientIds:
+          type: array
+          items: { type: string, format: uuid }
+        currentCondition: { type: string }
+        medications: { type: string }
+        pendingInvestigations: { type: string }
+        pendingOrders: { type: string }
+        importantObservations: { type: string }
+        tasks: { type: string }
+        incidents: { type: string }
+        instructions: { type: string }
+        status: { type: string, enum: [created, acknowledged] }
+        acknowledgedBy: { type: string, format: uuid, nullable: true }
+        acknowledgedByName: { type: string }
+        acknowledgedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
     ErrorEnvelope:
       type: object
       required: [error]
