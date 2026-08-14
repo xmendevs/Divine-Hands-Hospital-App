@@ -1679,6 +1679,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/receipts/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Downloadable PDF receipt */
+        get: operations["getReceiptPDF"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/billing/receipts/{id}/share": {
         parameters: {
             query?: never;
@@ -6872,6 +6889,29 @@ export interface operations {
                 };
                 content: {
                     "text/html": string;
+                };
+            };
+        };
+    };
+    getReceiptPDF: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Receipt internal UUID. */
+                id: components["parameters"]["ReceiptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PDF document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };

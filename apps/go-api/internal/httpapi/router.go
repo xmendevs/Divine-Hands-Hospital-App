@@ -210,6 +210,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/billing/receipts", s.perm("billing.view", s.handleListReceipts))
 	mux.Handle("GET /api/v1/billing/receipts/{id}", s.perm("billing.view", s.handleGetReceipt))
 	mux.Handle("GET /api/v1/billing/receipts/{id}/html", s.perm("billing.view", s.handleReceiptHTML))
+	mux.Handle("GET /api/v1/billing/receipts/{id}/pdf", s.perm("billing.view", s.handleReceiptPDF))
 	mux.Handle("POST /api/v1/billing/receipts/{id}/share", s.perm("billing.view", s.handleShareReceipt))
 	mux.Handle("POST /api/v1/billing/payments/{id}/refunds", s.perm("billing.refund", s.handleRequestRefund))
 	mux.Handle("GET /api/v1/billing/refunds", s.perm("billing.view", s.handleListRefundRequests))

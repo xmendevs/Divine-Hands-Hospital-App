@@ -28,7 +28,8 @@ all totals are computed in SQL — no client-supplied arithmetic.
   `billing.custom_payment_methods` (JSON array). Each payment is bound to the
   cashier's **open shift** and its reference number (`PAY000001`).
 - **receipts** — one per payment (`RCP000001`), printable as server-rendered
-  HTML (`GET /receipts/{id}/html`, auto `window.print()`).
+  HTML (`GET /receipts/{id}/html`, auto `window.print()`) and downloadable as
+  a server-generated PDF (`GET /receipts/{id}/pdf`, `application/pdf`).
   `receipt_shares` records attributable user-initiated shares
   (`shareVia: email | whatsapp`); transport itself is frontend-driven.
 - **refund_requests** — `pending → approved/rejected → processed`
@@ -72,7 +73,7 @@ draft ──issue──▶ issued ──payments──▶ partially_paid ──�
 | Issue / void               | `POST /invoices/{id}/issue`, `/void`       | issue recomputes totals      |
 | Open shift                 | `POST /shifts`                             | one per cashier; `SFT000001` |
 | Receive payment            | `POST /invoices/{id}/payments`             | `billing.collect`; creates payment + receipt |
-| Receipts                   | `GET /receipts`, `GET /receipts/{id}`, `GET /receipts/{id}/html`, `POST /receipts/{id}/share` | HTML is printable |
+| Receipts                   | `GET /receipts`, `GET /receipts/{id}`, `GET /receipts/{id}/html`, `GET /receipts/{id}/pdf`, `POST /receipts/{id}/share` | HTML is printable; PDF is downloadable |
 | Request refund             | `POST /payments/{id}/refunds`              | `billing.refund`; pending    |
 | Approve / reject           | `POST /refunds/{id}/approve`, `/reject`    | `billing.approve`; no self-approval |
 | Process refund             | `POST /refunds/{id}/process`               | needs open shift; reverses balance |

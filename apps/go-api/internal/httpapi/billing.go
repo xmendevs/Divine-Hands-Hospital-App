@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/pdf"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
 
@@ -832,6 +834,30 @@ func (s *server) handleReceiptHTML(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(doc))
+}
+
+// handleReceiptPDF serves a downloadable PDF receipt.
+func (s *server) handleReceiptPDF(w http.ResponseWriter, r *http.Request) {
+	re, err := s.store.GetReceipt(r.Context(), r.PathValue("id"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, r, http.StatusNotFound, "not_found", "receipt not found")
+		return
+	}
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	b, err := pdf.Receipt(re)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="receipt-%s.pdf"`, re.ReceiptNo))
+	w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(b)
 }
 
 type shareReceiptRequest struct {
