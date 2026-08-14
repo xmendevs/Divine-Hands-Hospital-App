@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: HIMS go-api
-  version: 0.3.0
+  version: 0.4.0
   description: Core service API for the Divine Hands HMS (identity, RBAC, sessions, audit).
 servers:
   - url: http://localhost:8080
@@ -14,6 +14,10 @@ tags:
     description: Patient registration, master record, clinical, timeline, documents.
   - name: families
     description: Family profiles and membership.
+  - name: orders
+    description: Doctor orders, lifecycle, and medication administration.
+  - name: clinical
+    description: Notes, observations, tasks, reports, triage, and assignments.
 paths:
   /health:
     get:
@@ -502,6 +506,528 @@ paths:
                 $ref: "#/components/schemas/Family"
         "404":
           description: Not found
+  /api/v1/patients/{id}/orders:
+    post:
+      operationId: createOrder
+      summary: Create a doctor order
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderType]
+              properties:
+                orderType:
+                  type: string
+                  enum: [prescription, lab_request, nursing_order, referral]
+                departmentId: { type: string, format: uuid }
+                details:
+                  type: object
+                  additionalProperties: true
+                noteId: { type: string, format: uuid }
+                submit: { type: boolean }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+    get:
+      operationId: listPatientOrders
+      summary: List a patient's orders
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+  /api/v1/orders/actionable:
+    get:
+      operationId: listActionableOrders
+      summary: List orders awaiting/under nursing action
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+  /api/v1/orders/{id}/submit:
+    post:
+      operationId: submitOrder
+      summary: Submit a draft order
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: Submitted }
+  /api/v1/orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: Cancel a draft or submitted order
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "204": { description: Cancelled }
+  /api/v1/orders/{id}/status:
+    post:
+      operationId: transitionOrder
+      summary: Advance an order to accepted/in_progress/completed
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [accepted, in_progress, completed] }
+      responses:
+        "204": { description: Transitioned }
+  /api/v1/patients/{id}/administrations:
+    post:
+      operationId: addAdministration
+      summary: Record a medication administration
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId: { type: string, format: uuid }
+                medication: { type: string }
+                dose: { type: string }
+                route: { type: string }
+                notes: { type: string }
+      responses:
+        "201": { description: Recorded }
+    get:
+      operationId: listAdministrations
+      summary: List medication administration records
+      tags: [orders]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Administration" }
+  /api/v1/patients/{id}/notes:
+    post:
+      operationId: createNote
+      summary: Create a clinical note
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                noteType: { type: string, enum: [consultation, nursing, progress] }
+                departmentId: { type: string, format: uuid }
+                note: { type: string }
+                diagnosis: { type: string }
+                treatmentPlan: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+    get:
+      operationId: listNotes
+      summary: List current notes
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Note" }
+  /api/v1/patients/{id}/notes/{groupId}:
+    get:
+      operationId: listNoteVersions
+      summary: List all versions of a note
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: groupId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Note" }
+  /api/v1/patients/{id}/notes/{groupId}/versions:
+    post:
+      operationId: addNoteVersion
+      summary: Append a new immutable note version
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: groupId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                departmentId: { type: string, format: uuid }
+                note: { type: string }
+                diagnosis: { type: string }
+                treatmentPlan: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+  /api/v1/patients/{id}/observations:
+    post:
+      operationId: addObservation
+      summary: Record vitals/observations
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category: { type: string, enum: [vitals, observation] }
+                measurements:
+                  type: object
+                  additionalProperties: true
+                notes: { type: string }
+      responses:
+        "201": { description: Recorded }
+    get:
+      operationId: listObservations
+      summary: List observations
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Observations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Observation" }
+  /api/v1/tasks:
+    post:
+      operationId: createTask
+      summary: Create a department task
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                patientId: { type: string, format: uuid }
+                departmentId: { type: string, format: uuid }
+                title: { type: string }
+                description: { type: string }
+                assignedToUserId: { type: string, format: uuid }
+      responses:
+        "201": { description: Created }
+    get:
+      operationId: listTasks
+      summary: List tasks
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Task" }
+  /api/v1/tasks/{id}/complete:
+    post:
+      operationId: completeTask
+      summary: Complete a task
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204": { description: Completed }
+  /api/v1/patients/{id}/admissions:
+    post:
+      operationId: admitPatient
+      summary: Admit a patient
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ward]
+              properties:
+                ward: { type: string }
+                room: { type: string }
+                bed: { type: string }
+                attendingDoctorId: { type: string, format: uuid }
+                admissionReason: { type: string }
+      responses:
+        "201":
+          description: Admitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Admission" }
+    get:
+      operationId: listAdmissions
+      summary: List a patient's admissions
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Admissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Admission" }
+  /api/v1/patients/{id}/admissions/{admissionId}/discharge:
+    post:
+      operationId: dischargePatient
+      summary: Discharge an active admission
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: admissionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dischargeSummary]
+              properties:
+                dischargeSummary: { type: string }
+                followUpInstructions: { type: string }
+      responses:
+        "200":
+          description: Discharged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Admission" }
+  /api/v1/patients/{id}/reports:
+    post:
+      operationId: createReport
+      summary: Create a clinical report
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                reportType: { type: string }
+                title: { type: string }
+                content: { type: string }
+                departmentId: { type: string, format: uuid }
+      responses:
+        "201": { description: Created }
+    get:
+      operationId: listReports
+      summary: List a patient's reports
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Report" }
+  /api/v1/clinical/triage:
+    post:
+      operationId: triage
+      summary: Register and triage an emergency patient
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chiefComplaint, triageLevel]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                gender: { type: string }
+                chiefComplaint: { type: string }
+                triageLevel: { type: string }
+                measurements:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "201":
+          description: Triaged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TriageResponse" }
+  /api/v1/clinical/queue:
+    get:
+      operationId: myQueue
+      summary: The current clinician's assigned patients
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QueueItem" }
+  /api/v1/patients/{id}/assignments:
+    post:
+      operationId: assignPatient
+      summary: Assign a patient to a clinician
+      tags: [clinical]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assigneeUserId]
+              properties:
+                assigneeUserId: { type: string, format: uuid }
+                departmentId: { type: string, format: uuid }
+      responses:
+        "201": { description: Assigned }
 components:
   securitySchemes:
     bearerAuth:
@@ -839,6 +1365,143 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PatientSummary"
+    Order:
+      type: object
+      required: [id, orderNo, patientId, orderType, status, orderedBy, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        orderNo: { type: string }
+        patientId: { type: string, format: uuid }
+        orderType: { type: string, enum: [prescription, lab_request, nursing_order, referral] }
+        status:
+          { type: string, enum: [draft, submitted, accepted, in_progress, completed, cancelled] }
+        departmentId: { type: string, format: uuid, nullable: true }
+        orderedBy: { type: string, format: uuid }
+        details:
+          type: object
+          additionalProperties: true
+        clinicalNoteId: { type: string, format: uuid, nullable: true }
+        actedBy: { type: string, format: uuid, nullable: true }
+        cancelledBy: { type: string, format: uuid, nullable: true }
+        cancelReason: { type: string }
+        createdAt: { type: string, format: date-time }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        acceptedAt: { type: string, format: date-time, nullable: true }
+        completedAt: { type: string, format: date-time, nullable: true }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time }
+    Note:
+      type: object
+      required:
+        [id, groupId, patientId, noteType, authorUserId, authorRole, note, version, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+        noteType: { type: string }
+        departmentId: { type: string, format: uuid, nullable: true }
+        authorUserId: { type: string, format: uuid }
+        authorRole: { type: string }
+        note: { type: string }
+        diagnosis: { type: string }
+        treatmentPlan: { type: string }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    Administration:
+      type: object
+      required: [id, orderId, medication, administeredBy, administeredAt]
+      properties:
+        id: { type: string, format: uuid }
+        orderId: { type: string, format: uuid }
+        medication: { type: string }
+        dose: { type: string }
+        route: { type: string }
+        administeredBy: { type: string, format: uuid }
+        administeredAt: { type: string, format: date-time }
+        notes: { type: string }
+    Observation:
+      type: object
+      required: [id, category, recordedBy, recordedAt]
+      properties:
+        id: { type: string, format: uuid }
+        category: { type: string }
+        measurements:
+          type: object
+          additionalProperties: true
+        notes: { type: string }
+        recordedBy: { type: string, format: uuid }
+        recordedAt: { type: string, format: date-time }
+    Task:
+      type: object
+      required: [id, title, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        patientId: { type: string, format: uuid, nullable: true }
+        departmentId: { type: string, format: uuid, nullable: true }
+        orderId: { type: string, format: uuid, nullable: true }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        assignedTo: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+    Admission:
+      type: object
+      required: [id, patientId, ward, status, admittedAt]
+      properties:
+        id: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+        ward: { type: string }
+        room: { type: string }
+        bed: { type: string }
+        admittedAt: { type: string, format: date-time }
+        attendingDoctorId: { type: string, format: uuid, nullable: true }
+        admissionReason: { type: string }
+        status: { type: string, enum: [admitted, discharged] }
+        dischargedAt: { type: string, format: date-time, nullable: true }
+        dischargeSummary: { type: string }
+        followUpInstructions: { type: string }
+    Report:
+      type: object
+      required: [id, title, content, authorId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reportType: { type: string }
+        title: { type: string }
+        content: { type: string }
+        authorId: { type: string, format: uuid }
+        departmentId: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+    QueueItem:
+      type: object
+      required: [assignmentId, patientId, patientNo, firstName, lastName, assignedAt]
+      properties:
+        assignmentId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid }
+        patientNo: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        gender: { type: string }
+        dateOfBirth: { type: string }
+        phone: { type: string }
+        assignedAt: { type: string, format: date-time }
+    TriageResponse:
+      type: object
+      required: [patient, triage]
+      properties:
+        patient: { $ref: "#/components/schemas/Patient" }
+        triage:
+          type: object
+          required: [id, patientId, triageLevel, chiefComplaint, createdAt]
+          properties:
+            id: { type: string, format: uuid }
+            patientId: { type: string, format: uuid }
+            triageLevel: { type: string }
+            chiefComplaint: { type: string }
+            measurements:
+              type: object
+              additionalProperties: true
+            createdAt: { type: string, format: date-time }
     ErrorEnvelope:
       type: object
       required: [error]
