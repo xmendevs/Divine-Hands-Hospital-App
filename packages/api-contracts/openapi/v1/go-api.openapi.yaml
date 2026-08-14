@@ -32,6 +32,10 @@ tags:
     description: Nursing shift handover notes and acknowledgement.
   - name: roster
     description: Automatic roster planning, generation, and approval.
+  - name: notifications
+    description: In-app and email notifications.
+  - name: communications
+    description: Governed internal messaging, channels, announcements, and policy.
 paths:
   /health:
     get:
@@ -3807,6 +3811,472 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RosterPlan" }
+  /api/v1/notifications:
+    get:
+      operationId: listNotifications
+      summary: List the caller's notifications
+      tags: [notifications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+        - name: unread
+          in: query
+          required: false
+          schema: { type: boolean }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Notification" }
+    post:
+      operationId: sendNotification
+      summary: Send a notification to specific users
+      tags: [notifications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userIds, category, title]
+              properties:
+                userIds:
+                  type: array
+                  items: { type: string, format: uuid }
+                category: { type: string }
+                title: { type: string }
+                body: { type: string }
+                link: { type: string }
+                channel: { type: string, enum: [in_app, email, both] }
+      responses:
+        "201":
+          description: Delivered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delivered: { type: integer }
+  /api/v1/notifications/unread-count:
+    get:
+      operationId: unreadNotificationCount
+      summary: Unread notification count
+      tags: [notifications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unread: { type: integer }
+  /api/v1/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      summary: Mark all notifications read
+      tags: [notifications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  read: { type: boolean }
+  /api/v1/notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      summary: Mark one notification read
+      tags: [notifications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/NotificationId" }
+      responses:
+        "200":
+          description: Read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  read: { type: boolean }
+  /api/v1/communications/policy:
+    get:
+      operationId: getCommsPolicy
+      summary: Communications retention/audit policy and acknowledgement state
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommsPolicy" }
+  /api/v1/communications/policy/acknowledge:
+    post:
+      operationId: acknowledgeCommsPolicy
+      summary: Acknowledge the communications policy
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  acknowledged: { type: boolean }
+  /api/v1/communications/channels:
+    get:
+      operationId: listChannels
+      summary: List channels
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommsChannel" }
+    post:
+      operationId: createChannel
+      summary: Create a department or shift channel
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type]
+              properties:
+                name: { type: string }
+                type: { type: string, enum: [department, shift] }
+                departmentId: { type: string, format: uuid }
+                shiftId: { type: string, format: uuid }
+                description: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommsChannel" }
+  /api/v1/communications/channels/{id}:
+    get:
+      operationId: getChannel
+      summary: Get one channel with members
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ChannelId" }
+      responses:
+        "200":
+          description: Channel
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommsChannelDetail" }
+  /api/v1/communications/channels/{id}/members:
+    post:
+      operationId: addChannelMember
+      summary: Add a user to a channel
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ChannelId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channelId: { type: string, format: uuid }
+                  userId: { type: string, format: uuid }
+  /api/v1/communications/channels/{id}/members/{userId}:
+    delete:
+      operationId: removeChannelMember
+      summary: Remove a user from a channel
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ChannelId" }
+        - { $ref: "#/components/parameters/MemberUserId" }
+      responses:
+        "204":
+          description: Removed
+  /api/v1/communications/channels/{id}/messages:
+    get:
+      operationId: listChannelMessages
+      summary: List a channel's messages
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ChannelId" }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+    post:
+      operationId: sendChannelMessage
+      summary: Send a message to a channel
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ChannelId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+                attachments:
+                  type: array
+                  items: { $ref: "#/components/schemas/AttachmentInput" }
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+  /api/v1/communications/messages:
+    get:
+      operationId: listDirectMessages
+      summary: List the direct-message thread with a peer
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: recipientId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+    post:
+      operationId: sendDirectMessage
+      summary: Send a direct message
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipientId, body]
+              properties:
+                recipientId: { type: string, format: uuid }
+                body: { type: string }
+                attachments:
+                  type: array
+                  items: { $ref: "#/components/schemas/AttachmentInput" }
+      responses:
+        "201":
+          description: Sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+  /api/v1/communications/announcements:
+    get:
+      operationId: listAnnouncements
+      summary: List announcements
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+    post:
+      operationId: createAnnouncement
+      summary: Post an announcement (global or channel-scoped)
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+                channelId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Posted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+  /api/v1/communications/admin/messages:
+    get:
+      operationId: adminSearchMessages
+      summary: Administrative communications search (audited)
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: senderId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: recipientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: channelId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+  /api/v1/communications/compliance/search:
+    get:
+      operationId: complianceSearch
+      summary: Compliance investigation search (audited)
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: senderId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: recipientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: channelId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Message" }
+  /api/v1/communications/retention/run:
+    post:
+      operationId: runRetention
+      summary: Purge communications older than the retention window
+      tags: [communications]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Purged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messagesPurged: { type: integer }
+                  notificationsPurged: { type: integer }
 components:
   securitySchemes:
     bearerAuth:
@@ -4020,6 +4490,30 @@ components:
       in: path
       required: true
       description: Staff unavailability record internal UUID.
+      schema:
+        type: string
+        format: uuid
+    NotificationId:
+      name: id
+      in: path
+      required: true
+      description: Notification internal UUID.
+      schema:
+        type: string
+        format: uuid
+    ChannelId:
+      name: id
+      in: path
+      required: true
+      description: Communications channel internal UUID.
+      schema:
+        type: string
+        format: uuid
+    MemberUserId:
+      name: userId
+      in: path
+      required: true
+      description: Channel member user internal UUID.
       schema:
         type: string
         format: uuid
@@ -5398,6 +5892,109 @@ components:
         unmet:
           type: array
           items: { $ref: "#/components/schemas/UnmetRequirement" }
+    Notification:
+      type: object
+      required: [id, category, title, channel, emailStatus, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        category: { type: string }
+        title: { type: string }
+        body: { type: string }
+        link: { type: string }
+        channel: { type: string, enum: [in_app, email, both] }
+        emailStatus: { type: string, enum: [none, pending, sent, failed] }
+        readAt: { type: string, format: date-time, nullable: true }
+        deliveredAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    AttachmentInput:
+      type: object
+      required: [fileName]
+      properties:
+        fileName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        storageRef: { type: string }
+    MessageAttachment:
+      type: object
+      required: [id, fileName, mimeType, sizeBytes]
+      properties:
+        id: { type: string, format: uuid }
+        fileName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        storageRef: { type: string }
+    Message:
+      type: object
+      required: [id, kind, senderId, body, createdAt, attachments]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [direct, channel, announcement] }
+        senderId: { type: string, format: uuid }
+        senderName: { type: string }
+        senderUsername: { type: string }
+        recipientId: { type: string, format: uuid, nullable: true }
+        recipientName: { type: string }
+        channelId: { type: string, format: uuid, nullable: true }
+        channelName: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/MessageAttachment" }
+    CommsChannel:
+      type: object
+      required: [id, name, type, createdBy, createdAt, memberCount, isMember]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [department, shift] }
+        departmentId: { type: string, format: uuid, nullable: true }
+        shiftId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        shiftName: { type: string }
+        description: { type: string }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        memberCount: { type: integer }
+        isMember: { type: boolean }
+    CommsChannelMember:
+      type: object
+      required: [id, userId, username, addedAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        username: { type: string }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        addedBy: { type: string, format: uuid, nullable: true }
+        addedAt: { type: string, format: date-time }
+    CommsChannelDetail:
+      type: object
+      required: [id, name, type, createdBy, createdAt, memberCount, isMember, members]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [department, shift] }
+        departmentId: { type: string, format: uuid, nullable: true }
+        shiftId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        shiftName: { type: string }
+        description: { type: string }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        memberCount: { type: integer }
+        isMember: { type: boolean }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/CommsChannelMember" }
+    CommsPolicy:
+      type: object
+      required: [notice, retentionDays, attachmentMaxBytes, acknowledged]
+      properties:
+        notice: { type: string }
+        retentionDays: { type: integer }
+        attachmentMaxBytes: { type: integer }
+        acknowledged: { type: boolean }
     ErrorEnvelope:
       type: object
       required: [error]

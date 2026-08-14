@@ -182,6 +182,31 @@ immutable except through an amendment draft. Every plan/assignment/submission
 /approval/rejection is audited with `roster.*` actions. See
 `docs/roster-planning.md`.
 
+## Notifications & governed communications (Phase 11)
+
+Phase 11 adds eight permissions across two modules: `notifications.view`,
+`notifications.send`; `comms.send`, `comms.view`, `comms.manage`,
+`comms.announce`, `comms.admin`, `comms.audit`.
+
+- Every clinical/operational role gains `notifications.view` + `comms.send` +
+  `comms.view` (see their own alerts and message with peers).
+- **matron** & **admin** additionally hold `notifications.send`,
+  `comms.manage`, and `comms.announce` (alerts, channel management,
+  announcements).
+- **admin** holds `comms.admin` (restricted administrative access); **auditor**
+  holds `comms.audit` (compliance investigations). super_admin holds all
+  permissions.
+
+Governance is explicit, not covert: no call/message interception exists. Users
+are shown a retention/audit notice (`GET /communications/policy`) and must
+acknowledge it. Administrative access (`GET /communications/admin/messages`)
+and compliance searches (`GET /communications/compliance/search`) are both
+locked behind separate permissions and audit the filters used
+(`communications.admin_access`, `communications.compliance_search`). Retention
+rules (`comms.retention_days`) are applied at read time and by an audited purge
+(`communications.retention_run`); attachments are capped by
+`comms.attachment_max_bytes`. See `docs/notifications-comms.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in
