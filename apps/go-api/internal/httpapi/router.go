@@ -86,5 +86,47 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/families", s.perm("families.create", s.handleCreateFamily))
 	mux.Handle("GET /api/v1/families/{id}", s.perm("families.view", s.handleGetFamily))
 
+	// Orders.
+	mux.Handle("POST /api/v1/patients/{id}/orders", s.perm("orders.create", s.handleCreateOrder))
+	mux.Handle("GET /api/v1/patients/{id}/orders", s.perm("orders.view", s.handleListPatientOrders))
+	mux.Handle("GET /api/v1/orders/actionable", s.perm("orders.manage", s.handleListActionableOrders))
+	mux.Handle("POST /api/v1/orders/{id}/submit", s.perm("orders.create", s.handleSubmitOrder))
+	mux.Handle("POST /api/v1/orders/{id}/cancel", s.perm("orders.create", s.handleCancelOrder))
+	mux.Handle("POST /api/v1/orders/{id}/status", s.perm("orders.manage", s.handleTransitionOrder))
+
+	// Notes (immutable versions).
+	mux.Handle("POST /api/v1/patients/{id}/notes", s.perm("notes.write", s.handleCreateNote))
+	mux.Handle("GET /api/v1/patients/{id}/notes", s.perm("notes.view", s.handleListNotes))
+	mux.Handle("GET /api/v1/patients/{id}/notes/{groupId}", s.perm("notes.view", s.handleListNoteVersions))
+	mux.Handle("POST /api/v1/patients/{id}/notes/{groupId}/versions", s.perm("notes.write", s.handleAddNoteVersion))
+
+	// Observations & vitals.
+	mux.Handle("POST /api/v1/patients/{id}/observations", s.perm("vitals.record", s.handleAddObservation))
+	mux.Handle("GET /api/v1/patients/{id}/observations", s.perm("vitals.view", s.handleListObservations))
+
+	// Medication administration records (MAR).
+	mux.Handle("POST /api/v1/patients/{id}/administrations", s.perm("mar.record", s.handleAddAdministration))
+	mux.Handle("GET /api/v1/patients/{id}/administrations", s.perm("mar.view", s.handleListAdministrations))
+
+	// Tasks.
+	mux.Handle("POST /api/v1/tasks", s.perm("tasks.create", s.handleCreateTask))
+	mux.Handle("GET /api/v1/tasks", s.perm("tasks.view", s.handleListTasks))
+	mux.Handle("POST /api/v1/tasks/{id}/complete", s.perm("tasks.complete", s.handleCompleteTask))
+	mux.Handle("GET /api/v1/patients/{id}/tasks", s.perm("tasks.view", s.handleListPatientTasks))
+
+	// Admissions.
+	mux.Handle("POST /api/v1/patients/{id}/admissions", s.perm("admissions.manage", s.handleAdmitPatient))
+	mux.Handle("GET /api/v1/patients/{id}/admissions", s.perm("admissions.view", s.handleListAdmissions))
+	mux.Handle("POST /api/v1/patients/{id}/admissions/{admissionId}/discharge", s.perm("admissions.manage", s.handleDischargePatient))
+
+	// Reports.
+	mux.Handle("POST /api/v1/patients/{id}/reports", s.perm("reports.write", s.handleCreateReport))
+	mux.Handle("GET /api/v1/patients/{id}/reports", s.perm("reports.view", s.handleListReports))
+
+	// Emergency triage + queue & assignments.
+	mux.Handle("POST /api/v1/clinical/triage", s.perm("triage.manage", s.handleTriage))
+	mux.Handle("GET /api/v1/clinical/queue", s.perm("assignments.view", s.handleMyQueue))
+	mux.Handle("POST /api/v1/patients/{id}/assignments", s.perm("assignments.manage", s.handleAssignPatient))
+
 	return withMiddleware(mux, logger)
 }

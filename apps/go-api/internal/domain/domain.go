@@ -137,6 +137,224 @@ const (
 	ActionFamilyCreate    = "family.create"
 	ActionDocumentAdd     = "document.add"
 	ActionDocumentsViewed = "documents.viewed"
+
+	ActionOrderCreate            = "order.create"
+	ActionOrderSubmit            = "order.submit"
+	ActionOrderStatusChange      = "order.status_change"
+	ActionOrderCancel            = "order.cancel"
+	ActionOrdersViewed           = "orders.viewed"
+	ActionNoteCreate             = "note.create"
+	ActionNoteVersion            = "note.version"
+	ActionNotesViewed            = "notes.viewed"
+	ActionObservationRecorded    = "observation.recorded"
+	ActionVitalsViewed           = "vitals.viewed"
+	ActionAdministrationRecorded = "medication.administered"
+	ActionMARViewed              = "mar.viewed"
+	ActionTaskCreate             = "task.create"
+	ActionTaskComplete           = "task.complete"
+	ActionTasksViewed            = "tasks.viewed"
+	ActionAdmissionCreate        = "admission.create"
+	ActionAdmissionDischarge     = "admission.discharge"
+	ActionAdmissionsViewed       = "admissions.viewed"
+	ActionReportCreate           = "report.create"
+	ActionReportsViewed          = "reports.viewed"
+	ActionTriageCreate           = "triage.create"
+	ActionAssignmentCreate       = "assignment.create"
+)
+
+// Order types.
+const (
+	OrderTypePrescription = "prescription"
+	OrderTypeLabRequest   = "lab_request"
+	OrderTypeNursingOrder = "nursing_order"
+	OrderTypeReferral     = "referral"
+)
+
+// Order statuses: draft → submitted → accepted → in_progress → completed
+// (or cancelled).
+const (
+	OrderStatusDraft      = "draft"
+	OrderStatusSubmitted  = "submitted"
+	OrderStatusAccepted   = "accepted"
+	OrderStatusInProgress = "in_progress"
+	OrderStatusCompleted  = "completed"
+	OrderStatusCancelled  = "cancelled"
+)
+
+// Order is a unified doctor order. Type-specific fields live in Details (JSONB).
+type Order struct {
+	ID             string
+	OrderNo        string
+	PatientID      string
+	OrderType      string
+	Status         string
+	DepartmentID   *string
+	OrderedBy      string
+	Details        []byte
+	ClinicalNoteID *string
+	ActedBy        *string
+	CancelledBy    *string
+	CancelReason   string
+	CreatedAt      time.Time
+	SubmittedAt    *time.Time
+	AcceptedAt     *time.Time
+	CompletedAt    *time.Time
+	CancelledAt    *time.Time
+	UpdatedAt      time.Time
+}
+
+// Clinical note types.
+const (
+	NoteTypeConsultation = "consultation"
+	NoteTypeNursing      = "nursing"
+	NoteTypeProgress     = "progress"
+)
+
+// ClinicalNote is an immutable version within a note group.
+type ClinicalNote struct {
+	ID            string
+	GroupID       string
+	PatientID     string
+	NoteType      string
+	DepartmentID  *string
+	AuthorUserID  string
+	AuthorRole    string
+	Note          string
+	Diagnosis     string
+	TreatmentPlan string
+	Version       int
+	CreatedAt     time.Time
+}
+
+// MedicationAdministration is a nurse-recorded administration (MAR).
+type MedicationAdministration struct {
+	ID             string
+	OrderID        string
+	PatientID      string
+	Medication     string
+	Dose           string
+	Route          string
+	AdministeredBy string
+	AdministeredAt time.Time
+	Notes          string
+	CreatedAt      time.Time
+}
+
+// Observation categories.
+const (
+	ObservationCategoryVitals      = "vitals"
+	ObservationCategoryObservation = "observation"
+)
+
+// Observation is a vitals/observation record with JSONB measurements.
+type Observation struct {
+	ID           string
+	PatientID    string
+	Category     string
+	Measurements []byte
+	Notes        string
+	RecordedBy   string
+	RecordedAt   time.Time
+}
+
+// Task statuses.
+const (
+	TaskStatusPending    = "pending"
+	TaskStatusInProgress = "in_progress"
+	TaskStatusCompleted  = "completed"
+	TaskStatusCancelled  = "cancelled"
+)
+
+// Task is a department task.
+type Task struct {
+	ID           string
+	PatientID    *string
+	DepartmentID *string
+	OrderID      *string
+	Title        string
+	Description  string
+	Status       string
+	AssignedTo   *string
+	CreatedBy    string
+	CreatedAt    time.Time
+	CompletedAt  *time.Time
+	CompletedBy  *string
+}
+
+// Admission statuses.
+const (
+	AdmissionStatusAdmitted   = "admitted"
+	AdmissionStatusDischarged = "discharged"
+)
+
+// Admission is an admission/discharge record.
+type Admission struct {
+	ID                   string
+	PatientID            string
+	Ward                 string
+	Room                 string
+	Bed                  string
+	AdmittedAt           time.Time
+	AttendingDoctorID    *string
+	AdmissionReason      string
+	Status               string
+	DischargedAt         *time.Time
+	DischargeSummary     string
+	FollowUpInstructions string
+	CreatedBy            *string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+// ClinicalReport is a doctor-authored report.
+type ClinicalReport struct {
+	ID           string
+	PatientID    string
+	ReportType   string
+	Title        string
+	Content      string
+	AuthorUserID string
+	DepartmentID *string
+	CreatedAt    time.Time
+}
+
+// Triage is an emergency triage record.
+type Triage struct {
+	ID             string
+	PatientID      string
+	TriageLevel    string
+	ChiefComplaint string
+	Measurements   []byte
+	TriagedBy      string
+	CreatedAt      time.Time
+}
+
+// Assignment links a patient to a clinician.
+type Assignment struct {
+	ID             string
+	PatientID      string
+	AssigneeUserID string
+	DepartmentID   *string
+	AssignedBy     *string
+	CreatedAt      time.Time
+	EndedAt        *time.Time
+}
+
+// Timeline event types (clinical workflows).
+const (
+	EventOrderCreated           = "order_created"
+	EventOrderStatusChanged     = "order_status_changed"
+	EventNoteCreated            = "note_created"
+	EventNoteUpdated            = "note_updated"
+	EventObservationRecorded    = "observation_recorded"
+	EventMedicationAdministered = "medication_administered"
+	EventTaskCreated            = "task_created"
+	EventTaskCompleted          = "task_completed"
+	EventAdmitted               = "admitted"
+	EventDischarged             = "discharged"
+	EventReportCreated          = "report_created"
+	EventTriage                 = "triage"
+	EventAssigned               = "assigned"
 )
 
 // RegistrationType drives the business-ID prefix: normal (DHH), antenatal

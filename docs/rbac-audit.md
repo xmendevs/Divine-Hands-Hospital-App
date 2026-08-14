@@ -63,6 +63,24 @@ server-side, regardless of the frontend.
   before/after values and a reason; clinical information is never silently
   overwritten. See `docs/patients.md`.
 
+## Clinical workflows (Phase 04)
+
+Phase 04 adds clinical permissions (`orders.*`, `notes.*`, `vitals.*`,
+`mar.*`, `tasks.*`, `admissions.*`, `reports.*`, `triage.manage`,
+`assignments.*`) and grants them to the clinical roles:
+
+- **doctor** — create orders, write notes, view vitals/MAR, create/view tasks,
+  admit/discharge, write/view reports, manage assignments.
+- **nurse** — view/manage orders, write notes, record vitals/MAR, view/complete
+  tasks.
+- **matron** — nurse surface plus task creation, assignments, and report view.
+- **receptionist** — emergency triage + assignment view.
+
+Critical clinical actions (`order.*`, `note.*`, `medication.administered`,
+`admission.*`, `task.*`, `triage.create`, `assignment.create`) append audit
+entries. Order ownership (doctor submit/cancel own orders) is enforced
+server-side. See `docs/clinical.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in

@@ -347,6 +347,319 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{id}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's orders */
+        get: operations["listPatientOrders"];
+        put?: never;
+        /** Create a doctor order */
+        post: operations["createOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/actionable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List orders awaiting/under nursing action */
+        get: operations["listActionableOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a draft order */
+        post: operations["submitOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a draft or submitted order */
+        post: operations["cancelOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance an order to accepted/in_progress/completed */
+        post: operations["transitionOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/administrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List medication administration records */
+        get: operations["listAdministrations"];
+        put?: never;
+        /** Record a medication administration */
+        post: operations["addAdministration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List current notes */
+        get: operations["listNotes"];
+        put?: never;
+        /** Create a clinical note */
+        post: operations["createNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/notes/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all versions of a note */
+        get: operations["listNoteVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/notes/{groupId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append a new immutable note version */
+        post: operations["addNoteVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List observations */
+        get: operations["listObservations"];
+        put?: never;
+        /** Record vitals/observations */
+        post: operations["addObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List tasks */
+        get: operations["listTasks"];
+        put?: never;
+        /** Create a department task */
+        post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete a task */
+        post: operations["completeTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/admissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's admissions */
+        get: operations["listAdmissions"];
+        put?: never;
+        /** Admit a patient */
+        post: operations["admitPatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/admissions/{admissionId}/discharge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Discharge an active admission */
+        post: operations["dischargePatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List a patient's reports */
+        get: operations["listReports"];
+        put?: never;
+        /** Create a clinical report */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical/triage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register and triage an emergency patient */
+        post: operations["triage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/clinical/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The current clinician's assigned patients */
+        get: operations["myQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign a patient to a clinician */
+        post: operations["assignPatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -584,6 +897,172 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
             members?: components["schemas"]["PatientSummary"][];
+        };
+        Order: {
+            /** Format: uuid */
+            id: string;
+            orderNo: string;
+            /** Format: uuid */
+            patientId: string;
+            /** @enum {string} */
+            orderType: "prescription" | "lab_request" | "nursing_order" | "referral";
+            /** @enum {string} */
+            status: "draft" | "submitted" | "accepted" | "in_progress" | "completed" | "cancelled";
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: uuid */
+            orderedBy: string;
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Format: uuid */
+            clinicalNoteId?: string | null;
+            /** Format: uuid */
+            actedBy?: string | null;
+            /** Format: uuid */
+            cancelledBy?: string | null;
+            cancelReason?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            submittedAt?: string | null;
+            /** Format: date-time */
+            acceptedAt?: string | null;
+            /** Format: date-time */
+            completedAt?: string | null;
+            /** Format: date-time */
+            cancelledAt?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Note: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            groupId: string;
+            /** Format: uuid */
+            patientId: string;
+            noteType: string;
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: uuid */
+            authorUserId: string;
+            authorRole: string;
+            note: string;
+            diagnosis?: string;
+            treatmentPlan?: string;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        Administration: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            medication: string;
+            dose?: string;
+            route?: string;
+            /** Format: uuid */
+            administeredBy: string;
+            /** Format: date-time */
+            administeredAt: string;
+            notes?: string;
+        };
+        Observation: {
+            /** Format: uuid */
+            id: string;
+            category: string;
+            measurements?: {
+                [key: string]: unknown;
+            };
+            notes?: string;
+            /** Format: uuid */
+            recordedBy: string;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        Task: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: uuid */
+            orderId?: string | null;
+            title: string;
+            description?: string;
+            status: string;
+            /** Format: uuid */
+            assignedTo?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            completedAt?: string | null;
+        };
+        Admission: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            patientId: string;
+            ward: string;
+            room?: string;
+            bed?: string;
+            /** Format: date-time */
+            admittedAt: string;
+            /** Format: uuid */
+            attendingDoctorId?: string | null;
+            admissionReason?: string;
+            /** @enum {string} */
+            status: "admitted" | "discharged";
+            /** Format: date-time */
+            dischargedAt?: string | null;
+            dischargeSummary?: string;
+            followUpInstructions?: string;
+        };
+        Report: {
+            /** Format: uuid */
+            id: string;
+            reportType?: string;
+            title: string;
+            content: string;
+            /** Format: uuid */
+            authorId: string;
+            /** Format: uuid */
+            departmentId?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        QueueItem: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** Format: uuid */
+            patientId: string;
+            patientNo: string;
+            firstName: string;
+            lastName: string;
+            gender?: string;
+            dateOfBirth?: string;
+            phone?: string;
+            /** Format: date-time */
+            assignedAt: string;
+        };
+        TriageResponse: {
+            patient: components["schemas"]["Patient"];
+            triage: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                patientId: string;
+                triageLevel: string;
+                chiefComplaint: string;
+                measurements?: {
+                    [key: string]: unknown;
+                };
+                /** Format: date-time */
+                createdAt: string;
+            };
         };
         ErrorEnvelope: {
             error: {
@@ -1215,6 +1694,690 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPatientOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Orders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"][];
+                };
+            };
+        };
+    };
+    createOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    orderType: "prescription" | "lab_request" | "nursing_order" | "referral";
+                    /** Format: uuid */
+                    departmentId?: string;
+                    details?: {
+                        [key: string]: unknown;
+                    };
+                    /** Format: uuid */
+                    noteId?: string;
+                    submit?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"];
+                };
+            };
+        };
+    };
+    listActionableOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Orders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"][];
+                };
+            };
+        };
+    };
+    submitOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submitted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Cancelled */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    transitionOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "accepted" | "in_progress" | "completed";
+                };
+            };
+        };
+        responses: {
+            /** @description Transitioned */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAdministrations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Administration"][];
+                };
+            };
+        };
+    };
+    addAdministration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    orderId: string;
+                    medication?: string;
+                    dose?: string;
+                    route?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listNotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"][];
+                };
+            };
+        };
+    };
+    createNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    noteType?: "consultation" | "nursing" | "progress";
+                    /** Format: uuid */
+                    departmentId?: string;
+                    note: string;
+                    diagnosis?: string;
+                    treatmentPlan?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    listNoteVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"][];
+                };
+            };
+        };
+    };
+    addNoteVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    departmentId?: string;
+                    note: string;
+                    diagnosis?: string;
+                    treatmentPlan?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Note"];
+                };
+            };
+        };
+    };
+    listObservations: {
+        parameters: {
+            query?: {
+                category?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Observations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"][];
+                };
+            };
+        };
+    };
+    addObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    category?: "vitals" | "observation";
+                    measurements?: {
+                        [key: string]: unknown;
+                    };
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listTasks: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tasks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"][];
+                };
+            };
+        };
+    };
+    createTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    patientId?: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                    title: string;
+                    description?: string;
+                    /** Format: uuid */
+                    assignedToUserId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    completeTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Completed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAdmissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admissions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Admission"][];
+                };
+            };
+        };
+    };
+    admitPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ward: string;
+                    room?: string;
+                    bed?: string;
+                    /** Format: uuid */
+                    attendingDoctorId?: string;
+                    admissionReason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Admitted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Admission"];
+                };
+            };
+        };
+    };
+    dischargePatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+                admissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    dischargeSummary: string;
+                    followUpInstructions?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Discharged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Admission"];
+                };
+            };
+        };
+    };
+    listReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reports */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"][];
+                };
+            };
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reportType?: string;
+                    title: string;
+                    content: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    triage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    firstName?: string;
+                    lastName?: string;
+                    gender?: string;
+                    chiefComplaint: string;
+                    triageLevel: string;
+                    measurements?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Triaged */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriageResponse"];
+                };
+            };
+        };
+    };
+    myQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queue */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueItem"][];
+                };
+            };
+        };
+    };
+    assignPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Resource internal UUID. */
+                id: components["parameters"]["Id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    assigneeUserId: string;
+                    /** Format: uuid */
+                    departmentId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Assigned */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
