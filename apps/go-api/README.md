@@ -31,7 +31,7 @@ Go core service for the Divine Hands HMS: identity, RBAC, sessions, and audit.
 | PATCH  | `/api/v1/patients/{id}/clinical/{entryId}`                 | `patients.amend`           |
 | GET    | `/api/v1/patients/{id}/timeline`                           | `patients.view`            |
 | GET    | `/api/v1/patients/{id}/documents`                          | `documents.view`           |
-| POST   | `/api/v1/patients/{id}/documents`                          | `documents.upload`         |     | POST | `/api/v1/families` | `families.create` |
+| POST   | `/api/v1/patients/{id}/documents`                          | `documents.upload`         |     | POST | `/api/v1/families`                  | `families.create`    |
 | GET    | `/api/v1/families/{id}`                                    | `families.view`            |
 | POST   | `/api/v1/patients/{id}/orders`                             | `orders.create`            |
 | GET    | `/api/v1/patients/{id}/orders`                             | `orders.view`              |
@@ -56,8 +56,24 @@ Go core service for the Divine Hands HMS: identity, RBAC, sessions, and audit.
 | POST   | `/api/v1/patients/{id}/reports`                            | `reports.write`            |
 | GET    | `/api/v1/patients/{id}/reports`                            | `reports.view`             |
 | POST   | `/api/v1/clinical/triage`                                  | `triage.manage`            |
-| GET    | `/api/v1/clinical/queue`                                   | `assignments.view`         |
-| POST   | `/api/v1/patients/{id}/assignments`                        | `assignments.manage`       |
+| GET    | `/api/v1/clinical/queue`                                   | `assignments.view`         |     | POST | `/api/v1/patients/{id}/assignments` | `assignments.manage` |
+| GET    | `/api/v1/pharmacy/medicines`                               | `medicines.view`           |
+| POST   | `/api/v1/pharmacy/medicines`                               | `medicines.manage`         |
+| GET    | `/api/v1/pharmacy/medicines/{id}`                          | `medicines.view`           |
+| PATCH  | `/api/v1/pharmacy/medicines/{id}`                          | `medicines.manage`         |
+| POST   | `/api/v1/pharmacy/receipts`                                | `inventory.receive`        |
+| POST   | `/api/v1/pharmacy/dispense`                                | `inventory.dispense`       |
+| POST   | `/api/v1/pharmacy/adjustments`                             | `inventory.adjust`         |
+| GET    | `/api/v1/approvals`                                        | `inventory.approve`        |
+| POST   | `/api/v1/approvals/{id}/approve`                           | `inventory.approve`        |
+| POST   | `/api/v1/approvals/{id}/reject`                            | `inventory.approve`        |
+| POST   | `/api/v1/pharmacy/batches/{id}/return`                     | `inventory.receive`        |
+| POST   | `/api/v1/pharmacy/batches/{id}/damage`                     | `inventory.adjust`         |
+| POST   | `/api/v1/pharmacy/batches/{id}/quarantine`                 | `inventory.adjust`         |
+| POST   | `/api/v1/pharmacy/transfers`                               | `inventory.transfer`       |
+| POST   | `/api/v1/pharmacy/counts`                                  | `inventory.count`          |
+| GET    | `/api/v1/pharmacy/movements`                               | `medicines.view`           |
+| GET    | `/api/v1/pharmacy/alerts`                                  | `medicines.view`           |
 
 Authentication uses `Authorization: Bearer <token>`. See `docs/rbac-audit.md`
 for the model and `packages/api-contracts/` for the OpenAPI spec.
