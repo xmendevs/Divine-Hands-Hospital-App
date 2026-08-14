@@ -30,6 +30,8 @@ tags:
     description: Shift definitions, clock-in/out, and attendance reporting.
   - name: handover
     description: Nursing shift handover notes and acknowledgement.
+  - name: roster
+    description: Automatic roster planning, generation, and approval.
 paths:
   /health:
     get:
@@ -3537,6 +3539,274 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   status: { type: string }
+  /api/v1/staff/unavailability:
+    post:
+      operationId: markUnavailable
+      summary: Record a staff member unavailable for a day
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId, workDate]
+              properties:
+                staffId: { type: string, format: uuid }
+                workDate: { type: string, format: date }
+                reason: { type: string }
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffUnavailability" }
+    get:
+      operationId: listUnavailability
+      summary: List unavailability records
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: staffId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Unavailability records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/StaffUnavailability" }
+  /api/v1/staff/unavailability/{id}:
+    delete:
+      operationId: deleteUnavailability
+      summary: Remove an unavailability record
+      tags: [staff]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/UnavailabilityId" }
+      responses:
+        "204":
+          description: Removed
+  /api/v1/roster/plans:
+    post:
+      operationId: createRosterPlan
+      summary: Create a roster plan and generate its proposed roster
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, departmentId, startDate, endDate, shiftRequirements]
+              properties:
+                name: { type: string }
+                departmentId: { type: string, format: uuid }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                maxHoursPerWeek: { type: number }
+                maxConsecutiveShifts: { type: integer }
+                minRestHours: { type: number }
+                maxConsecutiveNights: { type: integer }
+                shiftRequirements:
+                  type: array
+                  items: { $ref: "#/components/schemas/RosterShiftRequirement" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RosterPlan" }
+    get:
+      operationId: listRosterPlans
+      summary: List roster plans
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [draft, submitted, approved, rejected] }
+        - name: departmentId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RosterPlan" }
+  /api/v1/roster/plans/{id}:
+    get:
+      operationId: getRosterPlan
+      summary: Get one roster plan with assignments and unmet requirements
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      responses:
+        "200":
+          description: Plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RosterPlan" }
+  /api/v1/roster/plans/{id}/regenerate:
+    post:
+      operationId: regenerateRoster
+      summary: Regenerate a draft plan's proposed roster
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      responses:
+        "200":
+          description: Regenerated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RosterPlan" }
+  /api/v1/roster/plans/{id}/assignments:
+    post:
+      operationId: upsertRosterAssignment
+      summary: Add or move a single assignment (draft only)
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId, shiftId, workDate]
+              properties:
+                staffId: { type: string, format: uuid }
+                shiftId: { type: string, format: uuid }
+                workDate: { type: string, format: date }
+      responses:
+        "201":
+          description: Assigned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RosterAssignment" }
+  /api/v1/roster/plans/{id}/assignments/{assignmentId}:
+    delete:
+      operationId: deleteRosterAssignment
+      summary: Remove a single assignment (draft only)
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+        - { $ref: "#/components/parameters/RosterAssignmentId" }
+      responses:
+        "204":
+          description: Removed
+  /api/v1/roster/plans/{id}/submit:
+    post:
+      operationId: submitRoster
+      summary: Submit a draft roster for approval
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/roster/plans/{id}/approve:
+    post:
+      operationId: approveRoster
+      summary: Approve a submitted roster (super admin)
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/roster/plans/{id}/reject:
+    post:
+      operationId: rejectRoster
+      summary: Reject a submitted roster (super admin)
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/roster/plans/{id}/amend:
+    post:
+      operationId: amendRoster
+      summary: Create a new draft plan amending an approved roster
+      tags: [roster]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RosterPlanId" }
+      responses:
+        "201":
+          description: Amendment draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RosterPlan" }
 components:
   securitySchemes:
     bearerAuth:
@@ -3726,6 +3996,30 @@ components:
       in: path
       required: true
       description: Staff roster assignment internal UUID.
+      schema:
+        type: string
+        format: uuid
+    RosterPlanId:
+      name: id
+      in: path
+      required: true
+      description: Roster plan internal UUID.
+      schema:
+        type: string
+        format: uuid
+    RosterAssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      description: Roster assignment internal UUID.
+      schema:
+        type: string
+        format: uuid
+    UnavailabilityId:
+      name: id
+      in: path
+      required: true
+      description: Staff unavailability record internal UUID.
       schema:
         type: string
         format: uuid
@@ -4914,6 +5208,9 @@ components:
         roles:
           type: array
           items: { type: string }
+        shiftPreferences:
+          type: array
+          items: { $ref: "#/components/schemas/ShiftPreference" }
     StaffLeave:
       type: object
       required: [id, staffId, leaveType, startDate, endDate, status, requestedBy, createdAt, updatedAt]
@@ -4942,6 +5239,7 @@ components:
         startTime: { type: string }
         endTime: { type: string }
         lateGraceMinutes: { type: integer }
+        isNight: { type: boolean }
     AttendanceRecord:
       type: object
       required: [id, staffId, shiftId, workDate, clockInAt, clockInMethod, isLate, isEarlyLeave, status]
@@ -5021,6 +5319,85 @@ components:
         acknowledgedAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    ShiftPreference:
+      type: object
+      required: [shiftId, rank]
+      properties:
+        shiftId: { type: string, format: uuid }
+        shiftCode: { type: string }
+        shiftName: { type: string }
+        rank: { type: integer }
+    StaffUnavailability:
+      type: object
+      required: [id, staffId, workDate, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        staffId: { type: string, format: uuid }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        workDate: { type: string, format: date }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    RosterShiftRequirement:
+      type: object
+      required: [shiftId, required]
+      properties:
+        shiftId: { type: string, format: uuid }
+        required: { type: integer, minimum: 1 }
+    RosterAssignment:
+      type: object
+      required: [id, staffId, shiftId, workDate]
+      properties:
+        id: { type: string, format: uuid }
+        staffId: { type: string, format: uuid }
+        staffName: { type: string }
+        employeeNo: { type: string }
+        shiftId: { type: string, format: uuid }
+        shiftName: { type: string }
+        shiftCode: { type: string }
+        workDate: { type: string, format: date }
+    UnmetRequirement:
+      type: object
+      required: [shiftId, workDate, missing]
+      properties:
+        shiftId: { type: string, format: uuid }
+        shiftName: { type: string }
+        workDate: { type: string, format: date }
+        missing: { type: integer }
+    RosterPlan:
+      type: object
+      required: [id, planNo, name, departmentId, startDate, endDate, status, version, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        planNo: { type: string }
+        name: { type: string }
+        departmentId: { type: string, format: uuid }
+        departmentName: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        maxHoursPerWeek: { type: number }
+        maxConsecutiveShifts: { type: integer }
+        minRestHours: { type: number }
+        maxConsecutiveNights: { type: integer }
+        shiftRequirements:
+          type: array
+          items: { $ref: "#/components/schemas/RosterShiftRequirement" }
+        status: { type: string, enum: [draft, submitted, approved, rejected] }
+        version: { type: integer }
+        amendedFrom: { type: string, format: uuid, nullable: true }
+        submittedBy: { type: string, format: uuid, nullable: true }
+        submittedAt: { type: string, format: date-time, nullable: true }
+        approvedBy: { type: string, format: uuid, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        rejectedReason: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        assignments:
+          type: array
+          items: { $ref: "#/components/schemas/RosterAssignment" }
+        unmet:
+          type: array
+          items: { $ref: "#/components/schemas/UnmetRequirement" }
     ErrorEnvelope:
       type: object
       required: [error]

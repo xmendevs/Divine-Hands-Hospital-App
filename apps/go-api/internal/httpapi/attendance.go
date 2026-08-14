@@ -16,6 +16,7 @@ type staffShiftResponse struct {
 	StartTime        string `json:"startTime"`
 	EndTime          string `json:"endTime"`
 	LateGraceMinutes int    `json:"lateGraceMinutes"`
+	IsNight          bool   `json:"isNight"`
 }
 
 func newStaffShiftResponse(sh *domain.StaffShift) staffShiftResponse {
@@ -26,6 +27,7 @@ func newStaffShiftResponse(sh *domain.StaffShift) staffShiftResponse {
 		StartTime:        sh.StartTime,
 		EndTime:          sh.EndTime,
 		LateGraceMinutes: sh.LateGraceMinutes,
+		IsNight:          sh.IsNight,
 	}
 }
 
@@ -35,6 +37,7 @@ type createShiftRequest struct {
 	StartTime        string `json:"startTime"`
 	EndTime          string `json:"endTime"`
 	LateGraceMinutes int    `json:"lateGraceMinutes"`
+	IsNight          bool   `json:"isNight"`
 }
 
 // handleCreateShift creates a shift definition.
@@ -58,6 +61,7 @@ func (s *server) handleCreateShift(w http.ResponseWriter, r *http.Request) {
 		StartTime:        req.StartTime,
 		EndTime:          req.EndTime,
 		LateGraceMinutes: req.LateGraceMinutes,
+		IsNight:          req.IsNight,
 	})
 	if err != nil {
 		writeError(w, r, http.StatusConflict, "conflict", "shift code already exists")

@@ -2127,6 +2127,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/unavailability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List unavailability records */
+        get: operations["listUnavailability"];
+        put?: never;
+        /** Record a staff member unavailable for a day */
+        post: operations["markUnavailable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/unavailability/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an unavailability record */
+        delete: operations["deleteUnavailability"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List roster plans */
+        get: operations["listRosterPlans"];
+        put?: never;
+        /** Create a roster plan and generate its proposed roster */
+        post: operations["createRosterPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one roster plan with assignments and unmet requirements */
+        get: operations["getRosterPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate a draft plan's proposed roster */
+        post: operations["regenerateRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add or move a single assignment (draft only) */
+        post: operations["upsertRosterAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a single assignment (draft only) */
+        delete: operations["deleteRosterAssignment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a draft roster for approval */
+        post: operations["submitRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a submitted roster (super admin) */
+        post: operations["approveRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted roster (super admin) */
+        post: operations["rejectRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/roster/plans/{id}/amend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a new draft plan amending an approved roster */
+        post: operations["amendRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3232,6 +3421,7 @@ export interface components {
             /** Format: date */
             hireDate?: string | null;
             roles?: string[];
+            shiftPreferences?: components["schemas"]["ShiftPreference"][];
         };
         StaffLeave: {
             /** Format: uuid */
@@ -3267,6 +3457,7 @@ export interface components {
             startTime: string;
             endTime: string;
             lateGraceMinutes: number;
+            isNight?: boolean;
         };
         AttendanceRecord: {
             /** Format: uuid */
@@ -3362,6 +3553,91 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ShiftPreference: {
+            /** Format: uuid */
+            shiftId: string;
+            shiftCode?: string;
+            shiftName?: string;
+            rank: number;
+        };
+        StaffUnavailability: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            staffId: string;
+            staffName?: string;
+            employeeNo?: string;
+            /** Format: date */
+            workDate: string;
+            reason?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RosterShiftRequirement: {
+            /** Format: uuid */
+            shiftId: string;
+            required: number;
+        };
+        RosterAssignment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            staffId: string;
+            staffName?: string;
+            employeeNo?: string;
+            /** Format: uuid */
+            shiftId: string;
+            shiftName?: string;
+            shiftCode?: string;
+            /** Format: date */
+            workDate: string;
+        };
+        UnmetRequirement: {
+            /** Format: uuid */
+            shiftId: string;
+            shiftName?: string;
+            /** Format: date */
+            workDate: string;
+            missing: number;
+        };
+        RosterPlan: {
+            /** Format: uuid */
+            id: string;
+            planNo: string;
+            name: string;
+            /** Format: uuid */
+            departmentId: string;
+            departmentName?: string;
+            /** Format: date */
+            startDate: string;
+            /** Format: date */
+            endDate: string;
+            maxHoursPerWeek?: number;
+            maxConsecutiveShifts?: number;
+            minRestHours?: number;
+            maxConsecutiveNights?: number;
+            shiftRequirements?: components["schemas"]["RosterShiftRequirement"][];
+            /** @enum {string} */
+            status: "draft" | "submitted" | "approved" | "rejected";
+            version: number;
+            /** Format: uuid */
+            amendedFrom?: string | null;
+            /** Format: uuid */
+            submittedBy?: string | null;
+            /** Format: date-time */
+            submittedAt?: string | null;
+            /** Format: uuid */
+            approvedBy?: string | null;
+            /** Format: date-time */
+            approvedAt?: string | null;
+            rejectedReason?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            assignments?: components["schemas"]["RosterAssignment"][];
+            unmet?: components["schemas"]["UnmetRequirement"][];
+        };
         ErrorEnvelope: {
             error: {
                 code: string;
@@ -3418,6 +3694,12 @@ export interface components {
         HandoverId: string;
         /** @description Staff roster assignment internal UUID. */
         RosterId: string;
+        /** @description Roster plan internal UUID. */
+        RosterPlanId: string;
+        /** @description Roster assignment internal UUID. */
+        RosterAssignmentId: string;
+        /** @description Staff unavailability record internal UUID. */
+        UnavailabilityId: string;
     };
     requestBodies: never;
     headers: never;
@@ -7778,6 +8060,361 @@ export interface operations {
                         id?: string;
                         status?: string;
                     };
+                };
+            };
+        };
+    };
+    listUnavailability: {
+        parameters: {
+            query?: {
+                staffId?: string;
+                date?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unavailability records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffUnavailability"][];
+                };
+            };
+        };
+    };
+    markUnavailable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    staffId: string;
+                    /** Format: date */
+                    workDate: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffUnavailability"];
+                };
+            };
+        };
+    };
+    deleteUnavailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Staff unavailability record internal UUID. */
+                id: components["parameters"]["UnavailabilityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listRosterPlans: {
+        parameters: {
+            query?: {
+                status?: "draft" | "submitted" | "approved" | "rejected";
+                departmentId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plans */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterPlan"][];
+                };
+            };
+        };
+    };
+    createRosterPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: uuid */
+                    departmentId: string;
+                    /** Format: date */
+                    startDate: string;
+                    /** Format: date */
+                    endDate: string;
+                    maxHoursPerWeek?: number;
+                    maxConsecutiveShifts?: number;
+                    minRestHours?: number;
+                    maxConsecutiveNights?: number;
+                    shiftRequirements: components["schemas"]["RosterShiftRequirement"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterPlan"];
+                };
+            };
+        };
+    };
+    getRosterPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterPlan"];
+                };
+            };
+        };
+    };
+    regenerateRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Regenerated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterPlan"];
+                };
+            };
+        };
+    };
+    upsertRosterAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    staffId: string;
+                    /** Format: uuid */
+                    shiftId: string;
+                    /** Format: date */
+                    workDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Assigned */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterAssignment"];
+                };
+            };
+        };
+    };
+    deleteRosterAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+                /** @description Roster assignment internal UUID. */
+                assignmentId: components["parameters"]["RosterAssignmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    submitRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submitted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    approveRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    rejectRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    amendRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Roster plan internal UUID. */
+                id: components["parameters"]["RosterPlanId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Amendment draft */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RosterPlan"];
                 };
             };
         };

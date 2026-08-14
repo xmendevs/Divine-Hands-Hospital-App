@@ -165,6 +165,23 @@ clock-ins are blocked by unique indexes, handover self-acknowledgement is
 blocked (422 `self_acknowledgement`), and every action is audited
 (`staff.*`, `attendance.*`, `handover.*`). See `docs/staff-attendance.md`.
 
+## Automatic roster planning & approval (Phase 10)
+
+Phase 10 adds `roster.view`, `roster.plan`, and `roster.approve`.
+
+- **matron** & **admin** — `roster.view` + `roster.plan` (create, generate,
+  edit, submit).
+- **super_admin** — approves/rejects submitted rosters (holds every
+  permission); a submitted roster cannot be approved by the planner who
+  submitted it (matron/admin lack `roster.approve`).
+
+Hard constraints (leave, unavailability, rest, hours, consecutive and night
+limits) are enforced by the generator, a unique `(plan_id, staff_id,
+work_date)` index prevents conflicting shifts, and published rosters are
+immutable except through an amendment draft. Every plan/assignment/submission
+/approval/rejection is audited with `roster.*` actions. See
+`docs/roster-planning.md`.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in

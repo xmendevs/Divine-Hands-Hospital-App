@@ -52,12 +52,12 @@ func (s *Store) attendanceMethodAllowed(ctx context.Context, m string) (bool, er
 // ---- shift definitions ----
 
 const staffShiftCols = `id::text, code, name, to_char(start_time, 'HH24:MI'), to_char(end_time, 'HH24:MI'),
-	late_grace_minutes, created_at, updated_at`
+	late_grace_minutes, is_night, created_at, updated_at`
 
 func scanStaffShift(r pgx.Row) (*domain.StaffShift, error) {
 	var sh domain.StaffShift
 	err := r.Scan(&sh.ID, &sh.Code, &sh.Name, &sh.StartTime, &sh.EndTime,
-		&sh.LateGraceMinutes, &sh.CreatedAt, &sh.UpdatedAt)
+		&sh.LateGraceMinutes, &sh.IsNight, &sh.CreatedAt, &sh.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +71,15 @@ type CreateShiftParams struct {
 	StartTime        string // HH:MM
 	EndTime          string // HH:MM
 	LateGraceMinutes int
+	IsNight          bool
 }
 
 // CreateStaffShift registers a shift definition.
 func (s *Store) CreateStaffShift(ctx context.Context, p CreateShiftParams) (*domain.StaffShift, error) {
 	sh, err := scanStaffShift(s.pool.QueryRow(ctx, `
-		INSERT INTO staff_shifts (code, name, start_time, end_time, late_grace_minutes)
-		VALUES ($1, $2, $3::time, $4::time, $5)
-		RETURNING `+staffShiftCols, p.Code, p.Name, p.StartTime, p.EndTime, p.LateGraceMinutes))
+		INSERT INTO staff_shifts (code, name, start_time, end_time, late_grace_minutes, is_night)
+		VALUES ($1, $2, $3::time, $4::time, $5, $6)
+		RETURNING `+staffShiftCols, p.Code, p.Name, p.StartTime, p.EndTime, p.LateGraceMinutes, p.IsNight))
 	if err != nil {
 		return nil, err
 	}

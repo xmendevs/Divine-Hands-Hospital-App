@@ -1425,6 +1425,7 @@ type StaffShift struct {
 	StartTime        string // HH:MM
 	EndTime          string // HH:MM
 	LateGraceMinutes int
+	IsNight          bool
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -1508,4 +1509,102 @@ type StaffRoster struct {
 	EmployeeNo string // joined
 	ShiftName  string // joined
 	ShiftCode  string // joined
+}
+
+// Roster plan statuses (Phase 10).
+const (
+	RosterStatusDraft     = "draft"
+	RosterStatusSubmitted = "submitted"
+	RosterStatusApproved  = "approved"
+	RosterStatusRejected  = "rejected"
+)
+
+// Roster audit actions (Phase 10).
+const (
+	ActionRosterPlanCreate       = "roster.plan_create"
+	ActionRosterGenerate         = "roster.generate"
+	ActionRosterAssignmentAdd    = "roster.assignment_add"
+	ActionRosterAssignmentRemove = "roster.assignment_remove"
+	ActionRosterSubmit           = "roster.submit"
+	ActionRosterApprove          = "roster.approve"
+	ActionRosterReject           = "roster.reject"
+	ActionRosterAmend            = "roster.amend"
+)
+
+// RosterShiftRequirement is a required staffing level for one shift.
+type RosterShiftRequirement struct {
+	ShiftID  string `json:"shiftId"`
+	Required int    `json:"required"`
+}
+
+// RosterAssignment is one staff-to-shift assignment within a plan.
+type RosterAssignment struct {
+	ID         string
+	PlanID     string
+	StaffID    string
+	ShiftID    string
+	WorkDate   string // ISO date
+	CreatedBy  *string
+	CreatedAt  time.Time
+	StaffName  string // joined
+	EmployeeNo string // joined
+	ShiftName  string // joined
+	ShiftCode  string // joined
+}
+
+// UnmetRequirement is a staffing shortfall the generator could not fill.
+type UnmetRequirement struct {
+	ShiftID   string `json:"shiftId"`
+	ShiftName string `json:"shiftName"`
+	WorkDate  string `json:"workDate"`
+	Missing   int    `json:"missing"`
+}
+
+// RosterPlan is a roster generation session with parameters and status.
+type RosterPlan struct {
+	ID                   string
+	PlanNo               string
+	Name                 string
+	DepartmentID         string
+	DepartmentName       string
+	StartDate            string // ISO date
+	EndDate              string // ISO date
+	MaxHoursPerWeek      float64
+	MaxConsecutiveShifts int
+	MinRestHours         float64
+	MaxConsecutiveNights int
+	ShiftRequirements    []RosterShiftRequirement
+	Status               string
+	Version              int
+	AmendedFrom          *string
+	CreatedBy            string
+	SubmittedBy          *string
+	SubmittedAt          *time.Time
+	ApprovedBy           *string
+	ApprovedAt           *time.Time
+	RejectedReason       string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	Assignments          []RosterAssignment
+	Unmet                []UnmetRequirement
+}
+
+// StaffUnavailability marks a staff member unavailable for a whole day.
+type StaffUnavailability struct {
+	ID         string
+	StaffID    string
+	WorkDate   string // ISO date
+	Reason     string
+	CreatedBy  *string
+	CreatedAt  time.Time
+	StaffName  string // joined
+	EmployeeNo string // joined
+}
+
+// ShiftPreference is a staff member's preferred shift, ranked.
+type ShiftPreference struct {
+	ShiftID   string `json:"shiftId"`
+	ShiftCode string `json:"shiftCode,omitempty"`
+	ShiftName string `json:"shiftName,omitempty"`
+	Rank      int    `json:"rank"`
 }

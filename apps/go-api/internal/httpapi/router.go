@@ -231,6 +231,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/staff/leave", s.perm("staff.leave_request", s.handleListLeave))
 	mux.Handle("POST /api/v1/staff/leave/{id}/approve", s.perm("staff.leave_manage", s.handleApproveLeave))
 	mux.Handle("POST /api/v1/staff/leave/{id}/reject", s.perm("staff.leave_manage", s.handleRejectLeave))
+	mux.Handle("POST /api/v1/staff/unavailability", s.perm("attendance.manage", s.handleMarkUnavailable))
+	mux.Handle("GET /api/v1/staff/unavailability", s.perm("attendance.view", s.handleListUnavailability))
+	mux.Handle("DELETE /api/v1/staff/unavailability/{id}", s.perm("attendance.manage", s.handleDeleteUnavailability))
 
 	mux.Handle("POST /api/v1/attendance/shifts", s.perm("attendance.manage", s.handleCreateShift))
 	mux.Handle("GET /api/v1/attendance/shifts", s.perm("attendance.view", s.handleListStaffShifts))
@@ -246,6 +249,18 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/handovers", s.perm("handover.view", s.handleListHandovers))
 	mux.Handle("GET /api/v1/handovers/{id}", s.perm("handover.view", s.handleGetHandover))
 	mux.Handle("POST /api/v1/handovers/{id}/acknowledge", s.perm("handover.acknowledge", s.handleAcknowledgeHandover))
+
+	// Automatic roster planning & approval (Phase 10).
+	mux.Handle("POST /api/v1/roster/plans", s.perm("roster.plan", s.handleCreateRosterPlan))
+	mux.Handle("GET /api/v1/roster/plans", s.perm("roster.view", s.handleListRosterPlans))
+	mux.Handle("GET /api/v1/roster/plans/{id}", s.perm("roster.view", s.handleGetRosterPlan))
+	mux.Handle("POST /api/v1/roster/plans/{id}/regenerate", s.perm("roster.plan", s.handleRegenerateRoster))
+	mux.Handle("POST /api/v1/roster/plans/{id}/assignments", s.perm("roster.plan", s.handleUpsertRosterAssignment))
+	mux.Handle("DELETE /api/v1/roster/plans/{id}/assignments/{assignmentId}", s.perm("roster.plan", s.handleDeleteRosterAssignment))
+	mux.Handle("POST /api/v1/roster/plans/{id}/submit", s.perm("roster.plan", s.handleSubmitRoster))
+	mux.Handle("POST /api/v1/roster/plans/{id}/approve", s.perm("roster.approve", s.handleApproveRoster))
+	mux.Handle("POST /api/v1/roster/plans/{id}/reject", s.perm("roster.approve", s.handleRejectRoster))
+	mux.Handle("POST /api/v1/roster/plans/{id}/amend", s.perm("roster.plan", s.handleAmendRoster))
 
 	return withMiddleware(mux, logger)
 }

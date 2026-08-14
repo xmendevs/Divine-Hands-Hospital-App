@@ -191,6 +191,141 @@ func (s *Store) ListLeave(ctx context.Context, p ListLeaveParams) ([]domain.Staf
 	return out, rows.Err()
 }
 
+// ---- staff unavailability & shift preferences ----
+
+const unavailabilityCols = `su.id::text, su.staff_id::text, su.work_date::text, su.reason,
+	su.created_by::text, su.created_at, COALESCE(st.first_name || ' ' || st.last_name, ''), COALESCE(st.employee_no, '')`
+
+const unavailabilityFrom = ` FROM staff_unavailability su JOIN staff st ON st.id = su.staff_id`
+
+func scanUnavailability(r pgx.Row) (*domain.StaffUnavailability, error) {
+	var u domain.StaffUnavailability
+	err := r.Scan(&u.ID, &u.StaffID, &u.WorkDate, &u.Reason,
+		&u.CreatedBy, &u.CreatedAt, &u.StaffName, &u.EmployeeNo)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// MarkUnavailable records a staff member unavailable for a whole day.
+func (s *Store) MarkUnavailable(ctx context.Context, staffID, workDate, reason, createdBy string) (*domain.StaffUnavailability, error) {
+	var id string
+	if err := s.pool.QueryRow(ctx, `
+		INSERT INTO staff_unavailability (staff_id, work_date, reason, created_by)
+		VALUES ($1::uuid, $2::date, $3, $4::uuid)
+		ON CONFLICT (staff_id, work_date) DO UPDATE SET reason = EXCLUDED.reason
+		RETURNING id::text`, staffID, workDate, reason, nullableUUID(&createdBy)).Scan(&id); err != nil {
+		return nil, err
+	}
+	u, err := scanUnavailability(s.pool.QueryRow(ctx, `SELECT `+unavailabilityCols+unavailabilityFrom+` WHERE su.id = $1::uuid`, id))
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
+// ListUnavailabilityParams filters unavailability records.
+type ListUnavailabilityParams struct {
+	StaffID string
+	Date    string
+	Limit   int
+	Offset  int
+}
+
+// ListUnavailability returns unavailability records, newest first.
+func (s *Store) ListUnavailability(ctx context.Context, p ListUnavailabilityParams) ([]domain.StaffUnavailability, error) {
+	q := `SELECT ` + unavailabilityCols + unavailabilityFrom + ` WHERE true`
+	args := []any{}
+	if p.StaffID != "" {
+		args = append(args, p.StaffID)
+		q += ` AND su.staff_id = $` + itoa(len(args)) + `::uuid`
+	}
+	if p.Date != "" {
+		args = append(args, p.Date)
+		q += ` AND su.work_date = $` + itoa(len(args)) + `::date`
+	}
+	q += ` ORDER BY su.work_date DESC LIMIT $` + itoa(len(args)+1) + ` OFFSET $` + itoa(len(args)+2)
+	args = append(args, p.Limit, p.Offset)
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.StaffUnavailability
+	for rows.Next() {
+		u, err := scanUnavailability(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *u)
+	}
+	return out, rows.Err()
+}
+
+// DeleteUnavailability removes an unavailability record.
+func (s *Store) DeleteUnavailability(ctx context.Context, id string) error {
+	ct, err := s.pool.Exec(ctx, `DELETE FROM staff_unavailability WHERE id = $1::uuid`, id)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ShiftPreferenceInput carries one preferred shift.
+type ShiftPreferenceInput struct {
+	ShiftID string
+	Rank    int
+}
+
+// ReplaceShiftPreferences sets a staff member's shift preferences.
+func (s *Store) ReplaceShiftPreferences(ctx context.Context, staffID string, prefs []ShiftPreferenceInput) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, `DELETE FROM staff_shift_preferences WHERE staff_id = $1::uuid`, staffID); err != nil {
+		return err
+	}
+	for _, p := range prefs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO staff_shift_preferences (staff_id, shift_id, rank)
+			VALUES ($1::uuid, $2::uuid, $3)`, staffID, p.ShiftID, p.Rank); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// ListShiftPreferences returns a staff member's shift preferences.
+func (s *Store) ListShiftPreferences(ctx context.Context, staffID string) ([]domain.ShiftPreference, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT sp.shift_id::text, COALESCE(sh.code, ''), COALESCE(sh.name, ''), sp.rank
+		FROM staff_shift_preferences sp JOIN staff_shifts sh ON sh.id = sp.shift_id
+		WHERE sp.staff_id = $1::uuid ORDER BY sp.rank ASC`, staffID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []domain.ShiftPreference
+	for rows.Next() {
+		var p domain.ShiftPreference
+		if err := rows.Scan(&p.ShiftID, &p.ShiftCode, &p.ShiftName, &p.Rank); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // DecideLeave approves or rejects a pending leave request.
 func (s *Store) DecideLeave(ctx context.Context, id, status, decidedBy string) error {
 	tx, err := s.pool.Begin(ctx)
