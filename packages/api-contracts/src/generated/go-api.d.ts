@@ -1161,6 +1161,282 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lab/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the active laboratory test catalogue */
+        get: operations["listLabTests"];
+        put?: never;
+        /** Add a test to the catalogue */
+        post: operations["createLabTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/tests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one catalogue test */
+        get: operations["getLabTest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a catalogue test */
+        patch: operations["updateLabTest"];
+        trace?: never;
+    };
+    "/api/v1/lab/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List lab clients (external and referral) */
+        get: operations["listLabClients"];
+        put?: never;
+        /** Register an external or referral lab client */
+        post: operations["createLabClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/clients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one lab client */
+        get: operations["getLabClient"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List lab requests */
+        get: operations["listLabRequests"];
+        put?: never;
+        /** Order laboratory tests for a patient or lab client */
+        post: operations["createLabRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one lab request with items and specimens */
+        get: operations["getLabRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance a request one workflow step (optionally set paymentStatus) */
+        post: operations["transitionLabRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a lab request */
+        post: operations["cancelLabRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}/collect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Collect specimens for requested items */
+        post: operations["collectLabSpecimens"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enter structured results for request items */
+        post: operations["enterLabResults"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/requests/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Release a verified lab request */
+        post: operations["releaseLabRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record receipt of a collected specimen */
+        post: operations["receiveLabSpecimen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/specimens/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a specimen (quality issue), triggering recollection */
+        post: operations["rejectLabSpecimen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/items/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify an entered result (separate from entry; self-verification is blocked for high-risk tests) */
+        post: operations["verifyLabItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/critical": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List critical-result notifications */
+        get: operations["listLabCriticalNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lab/critical/{id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge a critical-result notification */
+        post: operations["acknowledgeLabCritical"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1846,6 +2122,164 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        LabTest: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            category: string;
+            price: number;
+            specimenType: string;
+            container?: string;
+            turnaroundMinutes: number;
+            units?: string;
+            referenceRanges?: Record<string, never>[];
+            verificationRequired: boolean;
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        LabClient: {
+            /** Format: uuid */
+            id: string;
+            clientNo: string;
+            /** @enum {string} */
+            clientType: "external" | "referral";
+            firstName: string;
+            lastName: string;
+            gender?: string;
+            /** Format: date */
+            dateOfBirth?: string | null;
+            phone?: string;
+            email?: string;
+            addressLine1?: string;
+            addressLine2?: string;
+            city?: string;
+            state?: string;
+            country?: string;
+            referringFacility?: string;
+            referringPhysician?: string;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        LabRequestItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            requestId: string;
+            /** Format: uuid */
+            testId: string;
+            testCode: string;
+            testName: string;
+            verificationRequired: boolean;
+            specimenType: string;
+            price: number;
+            /** Format: uuid */
+            specimenId?: string | null;
+            resultValue?: Record<string, never>;
+            resultText?: string;
+            critical: boolean;
+            /** Format: uuid */
+            resultEnteredBy?: string | null;
+            /** Format: date-time */
+            resultEnteredAt?: string | null;
+            /** Format: uuid */
+            resultVerifiedBy?: string | null;
+            /** Format: date-time */
+            resultVerifiedAt?: string | null;
+        };
+        LabSpecimen: {
+            /** Format: uuid */
+            id: string;
+            specimenNo: string;
+            /** Format: uuid */
+            requestId: string;
+            /** Format: uuid */
+            itemId: string;
+            specimenType: string;
+            /** Format: uuid */
+            collectedBy: string;
+            /** Format: date-time */
+            collectedAt: string;
+            /** Format: uuid */
+            receivedBy?: string | null;
+            /** Format: date-time */
+            receivedAt?: string | null;
+            condition?: string;
+            storageLocation?: string;
+            /** @enum {string} */
+            status: "collected" | "received" | "rejected";
+            rejectionReason?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        LabRequest: {
+            /** Format: uuid */
+            id: string;
+            requestNo: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            /** Format: uuid */
+            clientId?: string | null;
+            patientNo?: string;
+            patientName?: string;
+            clientNo?: string;
+            clientName?: string;
+            /** Format: uuid */
+            orderedBy: string;
+            orderedByName: string;
+            /** @enum {string} */
+            priority: "routine" | "urgent" | "stat";
+            clinicalNotes?: string;
+            /** @enum {string} */
+            paymentStatus: "pending" | "preauthorized" | "paid" | "waived";
+            /** @enum {string} */
+            status: "requested" | "payment" | "specimen_collected" | "received" | "processing" | "result_entered" | "verified" | "released" | "cancelled";
+            cancelReason?: string;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            releasedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            items?: components["schemas"]["LabRequestItem"][];
+            specimens?: components["schemas"]["LabSpecimen"][];
+        };
+        LabCriticalNotification: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            itemId: string;
+            /** Format: uuid */
+            requestId: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            /** Format: uuid */
+            clientId?: string | null;
+            /** Format: uuid */
+            notifiedToUserId?: string | null;
+            notifiedToName: string;
+            /** Format: date-time */
+            notifiedAt: string;
+            /** Format: uuid */
+            acknowledgedBy?: string | null;
+            /** Format: date-time */
+            acknowledgedAt?: string | null;
+            acknowledgementNotes?: string;
+            /** @enum {string} */
+            status: "pending" | "acknowledged";
+            /** Format: date-time */
+            createdAt: string;
+        };
         ErrorEnvelope: {
             error: {
                 code: string;
@@ -1860,6 +2294,22 @@ export interface components {
         RequestId: string;
         /** @description Resource internal UUID. */
         Id: string;
+        /** @description Maximum number of records to return. */
+        PageLimit: number;
+        /** @description Number of records to skip. */
+        PageOffset: number;
+        /** @description Catalogue test internal UUID. */
+        LabTestId: string;
+        /** @description Lab client internal UUID. */
+        LabClientId: string;
+        /** @description Lab request internal UUID. */
+        LabRequestId: string;
+        /** @description Specimen internal UUID. */
+        LabSpecimenId: string;
+        /** @description Request item internal UUID. */
+        LabItemId: string;
+        /** @description Critical notification internal UUID. */
+        LabNotificationId: string;
     };
     requestBodies: never;
     headers: never;
@@ -4200,6 +4650,620 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceProvider"];
+                };
+            };
+        };
+    };
+    listLabTests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabTest"][];
+                };
+            };
+        };
+    };
+    createLabTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    category: string;
+                    price?: number;
+                    specimenType: string;
+                    container?: string;
+                    turnaroundMinutes?: number;
+                    units?: string;
+                    referenceRanges?: Record<string, never>[];
+                    verificationRequired?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabTest"];
+                };
+            };
+        };
+    };
+    getLabTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalogue test internal UUID. */
+                id: components["parameters"]["LabTestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Test */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabTest"];
+                };
+            };
+        };
+    };
+    updateLabTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Catalogue test internal UUID. */
+                id: components["parameters"]["LabTestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    category: string;
+                    price?: number;
+                    specimenType: string;
+                    container?: string;
+                    turnaroundMinutes?: number;
+                    units?: string;
+                    referenceRanges?: Record<string, never>[];
+                    verificationRequired?: boolean;
+                    active: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                    };
+                };
+            };
+        };
+    };
+    listLabClients: {
+        parameters: {
+            query?: {
+                search?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Clients */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabClient"][];
+                };
+            };
+        };
+    };
+    createLabClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    clientType?: "external" | "referral";
+                    firstName: string;
+                    lastName: string;
+                    gender?: string;
+                    /** Format: date */
+                    dateOfBirth?: string;
+                    phone?: string;
+                    /** Format: email */
+                    email?: string;
+                    addressLine1?: string;
+                    addressLine2?: string;
+                    city?: string;
+                    state?: string;
+                    country?: string;
+                    referringFacility?: string;
+                    referringPhysician?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabClient"];
+                };
+            };
+        };
+    };
+    getLabClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab client internal UUID. */
+                id: components["parameters"]["LabClientId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabClient"];
+                };
+            };
+        };
+    };
+    listLabRequests: {
+        parameters: {
+            query?: {
+                status?: string;
+                patientId?: string;
+                clientId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabRequest"][];
+                };
+            };
+        };
+    };
+    createLabRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    patientId?: string;
+                    /** Format: uuid */
+                    clientId?: string;
+                    /** @enum {string} */
+                    priority?: "routine" | "urgent" | "stat";
+                    clinicalNotes?: string;
+                    testIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabRequest"];
+                };
+            };
+        };
+    };
+    getLabRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabRequest"];
+                };
+            };
+        };
+    };
+    transitionLabRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    status: string;
+                    /** @enum {string} */
+                    paymentStatus?: "pending" | "preauthorized" | "paid" | "waived";
+                };
+            };
+        };
+        responses: {
+            /** @description Advanced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    cancelLabRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    collectLabSpecimens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    specimens: {
+                        /** Format: uuid */
+                        itemId: string;
+                        specimenType?: string;
+                        /** Format: date-time */
+                        collectedAt?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Collected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        count?: number;
+                    };
+                };
+            };
+        };
+    };
+    enterLabResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    entries: {
+                        /** Format: uuid */
+                        itemId: string;
+                        resultValue?: Record<string, never>;
+                        resultText?: string;
+                        critical?: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Entered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        notifications?: number;
+                    };
+                };
+            };
+        };
+    };
+    releaseLabRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Lab request internal UUID. */
+                id: components["parameters"]["LabRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Released */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    receiveLabSpecimen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Specimen internal UUID. */
+                id: components["parameters"]["LabSpecimenId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    condition?: string;
+                    storageLocation?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Received */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabSpecimen"];
+                };
+            };
+        };
+    };
+    rejectLabSpecimen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Specimen internal UUID. */
+                id: components["parameters"]["LabSpecimenId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    verifyLabItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Request item internal UUID. */
+                id: components["parameters"]["LabItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        verified?: boolean;
+                    };
+                };
+            };
+        };
+    };
+    listLabCriticalNotifications: {
+        parameters: {
+            query?: {
+                status?: "pending" | "acknowledged";
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabCriticalNotification"][];
+                };
+            };
+        };
+    };
+    acknowledgeLabCritical: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Critical notification internal UUID. */
+                id: components["parameters"]["LabNotificationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Acknowledged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
                 };
             };
         };

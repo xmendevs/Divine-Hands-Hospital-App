@@ -20,6 +20,10 @@ tags:
     description: Notes, observations, tasks, reports, triage, and assignments.
   - name: pharmacy
     description: Medicines, inventory, dispensing, adjustments, and approvals.
+  - name: assets
+    description: General inventory, instruments, equipment, and maintenance.
+  - name: lab
+    description: Laboratory information system (clients, tests, specimens, results).
 paths:
   /health:
     get:
@@ -1876,6 +1880,517 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ServiceProvider" }
+  /api/v1/lab/tests:
+    get:
+      operationId: listLabTests
+      summary: List the active laboratory test catalogue
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Tests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LabTest" }
+    post:
+      operationId: createLabTest
+      summary: Add a test to the catalogue
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, category, specimenType]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                category: { type: string }
+                price: { type: number, minimum: 0 }
+                specimenType: { type: string }
+                container: { type: string }
+                turnaroundMinutes: { type: integer, minimum: 1 }
+                units: { type: string }
+                referenceRanges:
+                  type: array
+                  items: { type: object }
+                verificationRequired: { type: boolean }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabTest" }
+  /api/v1/lab/tests/{id}:
+    get:
+      operationId: getLabTest
+      summary: Get one catalogue test
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabTestId" }
+      responses:
+        "200":
+          description: Test
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabTest" }
+    patch:
+      operationId: updateLabTest
+      summary: Update a catalogue test
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabTestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, category, specimenType, active]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                category: { type: string }
+                price: { type: number, minimum: 0 }
+                specimenType: { type: string }
+                container: { type: string }
+                turnaroundMinutes: { type: integer, minimum: 1 }
+                units: { type: string }
+                referenceRanges:
+                  type: array
+                  items: { type: object }
+                verificationRequired: { type: boolean }
+                active: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+  /api/v1/lab/clients:
+    get:
+      operationId: listLabClients
+      summary: List lab clients (external and referral)
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LabClient" }
+    post:
+      operationId: createLabClient
+      summary: Register an external or referral lab client
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName]
+              properties:
+                clientType: { type: string, enum: [external, referral] }
+                firstName: { type: string }
+                lastName: { type: string }
+                gender: { type: string }
+                dateOfBirth: { type: string, format: date }
+                phone: { type: string }
+                email: { type: string, format: email }
+                addressLine1: { type: string }
+                addressLine2: { type: string }
+                city: { type: string }
+                state: { type: string }
+                country: { type: string }
+                referringFacility: { type: string }
+                referringPhysician: { type: string }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabClient" }
+  /api/v1/lab/clients/{id}:
+    get:
+      operationId: getLabClient
+      summary: Get one lab client
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabClientId" }
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabClient" }
+  /api/v1/lab/requests:
+    post:
+      operationId: createLabRequest
+      summary: Order laboratory tests for a patient or lab client
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [testIds]
+              properties:
+                patientId: { type: string, format: uuid }
+                clientId: { type: string, format: uuid }
+                priority: { type: string, enum: [routine, urgent, stat] }
+                clinicalNotes: { type: string }
+                testIds:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabRequest" }
+    get:
+      operationId: listLabRequests
+      summary: List lab requests
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: patientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: clientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LabRequest" }
+  /api/v1/lab/requests/{id}:
+    get:
+      operationId: getLabRequest
+      summary: Get one lab request with items and specimens
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      responses:
+        "200":
+          description: Request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabRequest" }
+  /api/v1/lab/requests/{id}/status:
+    post:
+      operationId: transitionLabRequest
+      summary: Advance a request one workflow step (optionally set paymentStatus)
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string }
+                paymentStatus: { type: string, enum: [pending, preauthorized, paid, waived] }
+      responses:
+        "200":
+          description: Advanced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/lab/requests/{id}/cancel:
+    post:
+      operationId: cancelLabRequest
+      summary: Cancel a lab request
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/lab/requests/{id}/collect:
+    post:
+      operationId: collectLabSpecimens
+      summary: Collect specimens for requested items
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [specimens]
+              properties:
+                specimens:
+                  type: array
+                  items:
+                    type: object
+                    required: [itemId]
+                    properties:
+                      itemId: { type: string, format: uuid }
+                      specimenType: { type: string }
+                      collectedAt: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Collected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+  /api/v1/lab/requests/{id}/results:
+    post:
+      operationId: enterLabResults
+      summary: Enter structured results for request items
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  items:
+                    type: object
+                    required: [itemId]
+                    properties:
+                      itemId: { type: string, format: uuid }
+                      resultValue: { type: object }
+                      resultText: { type: string }
+                      critical: { type: boolean }
+      responses:
+        "200":
+          description: Entered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications: { type: integer }
+  /api/v1/lab/requests/{id}/release:
+    post:
+      operationId: releaseLabRequest
+      summary: Release a verified lab request
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabRequestId" }
+      responses:
+        "200":
+          description: Released
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/lab/specimens/{id}/receive:
+    post:
+      operationId: receiveLabSpecimen
+      summary: Record receipt of a collected specimen
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabSpecimenId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                condition: { type: string }
+                storageLocation: { type: string }
+      responses:
+        "200":
+          description: Received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabSpecimen" }
+  /api/v1/lab/specimens/{id}/reject:
+    post:
+      operationId: rejectLabSpecimen
+      summary: Reject a specimen (quality issue), triggering recollection
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabSpecimenId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/lab/items/{id}/verify:
+    post:
+      operationId: verifyLabItem
+      summary: Verify an entered result (separate from entry; self-verification is blocked for high-risk tests)
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabItemId" }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  verified: { type: boolean }
+  /api/v1/lab/critical:
+    get:
+      operationId: listLabCriticalNotifications
+      summary: List critical-result notifications
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, acknowledged] }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/LabCriticalNotification" }
+  /api/v1/lab/critical/{id}/acknowledge:
+    post:
+      operationId: acknowledgeLabCritical
+      summary: Acknowledge a critical-result notification
+      tags: [lab]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/LabNotificationId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes: { type: string }
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
 components:
   securitySchemes:
     bearerAuth:
@@ -1894,6 +2409,73 @@ components:
       in: path
       required: true
       description: Resource internal UUID.
+      schema:
+        type: string
+        format: uuid
+    PageLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of records to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    PageOffset:
+      name: offset
+      in: query
+      required: false
+      description: Number of records to skip.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    LabTestId:
+      name: id
+      in: path
+      required: true
+      description: Catalogue test internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LabClientId:
+      name: id
+      in: path
+      required: true
+      description: Lab client internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LabRequestId:
+      name: id
+      in: path
+      required: true
+      description: Lab request internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LabSpecimenId:
+      name: id
+      in: path
+      required: true
+      description: Specimen internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LabItemId:
+      name: id
+      in: path
+      required: true
+      description: Request item internal UUID.
+      schema:
+        type: string
+        format: uuid
+    LabNotificationId:
+      name: id
+      in: path
+      required: true
+      description: Critical notification internal UUID.
       schema:
         type: string
         format: uuid
@@ -2616,6 +3198,195 @@ components:
         cost: { type: number }
         nextServiceDate: { type: string, format: date, nullable: true }
         performedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    LabTest:
+      type: object
+      required:
+        [
+          id,
+          code,
+          name,
+          category,
+          price,
+          specimenType,
+          turnaroundMinutes,
+          verificationRequired,
+          active,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string }
+        price: { type: number }
+        specimenType: { type: string }
+        container: { type: string }
+        turnaroundMinutes: { type: integer }
+        units: { type: string }
+        referenceRanges:
+          type: array
+          items: { type: object }
+        verificationRequired: { type: boolean }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LabClient:
+      type: object
+      required: [id, clientNo, clientType, firstName, lastName, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        clientNo: { type: string }
+        clientType: { type: string, enum: [external, referral] }
+        firstName: { type: string }
+        lastName: { type: string }
+        gender: { type: string }
+        dateOfBirth: { type: string, format: date, nullable: true }
+        phone: { type: string }
+        email: { type: string }
+        addressLine1: { type: string }
+        addressLine2: { type: string }
+        city: { type: string }
+        state: { type: string }
+        country: { type: string }
+        referringFacility: { type: string }
+        referringPhysician: { type: string }
+        notes: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LabRequestItem:
+      type: object
+      required:
+        [
+          id,
+          requestId,
+          testId,
+          testCode,
+          testName,
+          verificationRequired,
+          specimenType,
+          price,
+          critical,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        testId: { type: string, format: uuid }
+        testCode: { type: string }
+        testName: { type: string }
+        verificationRequired: { type: boolean }
+        specimenType: { type: string }
+        price: { type: number }
+        specimenId: { type: string, format: uuid, nullable: true }
+        resultValue: { type: object }
+        resultText: { type: string }
+        critical: { type: boolean }
+        resultEnteredBy: { type: string, format: uuid, nullable: true }
+        resultEnteredAt: { type: string, format: date-time, nullable: true }
+        resultVerifiedBy: { type: string, format: uuid, nullable: true }
+        resultVerifiedAt: { type: string, format: date-time, nullable: true }
+    LabSpecimen:
+      type: object
+      required:
+        [
+          id,
+          specimenNo,
+          requestId,
+          itemId,
+          specimenType,
+          collectedBy,
+          collectedAt,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        specimenNo: { type: string }
+        requestId: { type: string, format: uuid }
+        itemId: { type: string, format: uuid }
+        specimenType: { type: string }
+        collectedBy: { type: string, format: uuid }
+        collectedAt: { type: string, format: date-time }
+        receivedBy: { type: string, format: uuid, nullable: true }
+        receivedAt: { type: string, format: date-time, nullable: true }
+        condition: { type: string }
+        storageLocation: { type: string }
+        status: { type: string, enum: [collected, received, rejected] }
+        rejectionReason: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LabRequest:
+      type: object
+      required:
+        [
+          id,
+          requestNo,
+          orderedBy,
+          orderedByName,
+          priority,
+          paymentStatus,
+          status,
+          requestedAt,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        requestNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        clientId: { type: string, format: uuid, nullable: true }
+        patientNo: { type: string }
+        patientName: { type: string }
+        clientNo: { type: string }
+        clientName: { type: string }
+        orderedBy: { type: string, format: uuid }
+        orderedByName: { type: string }
+        priority: { type: string, enum: [routine, urgent, stat] }
+        clinicalNotes: { type: string }
+        paymentStatus: { type: string, enum: [pending, preauthorized, paid, waived] }
+        status:
+          type: string
+          enum:
+            [
+              requested,
+              payment,
+              specimen_collected,
+              received,
+              processing,
+              result_entered,
+              verified,
+              released,
+              cancelled,
+            ]
+        cancelReason: { type: string }
+        requestedAt: { type: string, format: date-time }
+        releasedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/LabRequestItem" }
+        specimens:
+          type: array
+          items: { $ref: "#/components/schemas/LabSpecimen" }
+    LabCriticalNotification:
+      type: object
+      required: [id, itemId, requestId, notifiedToName, notifiedAt, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        itemId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        patientId: { type: string, format: uuid, nullable: true }
+        clientId: { type: string, format: uuid, nullable: true }
+        notifiedToUserId: { type: string, format: uuid, nullable: true }
+        notifiedToName: { type: string }
+        notifiedAt: { type: string, format: date-time }
+        acknowledgedBy: { type: string, format: uuid, nullable: true }
+        acknowledgedAt: { type: string, format: date-time, nullable: true }
+        acknowledgementNotes: { type: string }
+        status: { type: string, enum: [pending, acknowledged] }
         createdAt: { type: string, format: date-time }
     ErrorEnvelope:
       type: object

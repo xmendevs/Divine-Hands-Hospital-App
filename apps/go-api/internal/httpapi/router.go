@@ -169,5 +169,27 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/maintenance/service-providers", s.perm("assets.view", s.handleListServiceProviders))
 	mux.Handle("POST /api/v1/maintenance/service-providers", s.perm("assets.maintain", s.handleCreateServiceProvider))
 
+	// Laboratory information system (Phase 07).
+	mux.Handle("GET /api/v1/lab/tests", s.perm("lab.view", s.handleListLabTests))
+	mux.Handle("POST /api/v1/lab/tests", s.perm("lab.manage", s.handleCreateLabTest))
+	mux.Handle("GET /api/v1/lab/tests/{id}", s.perm("lab.view", s.handleGetLabTest))
+	mux.Handle("PATCH /api/v1/lab/tests/{id}", s.perm("lab.manage", s.handleUpdateLabTest))
+	mux.Handle("GET /api/v1/lab/clients", s.perm("lab.view", s.handleListLabClients))
+	mux.Handle("POST /api/v1/lab/clients", s.perm("lab.manage", s.handleCreateLabClient))
+	mux.Handle("GET /api/v1/lab/clients/{id}", s.perm("lab.view", s.handleGetLabClient))
+	mux.Handle("POST /api/v1/lab/requests", s.perm("lab.order", s.handleCreateLabRequest))
+	mux.Handle("GET /api/v1/lab/requests", s.perm("lab.view", s.handleListLabRequests))
+	mux.Handle("GET /api/v1/lab/requests/{id}", s.perm("lab.view", s.handleGetLabRequest))
+	mux.Handle("POST /api/v1/lab/requests/{id}/status", s.perm("lab.manage", s.handleTransitionLabRequest))
+	mux.Handle("POST /api/v1/lab/requests/{id}/cancel", s.perm("lab.manage", s.handleCancelLabRequest))
+	mux.Handle("POST /api/v1/lab/requests/{id}/collect", s.perm("lab.manage", s.handleCollectSpecimens))
+	mux.Handle("POST /api/v1/lab/requests/{id}/results", s.perm("lab.analyze", s.handleEnterResults))
+	mux.Handle("POST /api/v1/lab/requests/{id}/release", s.perm("lab.release", s.handleReleaseRequest))
+	mux.Handle("POST /api/v1/lab/specimens/{id}/receive", s.perm("lab.manage", s.handleReceiveSpecimen))
+	mux.Handle("POST /api/v1/lab/specimens/{id}/reject", s.perm("lab.manage", s.handleRejectSpecimen))
+	mux.Handle("POST /api/v1/lab/items/{id}/verify", s.perm("lab.verify", s.handleVerifyItem))
+	mux.Handle("GET /api/v1/lab/critical", s.perm("lab.verify", s.handleListCriticalNotifications))
+	mux.Handle("POST /api/v1/lab/critical/{id}/acknowledge", s.perm("lab.verify", s.handleAcknowledgeCritical))
+
 	return withMiddleware(mux, logger)
 }

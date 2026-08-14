@@ -102,6 +102,25 @@ notes or alter diagnoses).
   `approval_requests` flow (`pending → approved/rejected`) with separation of
   duties (no self-approval). See `docs/pharmacy.md`.
 
+## Laboratory (Phase 07)
+
+Phase 07 adds six `lab.*` permissions (`lab.view`, `lab.order`, `lab.manage`,
+`lab.analyze`, `lab.verify`, `lab.release`) and two system roles:
+
+- **lab_technician** — `lab.view`, `lab.order`, `lab.manage`, `lab.analyze`
+  (specimen custody, collection, reception, result entry).
+- **lab_supervisor** — `lab.view`, `lab.analyze`, `lab.verify`,
+  `lab.release` (verification, critical-result acknowledgement, release).
+
+Existing roles are extended minimally: **doctor** gains `lab.view` +
+`lab.order` (orders tests); **nurse** gains `lab.view` (reads results);
+**storekeeper** and **pharmacist** gain nothing. Verification is separated
+from entry — high-risk tests (`verification_required`) reject self-verification
+(422), and technicians cannot verify at all (403). Every lab action is audited
+(`lab.*` actions), specimen custody is append-only
+(`lab_specimen_events`), and critical-result notifications record who was
+notified, by whom they were acknowledged, and when.
+
 ## Endpoints
 
 See `apps/go-api/README.md` and the OpenAPI contract in
