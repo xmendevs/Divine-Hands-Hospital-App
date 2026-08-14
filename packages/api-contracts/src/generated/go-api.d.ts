@@ -1437,6 +1437,419 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing/price-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List price lists */
+        get: operations["listPriceLists"];
+        put?: never;
+        /** Create a price list */
+        post: operations["createPriceList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/price-lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one price list */
+        get: operations["getPriceList"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a price list (name, validity, status) */
+        patch: operations["updatePriceList"];
+        trace?: never;
+    };
+    "/api/v1/billing/price-lists/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List billable services in a price list */
+        get: operations["listPriceListItems"];
+        put?: never;
+        /** Add a billable service to a price list */
+        post: operations["createPriceListItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/price-list-items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a billable service (price, tax rate, active) */
+        patch: operations["updatePriceListItem"];
+        trace?: never;
+    };
+    "/api/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List invoices */
+        get: operations["listInvoices"];
+        put?: never;
+        /** Create a draft invoice (billable order) from price list items */
+        post: operations["createInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one invoice with items */
+        get: operations["getInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a draft invoice (locks totals) */
+        post: operations["issueInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void an unpaid draft or issued invoice */
+        post: operations["voidInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive a payment against an invoice and generate a receipt */
+        post: operations["receivePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List payments */
+        get: operations["listPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one payment */
+        get: operations["getPayment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List receipts */
+        get: operations["listReceipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receipts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one receipt */
+        get: operations["getReceipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receipts/{id}/html": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Printable HTML receipt */
+        get: operations["getReceiptHTML"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/receipts/{id}/share": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a user-initiated receipt share (email or WhatsApp) */
+        post: operations["shareReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/payments/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a refund against a payment (approval workflow) */
+        post: operations["requestRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List refund requests */
+        get: operations["listRefundRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/refunds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one refund request */
+        get: operations["getRefundRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/refunds/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending refund request (no self-approval) */
+        post: operations["approveRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/refunds/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a pending refund request */
+        post: operations["rejectRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/refunds/{id}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post an approved refund (reverses the invoice balance) */
+        post: operations["processRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List cashier shifts */
+        get: operations["listShifts"];
+        put?: never;
+        /** Open a cashier shift (one per cashier) */
+        post: operations["openShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/shifts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one shift with transactions and per-method totals */
+        get: operations["getShift"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/shifts/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close the shift and reconcile cash (declared vs expected) */
+        post: operations["closeShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2254,6 +2667,245 @@ export interface components {
             items?: components["schemas"]["LabRequestItem"][];
             specimens?: components["schemas"]["LabSpecimen"][];
         };
+        PriceList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            currency: string;
+            description?: string | null;
+            /** Format: date */
+            validFrom?: string | null;
+            /** Format: date */
+            validTo?: string | null;
+            /** @enum {string} */
+            status: "active" | "inactive";
+            /** Format: uuid */
+            createdBy?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PriceListItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            priceListId: string;
+            code: string;
+            name: string;
+            category?: string | null;
+            unit?: string | null;
+            price: number;
+            taxRate: number;
+            active: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Invoice: {
+            /** Format: uuid */
+            id: string;
+            invoiceNo: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            patientNo?: string;
+            patientName?: string;
+            /** Format: uuid */
+            priceListId?: string | null;
+            currency: string;
+            /** @enum {string} */
+            billTo: "patient" | "insurance" | "corporate";
+            payerName?: string;
+            policyNumber?: string;
+            subtotal: number;
+            discountAmount: number;
+            taxAmount: number;
+            totalAmount: number;
+            amountPaid: number;
+            balanceDue: number;
+            /** @enum {string} */
+            status: "draft" | "issued" | "partially_paid" | "paid" | "voided";
+            /** Format: uuid */
+            issuedBy?: string | null;
+            /** Format: date-time */
+            issuedAt?: string | null;
+            voidReason?: string;
+            /** Format: uuid */
+            voidedBy?: string | null;
+            /** Format: date-time */
+            voidedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            items?: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                invoiceId: string;
+                /** Format: uuid */
+                priceListItemId?: string | null;
+                code: string;
+                name: string;
+                category?: string;
+                unit?: string;
+                quantity: number;
+                unitPrice: number;
+                taxRate: number;
+                lineTotal: number;
+                taxAmount: number;
+            }[];
+        };
+        Payment: {
+            /** Format: uuid */
+            id: string;
+            paymentNo: string;
+            /** Format: uuid */
+            invoiceId: string;
+            invoiceNo?: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            patientName?: string;
+            /** Format: uuid */
+            shiftId?: string | null;
+            amount: number;
+            method: string;
+            reference?: string;
+            /** Format: uuid */
+            receivedBy: string;
+            /** Format: date-time */
+            receivedAt: string;
+            notes?: string;
+        };
+        Receipt: {
+            /** Format: uuid */
+            id: string;
+            receiptNo: string;
+            /** Format: uuid */
+            paymentId: string;
+            /** Format: uuid */
+            invoiceId: string;
+            invoiceNo: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            patientName?: string;
+            /** @enum {string} */
+            billTo: "patient" | "insurance" | "corporate";
+            payerName?: string;
+            amount: number;
+            method: string;
+            reference?: string;
+            currency: string;
+            /** Format: uuid */
+            receivedBy: string;
+            /** Format: uuid */
+            issuedBy: string;
+            /** Format: date-time */
+            issuedAt: string;
+            totalAmount: number;
+            amountPaid: number;
+            items?: {
+                code: string;
+                name: string;
+                quantity: number;
+                unitPrice: number;
+                lineTotal: number;
+            }[];
+        };
+        ReceiptShare: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            receiptId: string;
+            /** @enum {string} */
+            shareVia: "email" | "whatsapp";
+            recipient: string;
+            /** Format: uuid */
+            sharedBy: string;
+            /** Format: date-time */
+            sharedAt: string;
+        };
+        RefundRequest: {
+            /** Format: uuid */
+            id: string;
+            refundNo: string;
+            /** Format: uuid */
+            paymentId: string;
+            paymentNo?: string;
+            /** Format: uuid */
+            invoiceId: string;
+            invoiceNo?: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            patientName?: string;
+            amount: number;
+            reason: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected" | "processed";
+            /** Format: uuid */
+            requestedBy: string;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: uuid */
+            approvedBy?: string | null;
+            /** Format: date-time */
+            approvedAt?: string | null;
+            rejectionReason?: string;
+            /** Format: uuid */
+            processedBy?: string | null;
+            /** Format: date-time */
+            processedAt?: string | null;
+        };
+        Refund: {
+            /** Format: uuid */
+            id: string;
+            refundNo: string;
+            /** Format: uuid */
+            refundRequestId: string;
+            /** Format: uuid */
+            paymentId: string;
+            paymentNo?: string;
+            /** Format: uuid */
+            invoiceId: string;
+            invoiceNo?: string;
+            /** Format: uuid */
+            patientId?: string | null;
+            patientName?: string;
+            /** Format: uuid */
+            shiftId?: string | null;
+            amount: number;
+            reason: string;
+            /** Format: uuid */
+            processedBy: string;
+            /** Format: date-time */
+            processedAt: string;
+        };
+        CashierShift: {
+            /** Format: uuid */
+            id: string;
+            shiftNo: string;
+            /** Format: uuid */
+            cashierId: string;
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt?: string | null;
+            openingCash: number;
+            closingCash?: number | null;
+            expectedCash?: number | null;
+            variance?: number | null;
+            /** @enum {string} */
+            status: "open" | "closed";
+            payments?: components["schemas"]["Payment"][];
+            refunds?: components["schemas"]["Refund"][];
+            totals?: {
+                method: string;
+                payments: number;
+                refunds: number;
+                net: number;
+            }[];
+        };
         LabCriticalNotification: {
             /** Format: uuid */
             id: string;
@@ -2310,6 +2962,20 @@ export interface components {
         LabItemId: string;
         /** @description Critical notification internal UUID. */
         LabNotificationId: string;
+        /** @description Price list internal UUID. */
+        PriceListId: string;
+        /** @description Price list item internal UUID. */
+        PriceListItemId: string;
+        /** @description Invoice internal UUID. */
+        InvoiceId: string;
+        /** @description Payment internal UUID. */
+        PaymentId: string;
+        /** @description Receipt internal UUID. */
+        ReceiptId: string;
+        /** @description Refund request internal UUID. */
+        RefundRequestId: string;
+        /** @description Cashier shift internal UUID. */
+        ShiftId: string;
     };
     requestBodies: never;
     headers: never;
@@ -5264,6 +5930,830 @@ export interface operations {
                         id?: string;
                         status?: string;
                     };
+                };
+            };
+        };
+    };
+    listPriceLists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Price lists */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"][];
+                };
+            };
+        };
+    };
+    createPriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    currency?: string;
+                    description?: string;
+                    /** Format: date */
+                    validFrom?: string;
+                    /** Format: date */
+                    validTo?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    getPriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Price list internal UUID. */
+                id: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Price list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    updatePriceList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Price list internal UUID. */
+                id: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string;
+                    /** Format: date */
+                    validFrom?: string;
+                    /** Format: date */
+                    validTo?: string;
+                    /** @enum {string} */
+                    status: "active" | "inactive";
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                    };
+                };
+            };
+        };
+    };
+    listPriceListItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Price list internal UUID. */
+                id: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItem"][];
+                };
+            };
+        };
+    };
+    createPriceListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Price list internal UUID. */
+                id: components["parameters"]["PriceListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    category?: string;
+                    unit?: string;
+                    price: number;
+                    taxRate?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceListItem"];
+                };
+            };
+        };
+    };
+    updatePriceListItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Price list item internal UUID. */
+                id: components["parameters"]["PriceListItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    category?: string;
+                    unit?: string;
+                    price: number;
+                    taxRate?: number;
+                    active: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                    };
+                };
+            };
+        };
+    };
+    listInvoices: {
+        parameters: {
+            query?: {
+                status?: string;
+                patientId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invoices */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"][];
+                };
+            };
+        };
+    };
+    createInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    patientId?: string;
+                    /** Format: uuid */
+                    priceListId: string;
+                    /** @enum {string} */
+                    billTo?: "patient" | "insurance" | "corporate";
+                    payerName?: string;
+                    policyNumber?: string;
+                    discountAmount?: number;
+                    items: {
+                        /** Format: uuid */
+                        priceListItemId: string;
+                        quantity?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    getInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Invoice internal UUID. */
+                id: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invoice */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    issueInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Invoice internal UUID. */
+                id: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    voidInvoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Invoice internal UUID. */
+                id: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    receivePayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Invoice internal UUID. */
+                id: components["parameters"]["InvoiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    amount: number;
+                    method: string;
+                    reference?: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Received */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        payment?: components["schemas"]["Payment"];
+                        receipt?: components["schemas"]["Receipt"];
+                    };
+                };
+            };
+        };
+    };
+    listPayments: {
+        parameters: {
+            query?: {
+                invoiceId?: string;
+                shiftId?: string;
+                method?: string;
+                patientId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"][];
+                };
+            };
+        };
+    };
+    getPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment internal UUID. */
+                id: components["parameters"]["PaymentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Payment */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Payment"];
+                };
+            };
+        };
+    };
+    listReceipts: {
+        parameters: {
+            query?: {
+                invoiceId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Receipts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"][];
+                };
+            };
+        };
+    };
+    getReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Receipt internal UUID. */
+                id: components["parameters"]["ReceiptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+        };
+    };
+    getReceiptHTML: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Receipt internal UUID. */
+                id: components["parameters"]["ReceiptId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Printable HTML document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    shareReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Receipt internal UUID. */
+                id: components["parameters"]["ReceiptId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    shareVia: "email" | "whatsapp";
+                    recipient: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Shared */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        /** Format: uuid */
+                        receiptId?: string;
+                        shareVia?: string;
+                        recipient?: string;
+                        /** Format: date-time */
+                        sharedAt?: string;
+                    };
+                };
+            };
+        };
+    };
+    requestRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Payment internal UUID. */
+                id: components["parameters"]["PaymentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    amount: number;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Requested */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequest"];
+                };
+            };
+        };
+    };
+    listRefundRequests: {
+        parameters: {
+            query?: {
+                status?: "pending" | "approved" | "rejected" | "processed";
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refund requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequest"][];
+                };
+            };
+        };
+    };
+    getRefundRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund request internal UUID. */
+                id: components["parameters"]["RefundRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refund request */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequest"];
+                };
+            };
+        };
+    };
+    approveRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund request internal UUID. */
+                id: components["parameters"]["RefundRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    rejectRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund request internal UUID. */
+                id: components["parameters"]["RefundRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id?: string;
+                        status?: string;
+                    };
+                };
+            };
+        };
+    };
+    processRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Refund request internal UUID. */
+                id: components["parameters"]["RefundRequestId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Processed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+        };
+    };
+    listShifts: {
+        parameters: {
+            query?: {
+                status?: "open" | "closed";
+                cashierId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shifts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashierShift"][];
+                };
+            };
+        };
+    };
+    openShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    openingCash?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Opened */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashierShift"];
+                };
+            };
+        };
+    };
+    getShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cashier shift internal UUID. */
+                id: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shift */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashierShift"];
+                };
+            };
+        };
+    };
+    closeShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Cashier shift internal UUID. */
+                id: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    closingCash: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashierShift"];
                 };
             };
         };

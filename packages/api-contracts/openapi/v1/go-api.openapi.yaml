@@ -2391,6 +2391,664 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   status: { type: string }
+  /api/v1/billing/price-lists:
+    get:
+      operationId: listPriceLists
+      summary: List price lists
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Price lists
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PriceList" }
+    post:
+      operationId: createPriceList
+      summary: Create a price list
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                currency: { type: string }
+                description: { type: string }
+                validFrom: { type: string, format: date }
+                validTo: { type: string, format: date }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PriceList" }
+  /api/v1/billing/price-lists/{id}:
+    get:
+      operationId: getPriceList
+      summary: Get one price list
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PriceListId" }
+      responses:
+        "200":
+          description: Price list
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PriceList" }
+    patch:
+      operationId: updatePriceList
+      summary: Update a price list (name, validity, status)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PriceListId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, status]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                validFrom: { type: string, format: date }
+                validTo: { type: string, format: date }
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+  /api/v1/billing/price-lists/{id}/items:
+    get:
+      operationId: listPriceListItems
+      summary: List billable services in a price list
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PriceListId" }
+      responses:
+        "200":
+          description: Items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PriceListItem" }
+    post:
+      operationId: createPriceListItem
+      summary: Add a billable service to a price list
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PriceListId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, price]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                category: { type: string }
+                unit: { type: string }
+                price: { type: number, minimum: 0 }
+                taxRate: { type: number, minimum: 0 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PriceListItem" }
+  /api/v1/billing/price-list-items/{id}:
+    patch:
+      operationId: updatePriceListItem
+      summary: Update a billable service (price, tax rate, active)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PriceListItemId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name, price, active]
+              properties:
+                code: { type: string }
+                name: { type: string }
+                category: { type: string }
+                unit: { type: string }
+                price: { type: number, minimum: 0 }
+                taxRate: { type: number, minimum: 0 }
+                active: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+  /api/v1/billing/invoices:
+    post:
+      operationId: createInvoice
+      summary: Create a draft invoice (billable order) from price list items
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [priceListId, items]
+              properties:
+                patientId: { type: string, format: uuid }
+                priceListId: { type: string, format: uuid }
+                billTo: { type: string, enum: [patient, insurance, corporate] }
+                payerName: { type: string }
+                policyNumber: { type: string }
+                discountAmount: { type: number, minimum: 0 }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required: [priceListItemId]
+                    properties:
+                      priceListItemId: { type: string, format: uuid }
+                      quantity: { type: number, exclusiveMinimum: 0 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+    get:
+      operationId: listInvoices
+      summary: List invoices
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: patientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invoice" }
+  /api/v1/billing/invoices/{id}:
+    get:
+      operationId: getInvoice
+      summary: Get one invoice with items
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/InvoiceId" }
+      responses:
+        "200":
+          description: Invoice
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Invoice" }
+  /api/v1/billing/invoices/{id}/issue:
+    post:
+      operationId: issueInvoice
+      summary: Issue a draft invoice (locks totals)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/InvoiceId" }
+      responses:
+        "200":
+          description: Issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/billing/invoices/{id}/void:
+    post:
+      operationId: voidInvoice
+      summary: Void an unpaid draft or issued invoice
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/InvoiceId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Voided
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/billing/invoices/{id}/payments:
+    post:
+      operationId: receivePayment
+      summary: Receive a payment against an invoice and generate a receipt
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/InvoiceId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, method]
+              properties:
+                amount: { type: number, exclusiveMinimum: 0 }
+                method: { type: string }
+                reference: { type: string }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment: { $ref: "#/components/schemas/Payment" }
+                  receipt: { $ref: "#/components/schemas/Receipt" }
+  /api/v1/billing/payments:
+    get:
+      operationId: listPayments
+      summary: List payments
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invoiceId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: shiftId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - name: method
+          in: query
+          required: false
+          schema: { type: string }
+        - name: patientId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Payment" }
+  /api/v1/billing/payments/{id}:
+    get:
+      operationId: getPayment
+      summary: Get one payment
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PaymentId" }
+      responses:
+        "200":
+          description: Payment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+  /api/v1/billing/receipts:
+    get:
+      operationId: listReceipts
+      summary: List receipts
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invoiceId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Receipts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Receipt" }
+  /api/v1/billing/receipts/{id}:
+    get:
+      operationId: getReceipt
+      summary: Get one receipt
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ReceiptId" }
+      responses:
+        "200":
+          description: Receipt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Receipt" }
+  /api/v1/billing/receipts/{id}/html:
+    get:
+      operationId: getReceiptHTML
+      summary: Printable HTML receipt
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ReceiptId" }
+      responses:
+        "200":
+          description: Printable HTML document
+          content:
+            text/html:
+              schema: { type: string }
+  /api/v1/billing/receipts/{id}/share:
+    post:
+      operationId: shareReceipt
+      summary: Record a user-initiated receipt share (email or WhatsApp)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ReceiptId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shareVia, recipient]
+              properties:
+                shareVia: { type: string, enum: [email, whatsapp] }
+                recipient: { type: string }
+      responses:
+        "201":
+          description: Shared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  receiptId: { type: string, format: uuid }
+                  shareVia: { type: string }
+                  recipient: { type: string }
+                  sharedAt: { type: string, format: date-time }
+  /api/v1/billing/payments/{id}/refunds:
+    post:
+      operationId: requestRefund
+      summary: Request a refund against a payment (approval workflow)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/PaymentId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, reason]
+              properties:
+                amount: { type: number, exclusiveMinimum: 0 }
+                reason: { type: string }
+      responses:
+        "201":
+          description: Requested
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RefundRequest" }
+  /api/v1/billing/refunds:
+    get:
+      operationId: listRefundRequests
+      summary: List refund requests
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [pending, approved, rejected, processed] }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Refund requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RefundRequest" }
+  /api/v1/billing/refunds/{id}:
+    get:
+      operationId: getRefundRequest
+      summary: Get one refund request
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RefundRequestId" }
+      responses:
+        "200":
+          description: Refund request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RefundRequest" }
+  /api/v1/billing/refunds/{id}/approve:
+    post:
+      operationId: approveRefund
+      summary: Approve a pending refund request (no self-approval)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RefundRequestId" }
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/billing/refunds/{id}/reject:
+    post:
+      operationId: rejectRefund
+      summary: Reject a pending refund request
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RefundRequestId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string }
+  /api/v1/billing/refunds/{id}/process:
+    post:
+      operationId: processRefund
+      summary: Post an approved refund (reverses the invoice balance)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/RefundRequestId" }
+      responses:
+        "201":
+          description: Processed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Refund" }
+  /api/v1/billing/shifts:
+    post:
+      operationId: openShift
+      summary: Open a cashier shift (one per cashier)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                openingCash: { type: number, minimum: 0 }
+      responses:
+        "201":
+          description: Opened
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CashierShift" }
+    get:
+      operationId: listShifts
+      summary: List cashier shifts
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, closed] }
+        - name: cashierId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/PageLimit" }
+        - { $ref: "#/components/parameters/PageOffset" }
+      responses:
+        "200":
+          description: Shifts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CashierShift" }
+  /api/v1/billing/shifts/{id}:
+    get:
+      operationId: getShift
+      summary: Get one shift with transactions and per-method totals
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ShiftId" }
+      responses:
+        "200":
+          description: Shift
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CashierShift" }
+  /api/v1/billing/shifts/{id}/close:
+    post:
+      operationId: closeShift
+      summary: Close the shift and reconcile cash (declared vs expected)
+      tags: [billing]
+      security:
+        - bearerAuth: []
+      parameters:
+        - { $ref: "#/components/parameters/ShiftId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [closingCash]
+              properties:
+                closingCash: { type: number }
+      responses:
+        "200":
+          description: Closed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CashierShift" }
 components:
   securitySchemes:
     bearerAuth:
@@ -2476,6 +3134,62 @@ components:
       in: path
       required: true
       description: Critical notification internal UUID.
+      schema:
+        type: string
+        format: uuid
+    PriceListId:
+      name: id
+      in: path
+      required: true
+      description: Price list internal UUID.
+      schema:
+        type: string
+        format: uuid
+    PriceListItemId:
+      name: id
+      in: path
+      required: true
+      description: Price list item internal UUID.
+      schema:
+        type: string
+        format: uuid
+    InvoiceId:
+      name: id
+      in: path
+      required: true
+      description: Invoice internal UUID.
+      schema:
+        type: string
+        format: uuid
+    PaymentId:
+      name: id
+      in: path
+      required: true
+      description: Payment internal UUID.
+      schema:
+        type: string
+        format: uuid
+    ReceiptId:
+      name: id
+      in: path
+      required: true
+      description: Receipt internal UUID.
+      schema:
+        type: string
+        format: uuid
+    RefundRequestId:
+      name: id
+      in: path
+      required: true
+      description: Refund request internal UUID.
+      schema:
+        type: string
+        format: uuid
+    ShiftId:
+      name: id
+      in: path
+      required: true
+      description: Cashier shift internal UUID.
       schema:
         type: string
         format: uuid
@@ -3371,6 +4085,255 @@ components:
         specimens:
           type: array
           items: { $ref: "#/components/schemas/LabSpecimen" }
+    PriceList:
+      type: object
+      required: [id, name, currency, status, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        currency: { type: string }
+        description: { type: string, nullable: true }
+        validFrom: { type: string, format: date, nullable: true }
+        validTo: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [active, inactive] }
+        createdBy: { type: string, format: uuid, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PriceListItem:
+      type: object
+      required: [id, priceListId, code, name, price, taxRate, active, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        priceListId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string, nullable: true }
+        unit: { type: string, nullable: true }
+        price: { type: number }
+        taxRate: { type: number }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Invoice:
+      type: object
+      required:
+        [
+          id,
+          invoiceNo,
+          currency,
+          billTo,
+          subtotal,
+          discountAmount,
+          taxAmount,
+          totalAmount,
+          amountPaid,
+          balanceDue,
+          status,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        invoiceNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        patientNo: { type: string }
+        patientName: { type: string }
+        priceListId: { type: string, format: uuid, nullable: true }
+        currency: { type: string }
+        billTo: { type: string, enum: [patient, insurance, corporate] }
+        payerName: { type: string }
+        policyNumber: { type: string }
+        subtotal: { type: number }
+        discountAmount: { type: number }
+        taxAmount: { type: number }
+        totalAmount: { type: number }
+        amountPaid: { type: number }
+        balanceDue: { type: number }
+        status: { type: string, enum: [draft, issued, partially_paid, paid, voided] }
+        issuedBy: { type: string, format: uuid, nullable: true }
+        issuedAt: { type: string, format: date-time, nullable: true }
+        voidReason: { type: string }
+        voidedBy: { type: string, format: uuid, nullable: true }
+        voidedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              [id, invoiceId, code, name, quantity, unitPrice, taxRate, lineTotal, taxAmount]
+            properties:
+              id: { type: string, format: uuid }
+              invoiceId: { type: string, format: uuid }
+              priceListItemId: { type: string, format: uuid, nullable: true }
+              code: { type: string }
+              name: { type: string }
+              category: { type: string }
+              unit: { type: string }
+              quantity: { type: number }
+              unitPrice: { type: number }
+              taxRate: { type: number }
+              lineTotal: { type: number }
+              taxAmount: { type: number }
+    Payment:
+      type: object
+      required: [id, paymentNo, invoiceId, amount, method, receivedBy, receivedAt]
+      properties:
+        id: { type: string, format: uuid }
+        paymentNo: { type: string }
+        invoiceId: { type: string, format: uuid }
+        invoiceNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        patientName: { type: string }
+        shiftId: { type: string, format: uuid, nullable: true }
+        amount: { type: number }
+        method: { type: string }
+        reference: { type: string }
+        receivedBy: { type: string, format: uuid }
+        receivedAt: { type: string, format: date-time }
+        notes: { type: string }
+    Receipt:
+      type: object
+      required:
+        [
+          id,
+          receiptNo,
+          paymentId,
+          invoiceId,
+          invoiceNo,
+          billTo,
+          amount,
+          method,
+          currency,
+          receivedBy,
+          issuedBy,
+          issuedAt,
+          totalAmount,
+          amountPaid,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        receiptNo: { type: string }
+        paymentId: { type: string, format: uuid }
+        invoiceId: { type: string, format: uuid }
+        invoiceNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        patientName: { type: string }
+        billTo: { type: string, enum: [patient, insurance, corporate] }
+        payerName: { type: string }
+        amount: { type: number }
+        method: { type: string }
+        reference: { type: string }
+        currency: { type: string }
+        receivedBy: { type: string, format: uuid }
+        issuedBy: { type: string, format: uuid }
+        issuedAt: { type: string, format: date-time }
+        totalAmount: { type: number }
+        amountPaid: { type: number }
+        items:
+          type: array
+          items:
+            type: object
+            required: [code, name, quantity, unitPrice, lineTotal]
+            properties:
+              code: { type: string }
+              name: { type: string }
+              quantity: { type: number }
+              unitPrice: { type: number }
+              lineTotal: { type: number }
+    ReceiptShare:
+      type: object
+      required: [id, receiptId, shareVia, recipient, sharedBy, sharedAt]
+      properties:
+        id: { type: string, format: uuid }
+        receiptId: { type: string, format: uuid }
+        shareVia: { type: string, enum: [email, whatsapp] }
+        recipient: { type: string }
+        sharedBy: { type: string, format: uuid }
+        sharedAt: { type: string, format: date-time }
+    RefundRequest:
+      type: object
+      required:
+        [id, refundNo, paymentId, invoiceId, amount, reason, status, requestedBy, requestedAt]
+      properties:
+        id: { type: string, format: uuid }
+        refundNo: { type: string }
+        paymentId: { type: string, format: uuid }
+        paymentNo: { type: string }
+        invoiceId: { type: string, format: uuid }
+        invoiceNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        patientName: { type: string }
+        amount: { type: number }
+        reason: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, processed] }
+        requestedBy: { type: string, format: uuid }
+        requestedAt: { type: string, format: date-time }
+        approvedBy: { type: string, format: uuid, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        rejectionReason: { type: string }
+        processedBy: { type: string, format: uuid, nullable: true }
+        processedAt: { type: string, format: date-time, nullable: true }
+    Refund:
+      type: object
+      required:
+        [
+          id,
+          refundNo,
+          refundRequestId,
+          paymentId,
+          invoiceId,
+          amount,
+          reason,
+          processedBy,
+          processedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        refundNo: { type: string }
+        refundRequestId: { type: string, format: uuid }
+        paymentId: { type: string, format: uuid }
+        paymentNo: { type: string }
+        invoiceId: { type: string, format: uuid }
+        invoiceNo: { type: string }
+        patientId: { type: string, format: uuid, nullable: true }
+        patientName: { type: string }
+        shiftId: { type: string, format: uuid, nullable: true }
+        amount: { type: number }
+        reason: { type: string }
+        processedBy: { type: string, format: uuid }
+        processedAt: { type: string, format: date-time }
+    CashierShift:
+      type: object
+      required: [id, shiftNo, cashierId, openedAt, openingCash, status]
+      properties:
+        id: { type: string, format: uuid }
+        shiftNo: { type: string }
+        cashierId: { type: string, format: uuid }
+        openedAt: { type: string, format: date-time }
+        closedAt: { type: string, format: date-time, nullable: true }
+        openingCash: { type: number }
+        closingCash: { type: number, nullable: true }
+        expectedCash: { type: number, nullable: true }
+        variance: { type: number, nullable: true }
+        status: { type: string, enum: [open, closed] }
+        payments:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        refunds:
+          type: array
+          items: { $ref: "#/components/schemas/Refund" }
+        totals:
+          type: array
+          items:
+            type: object
+            required: [method, payments, refunds, net]
+            properties:
+              method: { type: string }
+              payments: { type: number }
+              refunds: { type: number }
+              net: { type: number }
     LabCriticalNotification:
       type: object
       required: [id, itemId, requestId, notifiedToName, notifiedAt, status, createdAt]
