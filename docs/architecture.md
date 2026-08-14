@@ -6,21 +6,25 @@ Detailed per-phase architecture is documented in each build phase.
 ## Layout
 
 ```
-apps/desktop         Tauri + React + TypeScript desktop client
-services/core        Go high-throughput / core domain service
-services/analytics   FastAPI analytics, reporting, document processing, ML
-contracts/           Versioned OpenAPI contracts (single source of truth)
-db/migrations/       Versioned PostgreSQL migrations
-infra/compose/       Docker Compose for development services
-.github/workflows/   CI/CD
-docs/                Project documentation
+apps/desktop          Tauri + React + TypeScript desktop client
+apps/go-api           Go core / high-throughput service
+apps/fastapi          FastAPI analytics, reporting, document processing, ML
+packages/api-contracts Versioned OpenAPI contracts (single source of truth)
+packages/ui           Shared React components
+db/migrations/        Versioned PostgreSQL migrations
+db/seeds/             Idempotent development/test seed data
+infra/docker/         Docker Compose development stack
+infra/backup/         Backup & disaster recovery (Phase 12)
+scripts/              Developer scripts (bootstrap, up/down, verify)
+docs/                 Project documentation
+.github/workflows/    CI/CD
 ```
 
 ## Canonical domain model
 
 Go and FastAPI **must not** independently implement conflicting business
-rules. Service boundaries are defined explicitly, and shared data contracts
-are versioned under `contracts/`.
+rules. Service boundaries are defined explicitly, and shared data contracts are
+versioned under `packages/api-contracts/`.
 
 ## Non-negotiables (from the Master Implementation Plan)
 
