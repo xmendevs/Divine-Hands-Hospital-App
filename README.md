@@ -36,9 +36,14 @@ docs/                 Project documentation
 ## Getting started
 
 ```bash
-cp .env.example .env       # adjust values
+cp .env.example .env       # adjust values; generate MFA_ENCRYPTION_KEY
 scripts/bootstrap.sh       # install deps + generate contract types
 scripts/dev-up.sh          # start PostgreSQL, Redis, MinIO
+
+# Database + super admin (one time)
+cd apps/go-api
+go run ./cmd/migrate -command up
+SEED_SUPERADMIN_PASSWORD='<a strong password>' go run ./cmd/seed
 
 # Desktop client
 cd apps/desktop && pnpm tauri dev
@@ -64,6 +69,9 @@ scripts/verify.sh
 - [Logging & errors](docs/logging-and-errors.md)
 - [Environment configuration](docs/environment.md)
 - [Coding conventions](docs/coding-conventions.md)
+- [Migrations & rollback](docs/migrations.md)
+- [Identity, RBAC & audit](docs/rbac-audit.md)
 
 Go and FastAPI share versioned OpenAPI contracts so they never implement
-conflicting business rules (see `docs/architecture.md`).
+conflicting business rules (see `docs/architecture.md`). Identity, RBAC, sessions,
+and audit are implemented in the Go core service (Phase 02).

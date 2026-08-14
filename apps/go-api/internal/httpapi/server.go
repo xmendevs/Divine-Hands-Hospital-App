@@ -6,23 +6,36 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/auth"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/config"
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
 
-const serviceVersion = "0.1.0"
+const serviceVersion = "0.2.0"
 
 type server struct {
-	cfg    config.Config
-	logger *slog.Logger
-	checks map[string]Checker
+	cfg       config.Config
+	logger    *slog.Logger
+	store     *store.Store
+	checks    map[string]Checker
+	mfaCipher *auth.Cipher
 }
 
-func newServer(cfg config.Config, logger *slog.Logger) *server {
-	return &server{
+func newServer(cfg config.Config, logger *slog.Logger, st *store.Store) *server {
+	s := &server{
 		cfg:    cfg,
 		logger: logger,
+		store:  st,
 		checks: defaultChecks(cfg),
 	}
+	if cfg.MFAEncryptionKey != "" {
+		if c, err := auth.NewCipherFromHex(cfg.MFAEncryptionKey); err == nil {
+			s.mfaCipher = c
+		} else {
+			logger.Warn("MFA encryption key invalid; MFA features disabled", "error", err)
+		}
+	}
+	return s
 }
 
 // handleHealth reports liveness: the process is up and able to serve requests.

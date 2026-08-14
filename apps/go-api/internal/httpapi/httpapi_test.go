@@ -36,7 +36,7 @@ func doRequest(t *testing.T, h http.Handler, method, path string, headers map[st
 	return rr
 }
 
-func decodeJSON(t *testing.T, rr *httptest.ResponseRecorder, v any) {
+func decodeBody(t *testing.T, rr *httptest.ResponseRecorder, v any) {
 	t.Helper()
 	if err := json.Unmarshal(rr.Body.Bytes(), v); err != nil {
 		t.Fatalf("decode response: %v (body=%s)", err, rr.Body.String())
@@ -44,14 +44,14 @@ func decodeJSON(t *testing.T, rr *httptest.ResponseRecorder, v any) {
 }
 
 func TestHealth(t *testing.T) {
-	h := NewRouter(testConfig(), testLogger())
+	h := NewRouter(testConfig(), testLogger(), nil)
 	rr := doRequest(t, h, http.MethodGet, "/health", nil)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
 	}
 	var body map[string]string
-	decodeJSON(t, rr, &body)
+	decodeBody(t, rr, &body)
 	if body["status"] != "ok" {
 		t.Fatalf("status field = %q, want ok", body["status"])
 	}
@@ -62,7 +62,7 @@ func TestHealth(t *testing.T) {
 
 func TestReadyAllPass(t *testing.T) {
 	checks := map[string]Checker{"db": fakeCheck{name: "db", status: "ok"}}
-	h := NewRouter(testConfig(), testLogger(), WithChecks(checks))
+	h := NewRouter(testConfig(), testLogger(), nil, WithChecks(checks))
 	rr := doRequest(t, h, http.MethodGet, "/ready", nil)
 
 	if rr.Code != http.StatusOK {
@@ -72,7 +72,7 @@ func TestReadyAllPass(t *testing.T) {
 		Status string                 `json:"status"`
 		Checks map[string]CheckResult `json:"checks"`
 	}
-	decodeJSON(t, rr, &body)
+	decodeBody(t, rr, &body)
 	if body.Status != "ready" {
 		t.Fatalf("status = %q", body.Status)
 	}
@@ -83,7 +83,7 @@ func TestReadyAllPass(t *testing.T) {
 
 func TestReadyFail(t *testing.T) {
 	checks := map[string]Checker{"db": fakeCheck{name: "db", status: "error", errMsg: "boom"}}
-	h := NewRouter(testConfig(), testLogger(), WithChecks(checks))
+	h := NewRouter(testConfig(), testLogger(), nil, WithChecks(checks))
 	rr := doRequest(t, h, http.MethodGet, "/ready", nil)
 
 	if rr.Code != http.StatusServiceUnavailable {
@@ -93,7 +93,7 @@ func TestReadyFail(t *testing.T) {
 		Status string                 `json:"status"`
 		Checks map[string]CheckResult `json:"checks"`
 	}
-	decodeJSON(t, rr, &body)
+	decodeBody(t, rr, &body)
 	if body.Status != "not_ready" {
 		t.Fatalf("status = %q", body.Status)
 	}
@@ -103,7 +103,7 @@ func TestReadyFail(t *testing.T) {
 }
 
 func TestRequestIDEcho(t *testing.T) {
-	h := NewRouter(testConfig(), testLogger())
+	h := NewRouter(testConfig(), testLogger(), nil)
 	rr := doRequest(t, h, http.MethodGet, "/health", map[string]string{"X-Request-ID": "test-123"})
 
 	if got := rr.Header().Get("X-Request-ID"); got != "test-123" {
@@ -112,7 +112,7 @@ func TestRequestIDEcho(t *testing.T) {
 }
 
 func TestRequestIDGenerated(t *testing.T) {
-	h := NewRouter(testConfig(), testLogger())
+	h := NewRouter(testConfig(), testLogger(), nil)
 	rr := doRequest(t, h, http.MethodGet, "/health", nil)
 
 	id := rr.Header().Get("X-Request-ID")
@@ -122,14 +122,14 @@ func TestRequestIDGenerated(t *testing.T) {
 }
 
 func TestVersion(t *testing.T) {
-	h := NewRouter(testConfig(), testLogger())
+	h := NewRouter(testConfig(), testLogger(), nil)
 	rr := doRequest(t, h, http.MethodGet, "/api/v1/version", nil)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d", rr.Code)
 	}
 	var body map[string]string
-	decodeJSON(t, rr, &body)
+	decodeBody(t, rr, &body)
 	if body["service"] != "go-api" {
 		t.Fatalf("service = %q", body["service"])
 	}
@@ -149,7 +149,7 @@ func TestWriteError(t *testing.T) {
 		t.Fatalf("status = %d", rr.Code)
 	}
 	var env ErrorEnvelope
-	decodeJSON(t, rr, &env)
+	decodeBody(t, rr, &env)
 	if env.Error.Code != "not_found" {
 		t.Fatalf("code = %q", env.Error.Code)
 	}

@@ -16,6 +16,11 @@ type Config struct {
 	Port              int
 	LogLevel          slog.Level
 	Timezone          string
+	DatabaseURL       string
+	SessionTTL        time.Duration
+	PasswordResetTTL  time.Duration
+	MFAIssuer         string
+	MFAEncryptionKey  string
 	PostgresHost      string
 	PostgresPort      int
 	RedisHost         string
@@ -31,6 +36,11 @@ func Load() Config {
 		Port:              getenvInt("PORT", 8080),
 		LogLevel:          parseLogLevel(getenv("LOG_LEVEL", "info")),
 		Timezone:          getenv("APP_TIMEZONE", "UTC"),
+		DatabaseURL:       getenv("DATABASE_URL", "postgres://hims:change-me@127.0.0.1:5432/hims?sslmode=disable"),
+		SessionTTL:        getenvDuration("SESSION_TTL", 8*time.Hour),
+		PasswordResetTTL:  getenvDuration("PASSWORD_RESET_TTL", time.Hour),
+		MFAIssuer:         getenv("MFA_ISSUER", "Divine Hands HMS"),
+		MFAEncryptionKey:  getenv("MFA_ENCRYPTION_KEY", ""),
 		PostgresHost:      getenv("POSTGRES_HOST", "127.0.0.1"),
 		PostgresPort:      getenvInt("POSTGRES_PORT", 5432),
 		RedisHost:         getenv("REDIS_HOST", "127.0.0.1"),
@@ -61,6 +71,18 @@ func getenvInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+func getenvDuration(key string, def time.Duration) time.Duration {
+	v := getenv(key, "")
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		return def
+	}
+	return d
 }
 
 func parseLogLevel(v string) slog.Level {

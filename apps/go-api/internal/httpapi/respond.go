@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 )
 
@@ -41,6 +43,13 @@ func writeError(w http.ResponseWriter, r *http.Request, status int, code, messag
 	})
 }
 
+// decodeJSON reads a JSON request body (max 1 MiB) into v.
+func decodeJSON(r *http.Request, v any) error {
+	defer r.Body.Close()
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+	return dec.Decode(v)
+}
+
 func requestIDFromContext(ctx context.Context) string {
 	if id, ok := ctx.Value(requestIDKey).(string); ok {
 		return id
@@ -52,4 +61,13 @@ func newRequestID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// clientIP returns the immediate peer address (X-Forwarded-For is not trusted).
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

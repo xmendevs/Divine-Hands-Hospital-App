@@ -1,13 +1,15 @@
 openapi: 3.1.0
 info:
   title: HIMS go-api
-  version: 0.1.0
-  description: Core service API for the Divine Hands HMS.
+  version: 0.2.0
+  description: Core service API for the Divine Hands HMS (identity, RBAC, sessions, audit).
 servers:
   - url: http://localhost:8080
 tags:
   - name: system
     description: Health, readiness, and metadata endpoints.
+  - name: auth
+    description: Authentication, sessions, and MFA.
 paths:
   /health:
     get:
@@ -57,7 +59,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VersionResponse"
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: Authenticate and create a session
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials or MFA required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/auth/me:
+    get:
+      operationId: me
+      summary: Current user, roles, and permissions
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: Revoke the current session
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Session revoked
+  /api/v1/auth/password-reset/request:
+    post:
+      operationId: requestPasswordReset
+      summary: Request a password reset
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username]
+              properties:
+                username:
+                  type: string
+      responses:
+        "202":
+          description: Accepted (response is identical whether or not the account exists)
+  /api/v1/auth/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      summary: Complete a password reset
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        "204":
+          description: Password updated
+        "400":
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/auth/mfa/setup:
+    post:
+      operationId: mfaSetup
+      summary: Generate a TOTP secret for enrollment
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: TOTP secret and provisioning URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, otpauthUrl]
+                properties:
+                  secret:
+                    type: string
+                  otpauthUrl:
+                    type: string
+  /api/v1/auth/mfa/confirm:
+    post:
+      operationId: mfaConfirm
+      summary: Verify a TOTP code and enable MFA
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+      responses:
+        "204":
+          description: MFA enabled
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   parameters:
     RequestId:
       name: X-Request-ID
@@ -112,6 +250,81 @@ components:
         utcNow:
           type: string
           format: date-time
+    User:
+      type: object
+      required: [id, username, email, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, suspended]
+    Role:
+      type: object
+      required: [id, code, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        totpCode:
+          type: string
+        deviceName:
+          type: string
+    LoginResponse:
+      type: object
+      required: [token, expiresAt, mustChangePassword, user]
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        mustChangePassword:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/User"
+    MeResponse:
+      type: object
+      required: [id, username, email, status, mustChangePassword, mfaEnabled, roles, permissions]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        status:
+          type: string
+        mustChangePassword:
+          type: boolean
+        mfaEnabled:
+          type: boolean
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+        permissions:
+          type: array
+          items:
+            type: string
     ErrorEnvelope:
       type: object
       required: [error]

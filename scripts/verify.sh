@@ -23,6 +23,11 @@ echo "== Go: format, build, vet, test =="
   go test ./...
 )
 
+if [ -n "${TEST_DATABASE_URL:-}" ]; then
+  echo "== Go: integration tests =="
+  (cd apps/go-api && go test -tags integration ./...)
+fi
+
 echo "== FastAPI: ruff, pytest =="
 (cd apps/fastapi && uv run ruff check . && uv run pytest -q)
 

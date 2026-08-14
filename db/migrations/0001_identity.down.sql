@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS staff;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS user_status;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS departments;
