@@ -80,6 +80,7 @@ scripts/verify.sh
 - [Staff, attendance, clock-in/out & handover](docs/staff-attendance.md)
 - [Automatic roster planning & approval](docs/roster-planning.md)
 - [Notifications & governed internal communications](docs/notifications-comms.md)
+- [Reporting, dashboards & exports](docs/reports.md)
 
 Go and FastAPI share versioned OpenAPI contracts so they never implement
 conflicting business rules (see `docs/architecture.md`). Identity, RBAC, sessions,
@@ -87,6 +88,6 @@ audit (Phase 02), the patient master record (Phase 03), clinical workflows
 (Phase 04), pharmacy/inventory (Phase 05), general inventory, equipment &
 maintenance (Phase 06), the laboratory information system (Phase 07), billing,
 cashier, payments & receipts (Phase 08), staff, attendance, clock-in/out &
-handover (Phase 09), automatic roster planning & approval (Phase 10), and
-notifications & governed internal communications (Phase 11) are implemented in
-the Go core service.
+handover (Phase 09), automatic roster planning & approval (Phase 10),
+notifications & governed internal communications (Phase 11), and reporting,
+dashboards & exports (Phase 12) are implemented in the Go core service.

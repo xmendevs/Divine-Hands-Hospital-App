@@ -1742,3 +1742,119 @@ type CommsPolicy struct {
 	AttachmentMaxBytes int64
 	Acknowledged       bool
 }
+
+// Reporting & exports audit actions (Phase 12).
+const (
+	ActionReportExport = "reports.export"
+	ActionReportViewed = "reports.viewed"
+)
+
+// NameValue is a labelled metric row used across reports.
+type NameValue struct {
+	Name  string `json:"name"`
+	Value int64  `json:"value"`
+}
+
+// Dashboard is the super-admin aggregate across all modules.
+type Dashboard struct {
+	PatientRegistrations struct {
+		Total int64 `json:"total"`
+		Today int64 `json:"today"`
+	} `json:"patientRegistrations"`
+	Admissions struct {
+		Active          int64 `json:"active"`
+		DischargedToday int64 `json:"dischargedToday"`
+	} `json:"admissions"`
+	Revenue struct {
+		Collected   float64 `json:"collected"`
+		Invoiced    float64 `json:"invoiced"`
+		Outstanding float64 `json:"outstanding"`
+	} `json:"revenue"`
+	Pharmacy struct {
+		MedicineCount int64   `json:"medicineCount"`
+		StockOnHand   float64 `json:"stockOnHand"`
+		ExpiringSoon  int64   `json:"expiringSoon"`
+	} `json:"pharmacy"`
+	InventoryVariance struct {
+		CountsWithVariance int64   `json:"countsWithVariance"`
+		TotalVariance      float64 `json:"totalVariance"`
+	} `json:"inventoryVariance"`
+	Attendance struct {
+		ClockedIn int64 `json:"clockedIn"`
+		Missed    int64 `json:"missed"`
+	} `json:"attendance"`
+	RosterCoverage struct {
+		Scheduled   int64   `json:"scheduled"`
+		Required    int64   `json:"required"`
+		CoveragePct float64 `json:"coveragePct"`
+	} `json:"rosterCoverage"`
+	LabWorkload struct {
+		PendingRequests     int64 `json:"pendingRequests"`
+		PendingVerification int64 `json:"pendingVerification"`
+	} `json:"labWorkload"`
+	CriticalAlerts struct {
+		Unacknowledged int64 `json:"unacknowledged"`
+	} `json:"criticalAlerts"`
+	SecurityEvents struct {
+		Last24h int64 `json:"last24h"`
+	} `json:"securityEvents"`
+}
+
+// DoctorReport is the doctor-scoped workload report.
+type DoctorReport struct {
+	AssignedPatients int64 `json:"assignedPatients"`
+	PendingResults   int64 `json:"pendingResults"`
+	PendingOrders    int64 `json:"pendingOrders"`
+}
+
+// NursingReport is the nursing-scoped report.
+type NursingReport struct {
+	AdmittedPatients        int64 `json:"admittedPatients"`
+	Handovers               int64 `json:"handovers"`
+	UnacknowledgedHandovers int64 `json:"unacknowledgedHandovers"`
+	OnDutyToday             int64 `json:"onDutyToday"`
+}
+
+// PharmacyReport is the pharmacy-scoped report.
+type PharmacyReport struct {
+	DispensedToday      int64   `json:"dispensedToday"`
+	DispensedValueToday float64 `json:"dispensedValueToday"`
+	LowStock            int64   `json:"lowStock"`
+	StockOnHand         float64 `json:"stockOnHand"`
+	ExpiringSoon        int64   `json:"expiringSoon"`
+	RecentAdjustments   int64   `json:"recentAdjustments"`
+}
+
+// LabReport is the laboratory-scoped report.
+type LabReport struct {
+	RequestsByStatus     []NameValue `json:"requestsByStatus"`
+	PendingVerification  int64       `json:"pendingVerification"`
+	AvgTurnaroundMinutes float64     `json:"avgTurnaroundMinutes"`
+}
+
+// CashierReport is the cashier-scoped report.
+type CashierReport struct {
+	CollectedToday float64 `json:"collectedToday"`
+	PaymentsToday  int64   `json:"paymentsToday"`
+	Outstanding    float64 `json:"outstanding"`
+	RefundedToday  float64 `json:"refundedToday"`
+	OpenShifts     int64   `json:"openShifts"`
+	ShiftVariance  float64 `json:"shiftVariance"`
+}
+
+// InventoryReport is the storekeeper-scoped report.
+type InventoryReport struct {
+	LowStock           int64   `json:"lowStock"`
+	ExpiringSoon       int64   `json:"expiringSoon"`
+	StockOnHand        float64 `json:"stockOnHand"`
+	CountsWithVariance int64   `json:"countsWithVariance"`
+	TotalVariance      float64 `json:"totalVariance"`
+}
+
+// ReceptionReport is the receptionist-scoped report.
+type ReceptionReport struct {
+	RegisteredToday int64 `json:"registeredToday"`
+	AdmittedToday   int64 `json:"admittedToday"`
+	DischargedToday int64 `json:"dischargedToday"`
+	TriageToday     int64 `json:"triageToday"`
+}

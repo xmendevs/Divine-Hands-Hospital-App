@@ -2593,6 +2593,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Super admin aggregate dashboard across all modules */
+        get: operations["reportDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Role-scoped operational report for the caller */
+        get: operations["reportMy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export a report as CSV, XLSX or PDF (audited) */
+        get: operations["exportReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3965,7 +4016,99 @@ export interface components {
             body: string;
             /** Format: date-time */
             createdAt: string;
-            attachments: components["schemas"]["MessageAttachment"][];
+        };
+        NameValue: {
+            name: string;
+            value: number;
+        };
+        Dashboard: {
+            patientRegistrations?: {
+                total?: number;
+                today?: number;
+            };
+            admissions?: {
+                active?: number;
+                dischargedToday?: number;
+            };
+            revenue?: {
+                collected?: number;
+                invoiced?: number;
+                outstanding?: number;
+            };
+            pharmacy?: {
+                medicineCount?: number;
+                stockOnHand?: number;
+                expiringSoon?: number;
+            };
+            inventoryVariance?: {
+                countsWithVariance?: number;
+                totalVariance?: number;
+            };
+            attendance?: {
+                clockedIn?: number;
+                missed?: number;
+            };
+            rosterCoverage?: {
+                scheduled?: number;
+                required?: number;
+                coveragePct?: number;
+            };
+            labWorkload?: {
+                pendingRequests?: number;
+                pendingVerification?: number;
+            };
+            criticalAlerts?: {
+                unacknowledged?: number;
+            };
+            securityEvents?: {
+                last24h?: number;
+            };
+        };
+        DoctorReport: {
+            assignedPatients?: number;
+            pendingResults?: number;
+            pendingOrders?: number;
+        };
+        NursingReport: {
+            admittedPatients?: number;
+            handovers?: number;
+            unacknowledgedHandovers?: number;
+            onDutyToday?: number;
+        };
+        PharmacyReport: {
+            dispensedToday?: number;
+            dispensedValueToday?: number;
+            lowStock?: number;
+            stockOnHand?: number;
+            expiringSoon?: number;
+            recentAdjustments?: number;
+        };
+        LabReport: {
+            requestsByStatus?: components["schemas"]["NameValue"][];
+            pendingVerification?: number;
+            avgTurnaroundMinutes?: number;
+        };
+        CashierReport: {
+            collectedToday?: number;
+            paymentsToday?: number;
+            outstanding?: number;
+            refundedToday?: number;
+            openShifts?: number;
+            shiftVariance?: number;
+        };
+        InventoryReport: {
+            lowStock?: number;
+            expiringSoon?: number;
+            stockOnHand?: number;
+            countsWithVariance?: number;
+            totalVariance?: number;
+        };
+        ReceptionReport: {
+            registeredToday?: number;
+            admittedToday?: number;
+            dischargedToday?: number;
+            triageToday?: number;
+            attachments?: components["schemas"]["MessageAttachment"][];
         };
         CommsChannel: {
             /** Format: uuid */
@@ -9369,6 +9512,86 @@ export interface operations {
                         messagesPurged?: number;
                         notificationsPurged?: number;
                     };
+                };
+            };
+        };
+    };
+    reportDashboard: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Correlation ID echoed back on the response and in logs. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Aggregate dashboard */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+        };
+    };
+    reportMy: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Correlation ID echoed back on the response and in logs. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Role-specific report (doctor, nursing, pharmacy, lab, cashier, inventory, reception, or the aggregate dashboard for admins) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"] | components["schemas"]["DoctorReport"] | components["schemas"]["NursingReport"] | components["schemas"]["PharmacyReport"] | components["schemas"]["LabReport"] | components["schemas"]["CashierReport"] | components["schemas"]["InventoryReport"] | components["schemas"]["ReceptionReport"];
+                };
+            };
+        };
+    };
+    exportReport: {
+        parameters: {
+            query: {
+                /** @description Report kind to export. */
+                report: "patients" | "invoices" | "payments" | "dispensations" | "lab_requests" | "attendance" | "medicines" | "refunds";
+                /** @description Export format (default csv). */
+                format?: "csv" | "xlsx" | "pdf";
+                /** @description Inclusive start date (YYYY-MM-DD). */
+                from?: string;
+                /** @description Inclusive end date (YYYY-MM-DD). */
+                to?: string;
+            };
+            header?: {
+                /** @description Correlation ID echoed back on the response and in logs. */
+                "X-Request-ID"?: components["parameters"]["RequestId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exported file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                    "application/pdf": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
         };
