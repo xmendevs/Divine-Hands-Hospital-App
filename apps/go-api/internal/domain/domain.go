@@ -1395,6 +1395,8 @@ const (
 	ActionAttendanceClockOut    = "attendance.clock_out"
 	ActionHandoverCreate        = "handover.create"
 	ActionHandoverAcknowledge   = "handover.acknowledge"
+	ActionRosterAssign          = "attendance.roster_assign"
+	ActionRosterRemove          = "attendance.roster_remove"
 )
 
 // StaffLeave is a leave request/record against a staff member.
@@ -1491,4 +1493,19 @@ type AttendanceReportRow struct {
 	Status     string // on_time | late | early | completed | clocked_in | missed | on_leave
 	ClockInAt  *time.Time
 	ClockOutAt *time.Time
+}
+
+// StaffRoster schedules a staff member to a shift on a date.
+type StaffRoster struct {
+	ID         string
+	StaffID    string
+	ShiftID    string
+	WorkDate   string // ISO date
+	Notes      string
+	CreatedBy  *string
+	CreatedAt  time.Time
+	StaffName  string // joined
+	EmployeeNo string // joined
+	ShiftName  string // joined
+	ShiftCode  string // joined
 }

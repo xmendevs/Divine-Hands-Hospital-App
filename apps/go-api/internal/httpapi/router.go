@@ -237,6 +237,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/attendance/clock-out", s.perm("attendance.clock", s.handleClockOut))
 	mux.Handle("GET /api/v1/attendance", s.perm("attendance.view", s.handleListAttendance))
 	mux.Handle("GET /api/v1/attendance/report", s.perm("attendance.view", s.handleAttendanceReport))
+	mux.Handle("POST /api/v1/attendance/rosters", s.perm("attendance.manage", s.handleAssignRoster))
+	mux.Handle("GET /api/v1/attendance/rosters", s.perm("attendance.view", s.handleListRoster))
+	mux.Handle("DELETE /api/v1/attendance/rosters/{id}", s.perm("attendance.manage", s.handleDeleteRoster))
 
 	mux.Handle("POST /api/v1/handovers", s.perm("handover.create", s.handleCreateHandover))
 	mux.Handle("GET /api/v1/handovers", s.perm("handover.view", s.handleListHandovers))

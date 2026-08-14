@@ -2023,6 +2023,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attendance/rosters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List roster assignments */
+        get: operations["listRoster"];
+        put?: never;
+        /** Schedule a staff member to a shift on a date */
+        post: operations["assignRoster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attendance/rosters/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a roster assignment */
+        delete: operations["deleteRoster"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/handovers": {
         parameters: {
             query?: never;
@@ -3259,6 +3294,23 @@ export interface components {
             /** Format: date-time */
             clockOutAt?: string | null;
         };
+        StaffRoster: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            staffId: string;
+            staffName?: string;
+            employeeNo?: string;
+            /** Format: uuid */
+            shiftId: string;
+            shiftName?: string;
+            shiftCode?: string;
+            /** Format: date */
+            workDate: string;
+            notes?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         HandoverNote: {
             /** Format: uuid */
             id: string;
@@ -3347,6 +3399,8 @@ export interface components {
         AttendanceId: string;
         /** @description Handover note internal UUID. */
         HandoverId: string;
+        /** @description Staff roster assignment internal UUID. */
+        RosterId: string;
     };
     requestBodies: never;
     headers: never;
@@ -7488,6 +7542,87 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AttendanceReportRow"][];
                 };
+            };
+        };
+    };
+    listRoster: {
+        parameters: {
+            query?: {
+                date?: string;
+                staffId?: string;
+                shiftId?: string;
+                /** @description Maximum number of records to return. */
+                limit?: components["parameters"]["PageLimit"];
+                /** @description Number of records to skip. */
+                offset?: components["parameters"]["PageOffset"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Roster assignments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffRoster"][];
+                };
+            };
+        };
+    };
+    assignRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    staffId: string;
+                    /** Format: uuid */
+                    shiftId: string;
+                    /** Format: date */
+                    workDate: string;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Scheduled */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffRoster"];
+                };
+            };
+        };
+    };
+    deleteRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Staff roster assignment internal UUID. */
+                id: components["parameters"]["RosterId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

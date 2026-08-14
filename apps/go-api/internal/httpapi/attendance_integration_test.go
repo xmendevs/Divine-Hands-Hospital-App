@@ -167,16 +167,25 @@ func TestAttendanceClockInOut(t *testing.T) {
 
 func TestAttendanceReport(t *testing.T) {
 	_, nurseTok := seedRoleUser(t, "p9-nurse4", "nurse", "E-906")
-	_, nurse2Tok := seedRoleUser(t, "p9-nurse5", "nurse", "E-907")
+	nurse2UserID, nurse2Tok := seedRoleUser(t, "p9-nurse5", "nurse", "E-907")
 	_, matronTok := seedRoleUser(t, "p9-matron2", "matron", "E-908")
 
 	lateShift := createShift(t, adminToken, "R-DAY", "Day", "00:00", "23:59", 0)
 	clockIn(t, nurseTok, lateShift["id"].(string))
 	clockOut(t, nurseTok)
 
-	// nurse2 has no record today -> missed.
 	date := time.Now().UTC().Format("2006-01-02")
-	rr := doJSON(t, http.MethodGet, "/api/v1/attendance/report?date="+date, matronTok, nil)
+
+	// Schedule nurse2 but they never clock in -> missed.
+	nurse2Staff := staffIDFor(t, nurse2UserID)
+	rr := doJSON(t, http.MethodPost, "/api/v1/attendance/rosters", adminToken, map[string]any{
+		"staffId": nurse2Staff, "shiftId": lateShift["id"], "workDate": date,
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("assign roster status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+
+	rr = doJSON(t, http.MethodGet, "/api/v1/attendance/report?date="+date, matronTok, nil)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("report status = %d", rr.Code)
 	}
@@ -215,6 +224,57 @@ func TestAttendanceReport(t *testing.T) {
 	}
 	if statusByEmp["E-907"] != "on_leave" {
 		t.Fatalf("E-907 status = %q, want on_leave", statusByEmp["E-907"])
+	}
+}
+
+func TestRoster(t *testing.T) {
+	nurseUserID, nurseTok := seedRoleUser(t, "p9-nurse9", "nurse", "E-916")
+	_, matronTok := seedRoleUser(t, "p9-matron4", "matron", "E-917")
+
+	shift := createShift(t, adminToken, "R-NIGHT", "Night", "20:00", "08:00", 0)
+	date := time.Now().UTC().Format("2006-01-02")
+	staffID := staffIDFor(t, nurseUserID)
+
+	// Nurses cannot assign rosters.
+	rr := doJSON(t, http.MethodPost, "/api/v1/attendance/rosters", nurseTok, map[string]any{
+		"staffId": staffID, "shiftId": shift["id"], "workDate": date,
+	})
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("nurse assign roster status = %d, want 403", rr.Code)
+	}
+
+	rr = doJSON(t, http.MethodPost, "/api/v1/attendance/rosters", adminToken, map[string]any{
+		"staffId": staffID, "shiftId": shift["id"], "workDate": date,
+	})
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("assign roster status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+	var ro map[string]any
+	_ = json.Unmarshal(rr.Body.Bytes(), &ro)
+	rosterID := ro["id"].(string)
+
+	// Duplicate assignment rejected.
+	rr = doJSON(t, http.MethodPost, "/api/v1/attendance/rosters", adminToken, map[string]any{
+		"staffId": staffID, "shiftId": shift["id"], "workDate": date,
+	})
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("duplicate roster status = %d, want 409", rr.Code)
+	}
+
+	// Listable.
+	rr = doJSON(t, http.MethodGet, "/api/v1/attendance/rosters?date="+date, matronTok, nil)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "E-916") {
+		t.Fatalf("list roster status = %d", rr.Code)
+	}
+
+	// Delete removes it.
+	rr = doJSON(t, http.MethodDelete, "/api/v1/attendance/rosters/"+rosterID, adminToken, nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("delete roster status = %d", rr.Code)
+	}
+	rr = doJSON(t, http.MethodGet, "/api/v1/attendance/rosters?date="+date, matronTok, nil)
+	if strings.Contains(rr.Body.String(), "E-916") {
+		t.Fatal("roster still listed after delete")
 	}
 }
 
