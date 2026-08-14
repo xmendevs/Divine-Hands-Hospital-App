@@ -1,21 +1,41 @@
 # go-api
 
-Go core / high-throughput service for the Divine Hands HMS.
+Go core service for the Divine Hands HMS: identity, RBAC, sessions, and audit.
 
 ## Endpoints
 
-| Method | Path              | Purpose                                  |
-| ------ | ----------------- | ---------------------------------------- |
-| GET    | `/health`         | Liveness                                 |
-| GET    | `/ready`          | Readiness (PostgreSQL + Redis checks)    |
-| GET    | `/api/v1/version` | Service metadata under the versioned API |
+| Method | Path                                    | Auth / permission          |
+| ------ | --------------------------------------- | -------------------------- |
+| GET    | `/health`, `/ready`                     | public                     |
+| GET    | `/api/v1/version`                       | public                     |
+| POST   | `/api/v1/auth/login`                    | public                     |
+| POST   | `/api/v1/auth/password-reset/request`   | public                     |
+| POST   | `/api/v1/auth/password-reset/confirm`   | public                     |
+| GET    | `/api/v1/auth/me`                       | session                    |
+| POST   | `/api/v1/auth/logout`                   | session                    |
+| POST   | `/api/v1/auth/change-password`          | session                    |
+| POST   | `/api/v1/auth/mfa/setup`, `.../confirm` | session                    |
+| *      | `/api/v1/admin/users...`                | `users.*` / `roles.assign` |
+| *      | `/api/v1/admin/roles...`                | `roles.*`                  |
+| *      | `/api/v1/admin/permissions`             | `roles.view`               |
+| *      | `/api/v1/admin/departments...`          | `departments.*`            |
+| GET    | `/api/v1/admin/audit-logs`              | `audit.view`               |
+| *      | `/api/v1/admin/settings...`             | `settings.*`               |
+
+Authentication uses `Authorization: Bearer <token>`. See `docs/rbac-audit.md`
+for the model and `packages/api-contracts/` for the OpenAPI spec.
 
 ## Run
 
 ```bash
-go run ./cmd/server
+go run ./cmd/migrate -command up   # apply migrations
+SEED_SUPERADMIN_PASSWORD=... go run ./cmd/seed   # create super admin
+go run ./cmd/server                # start the API
 ```
 
-Configuration is via environment variables (see `.env.example` at the repo
-root). Structured JSON logs go to stdout; every request carries an
-`X-Request-ID` correlation ID. See `docs/` for logging and API conventions.
+## Test
+
+```bash
+go test ./...                                   # unit tests
+TEST_DATABASE_URL=postgres://... go test -tags integration ./...   # integration
+```
