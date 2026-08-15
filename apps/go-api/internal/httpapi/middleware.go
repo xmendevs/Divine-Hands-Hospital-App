@@ -12,7 +12,26 @@ import (
 // that the outermost layer recovers panics, then assigns a request ID, then
 // logs the request.
 func withMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
-	return recoverer(logger)(requestID()(accessLog(logger)(next)))
+	return cors()(recoverer(logger)(requestID()(accessLog(logger)(next))))
+}
+
+// cors allows the desktop webview (a different origin, e.g. tauri://localhost
+// or http://localhost:1420 in dev) to call this API. Authentication uses bearer
+// tokens in the Authorization header rather than cookies, so a wildcard origin
+// does not weaken auth.
+func cors() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // statusRecorder captures the response status code for logging.

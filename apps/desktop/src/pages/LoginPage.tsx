@@ -1,5 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
-import { ApiError } from "../api/client";
+import { ApiError, getBaseUrl, setBaseUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
@@ -11,6 +11,9 @@ export default function LoginPage() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showConnection, setShowConnection] = useState(false);
+  const [serverUrl, setServerUrl] = useState(() => getBaseUrl());
+  const [urlSaved, setUrlSaved] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -82,6 +85,39 @@ export default function LoginPage() {
           <input value={deviceName} onChange={(e) => setDeviceName(e.target.value)} style={input} />
         </label>
 
+        <button type="button" onClick={() => setShowConnection((s) => !s)} style={linkBtn}>
+          Connection settings
+        </button>
+
+        {showConnection && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <label style={label}>
+              Server address
+              <input
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                style={input}
+                placeholder="http://127.0.0.1:8080"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setBaseUrl(serverUrl);
+                setUrlSaved(true);
+                window.setTimeout(() => setUrlSaved(false), 2500);
+              }}
+              style={secondaryBtn}
+            >
+              Save address
+            </button>
+            {urlSaved && <p style={{ margin: 0, fontSize: "0.75rem", color: "#15803d" }}>Saved.</p>}
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b" }}>
+              Set this to the main PC&apos;s network address (e.g. http://192.168.1.10:8080).
+            </p>
+          </div>
+        )}
+
         {error && (
           <p role="alert" style={{ margin: 0, fontSize: "0.8rem", color: "#b91c1c" }}>
             {error}
@@ -141,4 +177,26 @@ const button: CSSProperties = {
   fontWeight: 700,
   fontSize: "0.9rem",
   cursor: "pointer",
+};
+
+const secondaryBtn: CSSProperties = {
+  padding: "0.5rem",
+  borderRadius: "6px",
+  border: "1px solid #cbd5e1",
+  background: "#f8fafc",
+  color: "#334155",
+  fontWeight: 600,
+  fontSize: "0.85rem",
+  cursor: "pointer",
+};
+
+const linkBtn: CSSProperties = {
+  background: "none",
+  border: "none",
+  color: "#0284c7",
+  fontSize: "0.8rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "left",
+  padding: 0,
 };
