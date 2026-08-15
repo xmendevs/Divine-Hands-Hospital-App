@@ -121,6 +121,23 @@ func TestRequestIDGenerated(t *testing.T) {
 	}
 }
 
+func TestCORSHeaders(t *testing.T) {
+	h := NewRouter(testConfig(), testLogger(), nil)
+
+	rr := doRequest(t, h, http.MethodGet, "/health", nil)
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Headers"); got == "" {
+		t.Fatalf("Access-Control-Allow-Headers not set")
+	}
+
+	rr = doRequest(t, h, http.MethodOptions, "/health", nil)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("OPTIONS status = %d, want %d", rr.Code, http.StatusNoContent)
+	}
+}
+
 func TestVersion(t *testing.T) {
 	h := NewRouter(testConfig(), testLogger(), nil)
 	rr := doRequest(t, h, http.MethodGet, "/api/v1/version", nil)
