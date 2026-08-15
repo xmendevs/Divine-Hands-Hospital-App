@@ -101,17 +101,16 @@ export default function BillingPage() {
     setLineItems([...lineItems, { id: Date.now().toString(), description: "", category: "Pharmacy", unitPrice: 0, quantity: 1, total: 0 }]);
   };
 
-  const handleUpdateLineItem = (id: string, field: keyof LineItem, val: any) => {
+  const handleUpdateLineItem = (id: string, field: "description" | "unitPrice" | "quantity", val: string) => {
     setLineItems((prev) =>
       prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, [field]: val };
-          if (field === "unitPrice" || field === "quantity") {
-            updated.total = (Number(updated.unitPrice) || 0) * (Number(updated.quantity) || 0);
-          }
-          return updated;
-        }
-        return item;
+        if (item.id !== id) return item;
+        const updated = { ...item };
+        if (field === "description") updated.description = val;
+        if (field === "unitPrice") updated.unitPrice = Number(val) || 0;
+        if (field === "quantity") updated.quantity = Number(val) || 0;
+        updated.total = updated.unitPrice * updated.quantity;
+        return updated;
       })
     );
   };

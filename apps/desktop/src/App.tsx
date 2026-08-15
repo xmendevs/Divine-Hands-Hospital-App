@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import LoginPage from "./pages/LoginPage";
+import SettingsPage from "./pages/SettingsPage";
 import ClinicalPage from "./pages/ClinicalPage";
 import LabPage from "./pages/LabPage";
 import PharmacyPage from "./pages/PharmacyPage";
@@ -10,7 +13,32 @@ import HandoverPage from "./pages/HandoverPage";
 import CommunicationsPage from "./pages/CommunicationsPage";
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+
+function AppShell() {
+  const { me, loading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("roster");
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!me) {
+    return <LoginPage />;
+  }
+
+  if (me.mustChangePassword) {
+    return <SettingsPage />;
+  }
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, sans-serif", background: "#f8fafc" }}>
@@ -55,6 +83,12 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        <div style={{ padding: "1rem", borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+          <span style={{ fontSize: "0.7rem", color: "#94a3b8", padding: "0 0.75rem" }}>{me.username}</span>
+          <button onClick={() => setActiveTab("settings")} style={navBtnStyle(activeTab === "settings")}>Settings</button>
+          <button onClick={() => void logout()} style={navBtnStyle(false)}>Sign out</button>
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -68,6 +102,7 @@ export default function App() {
         {activeTab === "roster" && <RosterPage />}
         {activeTab === "handover" && <HandoverPage />}
         {activeTab === "communications" && <CommunicationsPage />}
+        {activeTab === "settings" && <SettingsPage />}
       </div>
     </div>
   );

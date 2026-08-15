@@ -41,7 +41,7 @@ export default function CommunicationsPage() {
   ]);
 
   const [isRecording, setIsRecording] = useState(false);
-  const timerRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     if (inCall) {
