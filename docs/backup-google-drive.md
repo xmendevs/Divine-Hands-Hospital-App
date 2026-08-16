@@ -4,6 +4,13 @@ This is the operator's guide for backing up the hospital's data to Google
 Drive from the main PC. No code changes are required: the backup system already
 encrypts everything before it leaves the PC.
 
+> **Newer option — configure cloud backup from the app:** the Super Admin can
+> enter any S3-compatible storage (Amazon S3, Backblaze B2, Cloudflare R2,
+> MinIO…) directly in **Settings → Backup & cloud storage**, then trigger
+> uploads and verification from the same screen. This runbook's Google Drive
+> method is the zero-config alternative (no internet on the API is needed for
+> local backups — Drive syncs when it can).
+
 ## How it works
 
 - The Go API runs a scheduler that, on startup and then every

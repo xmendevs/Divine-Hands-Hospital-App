@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 release
+release-server
+server-payload
 *.local
 
 # Electron build resources (icon) — the root .gitignore ignores build/

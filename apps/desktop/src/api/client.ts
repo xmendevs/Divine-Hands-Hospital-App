@@ -61,6 +61,39 @@ function fallbackError(status: number, statusText: string): ApiErrorBody {
 }
 
 /**
+ * Downloads the Windows installer from the server (requires an authenticated
+ * session). Used so other hospital PCs can update the app from the Super Admin
+ * PC over the local network, without internet.
+ */
+export async function downloadInstaller(): Promise<void> {
+  const base = getBaseUrl();
+  const token = getToken();
+  const res = await fetch(`${base}/api/v1/downloads/installer`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let message = `Download failed (${res.status})`;
+    try {
+      const env = JSON.parse(text) as ApiErrorEnvelope;
+      message = env.error?.message || message;
+    } catch {
+      // not JSON; keep the generic message
+    }
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Divine Hands Hospital Setup.exe";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Performs an authenticated JSON request against the configured base URL.
  * All paths are relative to `/api/v1`, e.g. `apiFetch("/patients/search?q=x")`.
  */

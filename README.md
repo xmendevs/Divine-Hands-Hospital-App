@@ -83,10 +83,54 @@ The installer is also served by the Go API at `GET /api/v1/downloads/installer`
 when the server runs with `APP_INSTALLER_PATH` set to the file on disk — so
 hospitals can fetch the exact build from their own main PC instead of GitHub.
 
+### Two installers: client and server edition
+
+There are two ways to package the app:
+
+| Edition | Command | Installer | What it does |
+| ------- | ------- | --------- | ------------ |
+| **Client** | `cd apps/desktop && pnpm dist` | `Divine Hands Hospital Setup <version>.exe` (~90 MB) | The desktop client. Connects to the server PC's address. |
+| **Server** | `cd apps/desktop && pnpm dist:server` | `Divine Hands Hospital Server Setup <version>.exe` (~365 MB) | Client **plus** a bundled portable database and Go API. On first launch it creates the database, applies migrations, seeds the super admin, and starts the server - **no terminal, no admin needed**. The server keeps running when the app closes so the other PCs stay connected. |
+
+The **Super Admin PC installs the Server edition**; every other PC installs the
+Client edition and points it at the server PC's address.
+
+On a server install, the generated super admin username/password are shown in
+**Settings → Hospital server (this PC)** on first launch - change the password
+after signing in.
+
+### Hospital network (multiple PCs over WiFi, no internet)
+
+The Super Admin PC runs the backend and every other PC connects to it over the
+local WiFi/LAN:
+
+- **Server on the Super Admin PC**: the Go API must listen on the LAN, not
+  just localhost. Set `APP_HOST=0.0.0.0` (or `HOST=0.0.0.0`)
+  when starting it — the `infra/windows-bundle` launcher already does this.
+- **Every other PC**: install the app and set its server address (Connection
+  settings / Settings → Server connection) to the Super Admin PC's network
+  address, e.g. `http://192.168.1.10:8080`. All data lives on the Super Admin
+  PC; the other PCs are thin clients.
+- **App updates over the LAN**: with `APP_INSTALLER_PATH` set on the server,
+  Settings → Hospital network & app updates offers a **Download app update**
+  button that fetches the installer from the server — no internet required.
+
+### Cloud backup from the Super Admin settings
+
+The Super Admin can configure cloud backup without touching the server config:
+
+- Settings → **Backup & cloud storage** lets you enter any S3-compatible
+  object store (Amazon S3, Backblaze B2, Cloudflare R2, MinIO…), toggle
+  automatic backups, run/upload/verify on demand, and see job history.
+- Backups are **encrypted before leaving the PC**; the encryption key is set
+  on the server as `BACKUP_ENCRYPTION_KEY` (see
+  [docs/backup-google-drive.md](docs/backup-google-drive.md)) and is never
+  shown in the app.
+
 ### First run (super admin)
 
-Signing in uses the normal username/password flow — there is no license key.
-Set up the super admin on the main PC once:
+Signing in uses the normal username/password flow. Set up the super admin on
+the main PC once:
 
 ```bash
 cd apps/go-api

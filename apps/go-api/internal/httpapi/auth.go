@@ -63,17 +63,15 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mfaRequired, err := s.store.UserHasPrivilegedRole(r.Context(), u.ID)
-	if err != nil {
-		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+	// MFA is enforced for users who have actually enrolled a TOTP secret.
+	// Privileged roles require MFA by policy, but a brand-new account has no
+	// secret yet - demanding a code there would lock first-time sign-in
+	// forever. Those accounts sign in once and enroll afterwards.
+	mfaEnrolled := u.MFASecretEncrypted != nil && s.mfaCipher != nil
+	if mfaEnrolled && !s.verifyMFA(u, req.TotpCode) {
+		s.recordSecurity(r, &u.ID, domain.EventMFAVerificationFailed, nil)
+		writeError(w, r, http.StatusUnauthorized, "mfa_required", "valid MFA code required")
 		return
-	}
-	if mfaRequired || u.MFAEnabled {
-		if !s.verifyMFA(u, req.TotpCode) {
-			s.recordSecurity(r, &u.ID, domain.EventMFAVerificationFailed, nil)
-			writeError(w, r, http.StatusUnauthorized, "mfa_required", "valid MFA code required")
-			return
-		}
 	}
 
 	raw, hash, err := auth.GenerateToken()

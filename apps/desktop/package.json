@@ -15,7 +15,8 @@
     "test": "vitest run",
     "tauri": "tauri",
     "start": "electron .",
-    "dist": "pnpm build && electron-builder --win nsis"
+    "dist": "pnpm build && electron-builder --win nsis",
+    "dist:server": "pnpm build && node scripts/build-server-payload.mjs && electron-builder --win nsis --config electron-builder.server.yml"
   },
   "dependencies": {
     "@hims/ui": "workspace:*",
@@ -48,6 +49,7 @@
     "files": [
       "dist/**/*",
       "main.cjs",
+      "preload.js",
       "package.json"
     ],
     "directories": {

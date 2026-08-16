@@ -1,0 +1,30 @@
+# Server edition: same desktop app, plus the bundled server payload
+# (server-payload -> resources/server) so the installed app can start
+# PostgreSQL + the Go API itself - no terminal, no admin required.
+# Built by: pnpm dist:server
+appId: com.divinehands.hospital
+productName: Divine Hands Hospital Server
+directories:
+  buildResources: build
+  output: release-server
+files:
+  - dist/**/*
+  - main.cjs
+  - preload.js
+  - package.json
+extraResources:
+  - from: server-payload
+    to: server
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Divine Hands Hospital Server

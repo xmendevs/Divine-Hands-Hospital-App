@@ -303,5 +303,15 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/reports/my", s.perm("reports.view", s.handleMyReport))
 	mux.Handle("GET /api/v1/reports/export", s.perm("reports.export", s.handleExportReport))
 
+	// Backup & disaster recovery (Phase 13, Super Admin).
+	mux.Handle("GET /api/v1/backups/status", s.admin("backups.view", s.handleBackupStatus))
+	mux.Handle("GET /api/v1/backups/jobs", s.admin("backups.view", s.handleBackupJobs))
+	mux.Handle("POST /api/v1/backups/run", s.admin("backups.run", s.handleBackupRun))
+	mux.Handle("POST /api/v1/backups/verify", s.admin("backups.verify", s.handleBackupVerify))
+
+	// Build the backup manager from DB settings so the Super Admin can manage
+	// cloud backup from the app. Backups stay disabled until configured.
+	s.rebuildBackupMgr()
+
 	return withMiddleware(mux, logger)
 }

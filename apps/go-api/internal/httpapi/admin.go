@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/auth"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
@@ -385,6 +386,10 @@ func (s *server) handleSetSetting(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.SetSetting(r.Context(), key, req.Value, &actor.ID); err != nil {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
+	}
+	// Backup settings take effect immediately (rebuild the manager/scheduler).
+	if strings.HasPrefix(key, backupSettingPrefix) {
+		s.rebuildBackupMgr()
 	}
 	s.recordAudit(r, domain.ActionSettingsUpdate, "setting", key, nil, map[string]any{"key": key})
 	w.WriteHeader(http.StatusNoContent)

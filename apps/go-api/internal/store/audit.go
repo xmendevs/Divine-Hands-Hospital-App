@@ -78,6 +78,26 @@ func (s *Store) ListSettings(ctx context.Context) ([]domain.Setting, error) {
 	return out, rows.Err()
 }
 
+// GetSettingsMap returns all system settings as a key → JSON value map.
+func (s *Store) GetSettingsMap(ctx context.Context) (map[string]json.RawMessage, error) {
+	rows, err := s.pool.Query(ctx, `SELECT key, value FROM system_settings`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string]json.RawMessage)
+	for rows.Next() {
+		var k string
+		var v json.RawMessage
+		if err := rows.Scan(&k, &v); err != nil {
+			return nil, err
+		}
+		out[k] = v
+	}
+	return out, rows.Err()
+}
+
 // SetSetting upserts a system setting.
 func (s *Store) SetSetting(ctx context.Context, key string, value any, updatedBy *string) error {
 	b, _ := json.Marshal(value)
