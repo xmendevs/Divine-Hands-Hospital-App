@@ -1,21 +1,9 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
-import {
-  ApiError,
-  clearLicenseKey,
-  getBaseUrl,
-  getLicenseKey,
-  setBaseUrl,
-  setLicenseKey,
-  validateLicense,
-} from "../api/client";
+import { ApiError, getBaseUrl, setBaseUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [licenseKey, setLicenseKeyInput] = useState("");
-  const [licenseLabel, setLicenseLabel] = useState<string | null>(() => getLicenseKey() ? "License key activated" : null);
-  const [licenseBusy, setLicenseBusy] = useState(false);
-  const [licenseError, setLicenseError] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -27,40 +15,6 @@ export default function LoginPage() {
   const [serverUrl, setServerUrl] = useState(() => getBaseUrl());
   const [urlSaved, setUrlSaved] = useState(false);
 
-  const licenseActive = licenseLabel !== null;
-
-  async function handleLicenseSubmit(e: FormEvent) {
-    e.preventDefault();
-    setLicenseError("");
-    setLicenseBusy(true);
-    try {
-      const label = await validateLicense(licenseKey);
-      setLicenseKey(licenseKey);
-      setLicenseLabel(label ?? "License key activated");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setLicenseError(
-          err.code === "invalid_license"
-            ? "That license key is not valid or has been deactivated."
-            : err.message,
-        );
-      } else if (err instanceof Error) {
-        setLicenseError(err.message);
-      } else {
-        setLicenseError("License activation failed.");
-      }
-    } finally {
-      setLicenseBusy(false);
-    }
-  }
-
-  function handleChangeLicense() {
-    clearLicenseKey();
-    setLicenseLabel(null);
-    setLicenseKeyInput("");
-    setLicenseError("");
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -71,9 +25,6 @@ export default function LoginPage() {
       if (err instanceof ApiError && err.code === "mfa_required") {
         setMfaRequired(true);
         setError("Enter the 6-digit code from your authenticator app.");
-      } else if (err instanceof ApiError && err.code === "license_required") {
-        handleChangeLicense();
-        setLicenseError("A valid license key is required to sign in.");
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -86,133 +37,96 @@ export default function LoginPage() {
 
   return (
     <div style={outer}>
-      <form onSubmit={licenseActive ? handleSubmit : handleLicenseSubmit} style={card}>
+      <form onSubmit={handleSubmit} style={card}>
         <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "#0f172a" }}>Divine Hands Hospital</h2>
-        <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-          {licenseActive ? "Sign in to continue" : "Activate this installation"}
-        </p>
+        <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>Sign in to continue</p>
 
-        {!licenseActive ? (
-          <>
-            <label style={label}>
-              License key
-              <input
-                value={licenseKey}
-                onChange={(e) => setLicenseKeyInput(e.target.value)}
-                autoFocus
-                required
-                style={input}
-                placeholder="e.g. DH-ALPHA-1"
-              />
-            </label>
-            {licenseError && (
-              <p role="alert" style={{ margin: 0, fontSize: "0.8rem", color: "#b91c1c" }}>
-                {licenseError}
-              </p>
-            )}
-            <button type="submit" disabled={licenseBusy} style={button}>
-              {licenseBusy ? "Activating…" : "Activate"}
-            </button>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#15803d" }}>
-                {licenseLabel}
-              </span>
-              <button type="button" onClick={handleChangeLicense} style={linkBtn}>
-                Change key
-              </button>
-            </div>
+        <label style={label}>
+          Username
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoFocus
+            required
+            style={input}
+            placeholder="username"
+          />
+        </label>
 
-            <label style={label}>
-              Username
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoFocus
-                required
-                style={input}
-                placeholder="username"
-              />
-            </label>
+        <label style={label}>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={input}
+            placeholder="password"
+          />
+        </label>
 
-            <label style={label}>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={input}
-                placeholder="password"
-              />
-            </label>
-
-            {mfaRequired && (
-              <label style={label}>
-                Authenticator code
-                <input
-                  value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value)}
-                  required
-                  inputMode="numeric"
-                  maxLength={6}
-                  style={input}
-                  placeholder="6-digit code"
-                />
-              </label>
-            )}
-
-            <label style={label}>
-              Device name
-              <input value={deviceName} onChange={(e) => setDeviceName(e.target.value)} style={input} />
-            </label>
-
-            <button type="button" onClick={() => setShowConnection((s) => !s)} style={linkBtn}>
-              Connection settings
-            </button>
-
-            {showConnection && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                <label style={label}>
-                  Server address
-                  <input
-                    value={serverUrl}
-                    onChange={(e) => setServerUrl(e.target.value)}
-                    style={input}
-                    placeholder="http://127.0.0.1:8080"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBaseUrl(serverUrl);
-                    setUrlSaved(true);
-                    window.setTimeout(() => setUrlSaved(false), 2500);
-                  }}
-                  style={secondaryBtn}
-                >
-                  Save address
-                </button>
-                {urlSaved && <p style={{ margin: 0, fontSize: "0.75rem", color: "#15803d" }}>Saved.</p>}
-                <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b" }}>
-                  Set this to the main PC&apos;s network address (e.g. http://192.168.1.10:8080).
-                </p>
-              </div>
-            )}
-
-            {error && (
-              <p role="alert" style={{ margin: 0, fontSize: "0.8rem", color: "#b91c1c" }}>
-                {error}
-              </p>
-            )}
-
-            <button type="submit" disabled={busy} style={button}>
-              {busy ? "Signing in…" : "Sign in"}
-            </button>
-          </>
+        {mfaRequired && (
+          <label style={label}>
+            Authenticator code
+            <input
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              required
+              inputMode="numeric"
+              maxLength={6}
+              style={input}
+              placeholder="6-digit code"
+            />
+          </label>
         )}
+
+        <label style={label}>
+          Device name
+          <input value={deviceName} onChange={(e) => setDeviceName(e.target.value)} style={input} />
+        </label>
+
+        <button type="button" onClick={() => setShowConnection((s) => !s)} style={linkBtn}>
+          Connection settings
+        </button>
+
+        {showConnection && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <label style={label}>
+              Server address
+              <input
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                style={input}
+                placeholder="http://127.0.0.1:8080"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setBaseUrl(serverUrl);
+                setUrlSaved(true);
+                window.setTimeout(() => setUrlSaved(false), 2500);
+              }}
+              style={secondaryBtn}
+            >
+              Save address
+            </button>
+            {urlSaved && <p style={{ margin: 0, fontSize: "0.75rem", color: "#15803d" }}>Saved.</p>}
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b" }}>
+              Set this to the main PC&apos;s network address (e.g. http://192.168.1.10:8080).
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" style={{ margin: 0, fontSize: "0.8rem", color: "#b91c1c" }}>
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={busy} style={button}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
       </form>
     </div>
   );

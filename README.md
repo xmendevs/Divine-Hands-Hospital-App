@@ -83,28 +83,33 @@ The installer is also served by the Go API at `GET /api/v1/downloads/installer`
 when the server runs with `APP_INSTALLER_PATH` set to the file on disk — so
 hospitals can fetch the exact build from their own main PC instead of GitHub.
 
-### License keys (access control)
+### First run (super admin)
 
-The app is **license-gated**: it cannot be signed in to without a valid license
-key, so only authorized installations can use the software.
+Signing in uses the normal username/password flow — there is no license key.
+Set up the super admin on the main PC once:
 
-- The installer itself is public; the **activation key gates the app**: the
-  desktop client asks for a key before the sign-in form, and the server rejects
-  logins (`401 license_required`) that do not carry a valid key.
-- Seed keys on the main PC when setting up the database:
+```bash
+cd apps/go-api
+go run ./cmd/migrate -command up
+SEED_SUPERADMIN_USERNAME=superadmin \
+  SEED_SUPERADMIN_PASSWORD='<a strong password>' \
+  go run ./cmd/seed
+```
 
-  ```bash
-  SEED_LICENSE_KEYS='DH-ALPHA-1:Front desk,DH-ALPHA-2:Lab' \
-    SEED_SUPERADMIN_PASSWORD='<a strong password>' \
-    go run ./cmd/seed
-  ```
+Then sign in to the desktop app with those credentials. Additional staff
+accounts are created from the admin user screen.
 
-  Each entry is `key` or `key:label`, comma-separated. Re-running the seed with
-  extra keys adds them without touching existing data.
-- While **no keys are configured**, licensing is disabled and any key is
-  accepted — existing deployments keep working until the hospital seeds keys.
-- The download endpoint requires an authenticated session, and the Go API only
-  serves the installer when `APP_INSTALLER_PATH` is configured on the server.
+### Downloading the installer (access control)
+
+The **Electron installer** is attached to every GitHub **Release** (tag `v*`):
+
+> **Releases → [latest release](https://github.com/xmendevs/divine-hands-hospital-app/releases/latest) → Assets → `Divine Hands Hospital Setup <version>.exe`**
+
+The installer is also served by the Go API at `GET /api/v1/downloads/installer`
+when the server runs with `APP_INSTALLER_PATH` set to the file on disk. That
+endpoint requires an authenticated session, so only signed-in users can fetch
+it — keep `APP_INSTALLER_PATH` unset unless you want to host the installer on
+the server itself.
 
 ## Documentation
 

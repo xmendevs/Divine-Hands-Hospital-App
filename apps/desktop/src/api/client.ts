@@ -29,7 +29,6 @@ export class ApiError extends Error {
 const DEFAULT_BASE_URL = "http://127.0.0.1:8080";
 const SERVER_URL_KEY = "hims_server_url";
 const TOKEN_KEY = "hims_token";
-const LICENSE_KEY = "hims_license_key";
 
 export function getBaseUrl(): string {
   const stored = localStorage.getItem(SERVER_URL_KEY);
@@ -57,55 +56,6 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
-export function getLicenseKey(): string | null {
-  return localStorage.getItem(LICENSE_KEY);
-}
-
-export function setLicenseKey(key: string): void {
-  localStorage.setItem(LICENSE_KEY, key.trim());
-}
-
-export function clearLicenseKey(): void {
-  localStorage.removeItem(LICENSE_KEY);
-}
-
-/**
- * Validates a license key against the configured server. Resolves to the
- * license label when the key is accepted (or null when the server does not
- * enforce licensing). Throws when the key is rejected or unreachable.
- */
-export async function validateLicense(key: string): Promise<string | null> {
-  const base = getBaseUrl();
-  let res: Response;
-  try {
-    res = await fetch(`${base}/api/v1/auth/license`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
-    });
-  } catch {
-    throw new Error(
-      `Cannot reach the server at ${base}. Check the main PC is on and the address is correct in Settings.`,
-    );
-  }
-  const text = await res.text();
-  let data: unknown;
-  try {
-    data = text ? JSON.parse(text) : undefined;
-  } catch {
-    data = undefined;
-  }
-  if (!res.ok) {
-    const envelope = data as ApiErrorEnvelope | undefined;
-    throw new ApiError(res.status, envelope?.error ?? fallbackError(res.status, res.statusText));
-  }
-  const body = data as { valid?: boolean; enforced?: boolean; label?: string };
-  if (!body.valid) {
-    throw new ApiError(res.status, fallbackError(res.status, "invalid license key"));
-  }
-  return body.enforced ? (body.label ?? null) : null;
-}
-
 function fallbackError(status: number, statusText: string): ApiErrorBody {
   return { code: "unknown", message: statusText || `request failed (${status})`, requestId: "" };
 }
@@ -124,10 +74,6 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
-  }
-  const license = getLicenseKey();
-  if (license) {
-    headers.set("X-License-Key", license);
   }
 
   let res: Response;
