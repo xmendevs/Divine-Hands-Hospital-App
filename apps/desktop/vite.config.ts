@@ -8,6 +8,11 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // Relative asset URLs so the production build also loads from file:// in the
+  // Electron shell (absolute /assets/... paths would resolve to the disk root
+  // and render a blank window). Harmless for Tauri and the dev server.
+  base: "./",
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors
