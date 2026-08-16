@@ -26,6 +26,7 @@ linux:
   icon: build/icon.png
   category: Medical
   maintainer: Divine Hands Hospital <chuks4brown@gmail.com>
+  artifactName: divine-hands-hospital-server-${version}.${arch}.${ext}
   target:
     - target: AppImage
       arch:
