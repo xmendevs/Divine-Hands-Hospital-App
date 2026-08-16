@@ -18,7 +18,7 @@
 // Run from apps/desktop:  node scripts/build-server-payload.mjs
 // (the pnpm script "dist:server" / "dist:server:linux" runs it automatically.)
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, cpSync, rmSync, readdirSync, realpathSync, symlinkSync, openSync, readSync, closeSync } from "node:fs";
+import { existsSync, mkdirSync, cpSync, rmSync, readdirSync, realpathSync, symlinkSync, statSync, openSync, readSync, closeSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -150,7 +150,11 @@ function assembleLinuxPostgres() {
   if (existsSync(PG_LIB_DIR)) {
     for (const f of readdirSync(PG_LIB_DIR)) {
       if (f === "llvmjit.so" || f === "llvmjit_types.bc" || f === "bitcode") continue;
-      cpSync(path.join(PG_LIB_DIR, f), path.join(pgsqlLibDir, f));
+      const src = path.join(PG_LIB_DIR, f);
+      // Only runtime extension modules are needed; skip subdirectories such
+      // as pgxs/ (build-system Makefiles) and bitcode/.
+      if (!statSync(src).isFile()) continue;
+      cpSync(src, path.join(pgsqlLibDir, f));
     }
   }
 
