@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Divine Hands Hospital desktop client (Tauri + Electron packaging)",
   "author": "Divine Hands Hospital",
+  "homepage": "https://github.com/xmendevs/Divine-Hands-Hospital-App",
   "main": "main.cjs",
   "scripts": {
     "dev": "vite",
