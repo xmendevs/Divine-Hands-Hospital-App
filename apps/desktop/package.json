@@ -48,6 +48,7 @@
   },  "build": {
     "appId": "com.divinehands.hospital",
     "productName": "Divine Hands Hospital",
+    "executableName": "divine-hands-hospital",
     "files": [
       "dist/**/*",
       "main.cjs",
