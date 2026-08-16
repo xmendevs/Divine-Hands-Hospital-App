@@ -4,6 +4,7 @@
 # Built by: pnpm dist:server
 appId: com.divinehands.hospital
 productName: Divine Hands Hospital Server
+executableName: divine-hands-hospital-server
 directories:
   buildResources: build
   output: release-server
@@ -19,6 +20,18 @@ win:
   icon: build/icon.png
   target:
     - target: nsis
+      arch:
+        - x64
+linux:
+  icon: build/icon.png
+  category: Medical
+  maintainer: Divine Hands Hospital <chuks4brown@gmail.com>
+  artifactName: divine-hands-hospital-server-${version}.${arch}.${ext}
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
       arch:
         - x64
 nsis:

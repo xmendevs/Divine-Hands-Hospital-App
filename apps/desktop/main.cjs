@@ -10,10 +10,10 @@
 // allows cross-origin (Access-Control-Allow-Origin: *).
 //
 // Server edition: when the installer bundles a server payload (resources/server
-// next to the exe), this PC is the hospital server. On launch we ensure
-// PostgreSQL and the Go API are running (init once, then start if needed) so
-// the operator never touches a terminal. The server keeps running when the
-// window closes so the other PCs stay connected over WiFi.
+// next to the executable), this machine is the hospital server. On launch we
+// ensure PostgreSQL and the Go API are running (init once, then start if
+// needed) so the operator never touches a terminal. The server keeps running
+// when the window closes so the other PCs stay connected over WiFi.
 //
 // For development against the Vite dev server, run:
 //   VITE_DEV_SERVER_URL=http://localhost:1420 electron .
@@ -28,6 +28,13 @@ const { spawn, spawnSync } = require("child_process");
 
 const API_PORT = 8080;
 const APP_STATE_DIR = path.join(app.getPath("appData"), "Divine Hands Hospital", "server");
+
+// Windows executables carry a .exe suffix; on Linux the bundled PostgreSQL
+// and Go binaries are plain executables. The server payload is assembled by
+// scripts/build-server-payload.mjs with the same bin/pgsql layout on both
+// platforms, so only the suffix differs here.
+const IS_WINDOWS = process.platform === "win32";
+const EXE = IS_WINDOWS ? ".exe" : "";
 
 // ---------------------------------------------------------------------------
 // Server management (server edition only)
@@ -112,17 +119,17 @@ async function waitFor(fn, timeoutMs, intervalMs) {
 
 async function startPostgres(cfg) {
   const pgData = state("pgdata");
-  const pgCtl = bin("pgsql", "bin", "pg_ctl.exe");
-  const initdb = bin("pgsql", "bin", "initdb.exe");
-  const createdb = bin("pgsql", "bin", "createdb.exe");
-  const psql = bin("pgsql", "bin", "psql.exe");
-  const pgIsReady = bin("pgsql", "bin", "pg_isready.exe");
+  const pgCtl = bin("pgsql", "bin", "pg_ctl" + EXE);
+  const initdb = bin("pgsql", "bin", "initdb" + EXE);
+  const createdb = bin("pgsql", "bin", "createdb" + EXE);
+  const psql = bin("pgsql", "bin", "psql" + EXE);
+  const pgIsReady = bin("pgsql", "bin", "pg_isready" + EXE);
 
   if (!fs.existsSync(pgData)) {
     logProgress("initdb: starting");
     const pwFile = state("pgpass.tmp");
     fs.writeFileSync(pwFile, cfg.pgPassword);
-    const init = spawnSync(initdb, ["-D", pgData, "-U", cfg.pgUser, "--auth=scram-sha-256", "--pwfile=" + pwFile, "--encoding=UTF8"], { encoding: "utf8", timeout: 180000 });
+    const init = spawnSync(initdb, ["-D", pgData, "-U", cfg.pgUser, "--auth=scram-sha-256", "--pwfile=" + pwFile, "--encoding=UTF8"], { encoding: "utf8", env: pgEnv(cfg), timeout: 180000 });
     try {
       fs.unlinkSync(pwFile);
     } catch {
@@ -148,11 +155,12 @@ async function startPostgres(cfg) {
     detached: true,
     stdio: "ignore",
     windowsHide: true,
+    env: pgEnv(cfg),
   });
   pgCtlProc.unref();
 
   const dbReady = await waitFor(
-    () => spawnSync(pgIsReady, ["-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser], { encoding: "utf8", timeout: 15000 }).status === 0,
+    () => spawnSync(pgIsReady, ["-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser], { encoding: "utf8", env: pgEnv(cfg), timeout: 15000 }).status === 0,
     60000,
     1000,
   );
@@ -172,10 +180,19 @@ async function startPostgres(cfg) {
 }
 
 function pgEnv(cfg) {
-  return {
+  const env = {
     ...process.env,
     PGPASSWORD: cfg.pgPassword,
   };
+  if (!IS_WINDOWS) {
+    // On Linux the bundled PostgreSQL binaries dynamically link against the
+    // shared libraries shipped next to them in bin/pgsql/lib (harvested by
+    // build-server-payload.mjs). Point the dynamic loader at that directory
+    // first so the bundle runs without a system PostgreSQL installation.
+    const libDir = path.join(serverDir(), "bin", "pgsql", "lib");
+    env.LD_LIBRARY_PATH = [libDir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(":");
+  }
+  return env;
 }
 
 function databaseURL(cfg) {
@@ -184,14 +201,14 @@ function databaseURL(cfg) {
 
 function applyMigrationsAndSeed(cfg) {
   const env = { ...process.env, DATABASE_URL: databaseURL(cfg) };
-  logProgress("migrate.exe: running");
-  const migrate = spawnSync(bin("migrate.exe"), ["-command", "up", "-dir", path.join(serverDir(), "migrations")], { encoding: "utf8", env, timeout: 180000 });
+  logProgress("migrate" + EXE + ": running");
+  const migrate = spawnSync(bin("migrate" + EXE), ["-command", "up", "-dir", path.join(serverDir(), "migrations")], { encoding: "utf8", env, timeout: 180000 });
   if (migrate.error) throw new Error("migrate error: " + migrate.error.message);
   if (migrate.status !== 0) throw new Error("migrations failed: " + (migrate.stderr || migrate.stdout || "unknown error"));
-  logProgress("migrate.exe: done");
+  logProgress("migrate" + EXE + ": done");
 
-  logProgress("seed.exe: running");
-  const seed = spawnSync(bin("seed.exe"), [], {
+  logProgress("seed" + EXE + ": running");
+  const seed = spawnSync(bin("seed" + EXE), [], {
     encoding: "utf8",
     env: {
       ...env,
@@ -202,7 +219,7 @@ function applyMigrationsAndSeed(cfg) {
   });
   if (seed.error) throw new Error("seed error: " + seed.error.message);
   if (seed.status !== 0) throw new Error("seed failed: " + (seed.stderr || seed.stdout || "unknown error"));
-  logProgress("seed.exe: done");
+  logProgress("seed" + EXE + ": done");
 }
 
 function startGoApi(cfg) {
@@ -214,10 +231,17 @@ function startGoApi(cfg) {
     MFA_ENCRYPTION_KEY: cfg.mfaKey,
     BACKUP_ENABLED: "true",
     BACKUP_ENCRYPTION_KEY: cfg.backupKey,
-    BACKUP_PG_DUMP_PATH: bin("pgsql", "bin", "pg_dump.exe"),
+    BACKUP_PG_DUMP_PATH: bin("pgsql", "bin", "pg_dump" + EXE),
     MIGRATIONS_DIR: path.join(serverDir(), "migrations"),
   };
-  const child = spawn(bin("go-api.exe"), [], {
+  if (!IS_WINDOWS) {
+    // The Go API shells out to pg_dump for backups; pg_dump links against the
+    // bundled shared libraries, so the API process must inherit the loader
+    // path that resolves them.
+    const libDir = path.join(serverDir(), "bin", "pgsql", "lib");
+    env.LD_LIBRARY_PATH = [libDir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(":");
+  }
+  const child = spawn(bin("go-api" + EXE), [], {
     detached: true,
     stdio: "ignore",
     env,
