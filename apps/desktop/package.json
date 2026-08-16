@@ -16,7 +16,9 @@
     "tauri": "tauri",
     "start": "electron .",
     "dist": "pnpm build && electron-builder --win nsis",
-    "dist:server": "pnpm build && node scripts/build-server-payload.mjs && electron-builder --win nsis --config electron-builder.server.yml"
+    "dist:server": "pnpm build && node scripts/build-server-payload.mjs && electron-builder --win nsis --config electron-builder.server.yml",
+    "dist:linux": "pnpm build && electron-builder --linux AppImage deb",
+    "dist:server:linux": "pnpm build && TARGET_OS=linux node scripts/build-server-payload.mjs && electron-builder --linux AppImage deb --config electron-builder.server.yml"
   },
   "dependencies": {
     "@hims/ui": "workspace:*",
@@ -61,6 +63,21 @@
       "target": [
         {
           "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Medical",
+      "maintainer": "Divine Hands Hospital <chuks4brown@gmail.com>",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
           "arch": ["x64"]
         }
       ]

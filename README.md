@@ -64,9 +64,10 @@ Verify everything:
 scripts/verify.sh
 ```
 
-## Windows desktop app (Electron)
+## Desktop app (Electron)
 
-The React UI ships as a Windows desktop app. Two packaging paths coexist:
+The React UI ships as a desktop app for Windows and Linux. Two packaging paths
+coexist:
 
 | Path     | Command                 | Output                                          |
 | -------- | ----------------------- | ----------------------------------------------- |
@@ -77,7 +78,7 @@ The React UI ships as a Windows desktop app. Two packaging paths coexist:
 
 The latest **Electron installer** is attached to every GitHub **Release** (tag `v*`):
 
-> **Releases → [latest release](https://github.com/xmendevs/divine-hands-hospital-app/releases/latest) → Assets → `Divine Hands Hospital Setup <version>.exe`**
+> **Releases → [latest release](https://github.com/xmendevs/divine-hands-hospital-app/releases/latest) → Assets → `Divine Hands Hospital Setup <version>.exe`** (Windows) and **`*.AppImage` / `*.deb`** (Linux)
 
 The installer is also served by the Go API at `GET /api/v1/downloads/installer`
 when the server runs with `APP_INSTALLER_PATH` set to the file on disk — so
@@ -87,10 +88,10 @@ hospitals can fetch the exact build from their own main PC instead of GitHub.
 
 There are two ways to package the app:
 
-| Edition | Command | Installer | What it does |
-| ------- | ------- | --------- | ------------ |
-| **Client** | `cd apps/desktop && pnpm dist` | `Divine Hands Hospital Setup <version>.exe` (~90 MB) | The desktop client. Connects to the server PC's address. |
-| **Server** | `cd apps/desktop && pnpm dist:server` | `Divine Hands Hospital Server Setup <version>.exe` (~365 MB) | Client **plus** a bundled portable database and Go API. On first launch it creates the database, applies migrations, seeds the super admin, and starts the server - **no terminal, no admin needed**. The server keeps running when the app closes so the other PCs stay connected. |
+| Edition | Command (Windows) | Command (Linux) | What it does |
+| ------- | ------- | ------- | ------------ |
+| **Client** | `cd apps/desktop && pnpm dist` | `cd apps/desktop && pnpm dist:linux` | The desktop client. Connects to the server PC's address. Outputs `release/*.exe` (NSIS) on Windows, `release/*.AppImage` + `*.deb` on Linux. |
+| **Server** | `cd apps/desktop && pnpm dist:server` | `cd apps/desktop && pnpm dist:server:linux` | Client **plus** a bundled portable database and Go API. On first launch it creates the database, applies migrations, seeds the super admin, and starts the server - **no terminal, no admin needed**. The server keeps running when the app closes so the other PCs stay connected. |
 
 The **Super Admin PC installs the Server edition**; every other PC installs the
 Client edition and points it at the server PC's address.
@@ -98,6 +99,23 @@ Client edition and points it at the server PC's address.
 On a server install, the generated super admin username/password are shown in
 **Settings → Hospital server (this PC)** on first launch - change the password
 after signing in.
+
+#### Building the Linux server edition
+
+The Linux server payload (`dist:server:linux`) is assembled from a system
+PostgreSQL 16 installation on the build host (Debian/Ubuntu layout), so the
+build machine needs it installed first:
+
+```bash
+sudo apt-get update && sudo apt-get install -y postgresql-16 postgresql-client-16
+cd apps/desktop && pnpm dist:server:linux
+```
+
+The shared libraries the PostgreSQL binaries link against are harvested into
+the payload (`bin/pgsql/lib`), and `main.cjs` points `LD_LIBRARY_PATH` there,
+so the resulting AppImage/deb runs on any glibc ≥ 2.39 Linux (e.g. Ubuntu
+24.04+) **without** a system PostgreSQL. The GitHub release workflow does this
+automatically on its `ubuntu-latest` runner.
 
 ### Hospital network (multiple PCs over WiFi, no internet)
 

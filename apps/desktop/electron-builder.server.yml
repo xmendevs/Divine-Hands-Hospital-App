@@ -21,6 +21,17 @@ win:
     - target: nsis
       arch:
         - x64
+linux:
+  icon: build/icon.png
+  category: Medical
+  maintainer: Divine Hands Hospital <chuks4brown@gmail.com>
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
 nsis:
   oneClick: false
   perMachine: false
