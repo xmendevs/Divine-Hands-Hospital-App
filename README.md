@@ -75,7 +75,7 @@ The React UI ships as a Windows desktop app. Two packaging paths coexist:
 
 ### Downloading the installer
 
-The latest installer is attached to every GitHub **Release** (tag `v*`):
+The latest **Electron installer** is attached to every GitHub **Release** (tag `v*`):
 
 > **Releases → [latest release](https://github.com/xmendevs/divine-hands-hospital-app/releases/latest) → Assets → `Divine Hands Hospital Setup <version>.exe`**
 
