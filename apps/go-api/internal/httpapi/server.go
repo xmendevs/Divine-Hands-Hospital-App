@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/auth"
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/backup"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/config"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
@@ -19,6 +20,7 @@ type server struct {
 	store     *store.Store
 	checks    map[string]Checker
 	mfaCipher *auth.Cipher
+	backupMgr *backup.Manager
 }
 
 func newServer(cfg config.Config, logger *slog.Logger, st *store.Store) *server {

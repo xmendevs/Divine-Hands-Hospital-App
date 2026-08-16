@@ -43,6 +43,16 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Licensing gate: once keys are configured, a valid key must accompany
+	// every login attempt so the desktop app cannot be used without one.
+	if ok, lerr := s.licensePasses(r); lerr != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	} else if !ok {
+		writeError(w, r, http.StatusUnauthorized, "license_required", "a valid license key is required to sign in")
+		return
+	}
+
 	u, err := s.store.GetUserByLogin(r.Context(), req.Username)
 	if err != nil {
 		s.recordSecurity(r, nil, domain.EventLoginFailure, map[string]any{"username": req.Username, "reason": "invalid_credentials"})

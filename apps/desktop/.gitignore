@@ -10,7 +10,11 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+release
 *.local
+
+# Electron build resources (icon) — the root .gitignore ignores build/
+!build/
 
 # Editor directories and files
 .vscode/*

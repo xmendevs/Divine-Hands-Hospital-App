@@ -115,6 +115,8 @@ const (
 	EventMFAVerificationFailed  = "mfa_verification_failed"
 	EventAccountSuspended       = "account_suspended"
 	EventAccountActivated       = "account_activated"
+	EventLicenseAccepted        = "license_accepted"
+	EventLicenseRejected        = "license_rejected"
 )
 
 // Audit action names.

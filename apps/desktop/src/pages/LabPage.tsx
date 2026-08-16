@@ -1,436 +1,481 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { apiFetch } from "../api/client";
 
-export type LabStatus = "REQUESTED" | "SAMPLE_COLLECTED" | "IN_ANALYSIS" | "VERIFIED";
-
-export interface LabParameter {
+interface LabTest {
   id: string;
-  paramName: string;
-  value: string;
-  unit: string;
-  refRange: string;
-  isAbnormal?: boolean;
+  code: string;
+  name: string;
+  category: string;
+  price: number;
+  specimenType: string;
 }
 
-export interface LabOrder {
+interface LabItem {
   id: string;
-  patientId: string;
-  patientName: string;
-  gender: "M" | "F";
-  age: number;
-  doctorName: string;
-  testCategory: string;
+  testId: string;
+  testCode: string;
   testName: string;
-  sampleType: string;
-  specimenBarcode: string;
-  status: LabStatus;
-  urgency: "ROUTINE" | "URGENT" | "STAT";
-  createdAt: string;
-  collectedAt?: string;
-  analyzedAt?: string;
-  verifiedBy?: string;
-  parameters: LabParameter[];
-  clinicalNotes?: string;
+  specimenType: string;
+  critical: boolean;
+  resultText: string;
+  resultVerifiedAt?: string;
 }
+
+interface LabRequest {
+  id: string;
+  requestNo: string;
+  patientId?: string;
+  patientNo?: string;
+  patientName?: string;
+  clientName?: string;
+  orderedByName: string;
+  priority: string;
+  clinicalNotes: string;
+  paymentStatus: string;
+  status: string;
+  requestedAt: string;
+  releasedAt?: string;
+  items: LabItem[];
+}
+
+interface LabCritical {
+  id: string;
+  requestId: string;
+  notifiedToName: string;
+  status: string;
+  notifiedAt: string;
+  acknowledgedAt?: string;
+}
+
+interface PatientSummary {
+  id: string;
+  patientNo: string;
+  firstName: string;
+  lastName: string;
+  gender: string;
+}
+
+const PRIORITIES = ["routine", "urgent", "stat"];
 
 export default function LabPage() {
-  const [activeTab, setActiveTab] = useState<"queue" | "entry" | "audit">("queue");
-  const [filterUrgency, setFilterUrgency] = useState<string>("ALL");
+  const [activeTab, setActiveTab] = useState<"queue" | "entry">("queue");
+  const [filterStatus, setFilterStatus] = useState("ALL");
 
-  // Initial Enterprise Lab State
-  const [orders, setOrders] = useState<LabOrder[]>([
-    {
-      id: "LAB-2026-0891",
-      patientId: "DHHA0001",
-      patientName: "Blessing Okon",
-      gender: "F",
-      age: 29,
-      doctorName: "Dr. Amina",
-      testCategory: "Haematology",
-      testName: "Full Blood Count (FBC)",
-      sampleType: "Whole Blood (EDTA - Purple Top)",
-      specimenBarcode: "SMP-99201-B",
-      status: "REQUESTED",
-      urgency: "URGENT",
-      createdAt: "2026-08-15 08:15",
-      parameters: [
-        { id: "p1", paramName: "Haemoglobin (Hb)", value: "", unit: "g/dL", refRange: "12.0 - 15.5" },
-        { id: "p2", paramName: "White Blood Cells (WBC)", value: "", unit: "x10^9/L", refRange: "4.5 - 11.0" },
-        { id: "p3", paramName: "Platelets", value: "", unit: "x10^9/L", refRange: "150 - 450" },
-      ],
-      clinicalNotes: "Suspected severe malaria / anaemia.",
-    },
-    {
-      id: "LAB-2026-0890",
-      patientId: "DHH0001",
-      patientName: "Emmanuel Adebayo",
-      gender: "M",
-      age: 42,
-      doctorName: "Dr. A. Okonkwo",
-      testCategory: "Chemical Pathology",
-      testName: "Fasting Blood Sugar (FBS)",
-      sampleType: "Fluoride Plasma (Grey Top)",
-      specimenBarcode: "SMP-99188-A",
-      status: "IN_ANALYSIS",
-      urgency: "ROUTINE",
-      createdAt: "2026-08-15 07:45",
-      collectedAt: "2026-08-15 08:00",
-      parameters: [
-        { id: "p4", paramName: "Fasting Glucose", value: "7.8", unit: "mmol/L", refRange: "3.9 - 5.6", isAbnormal: true },
-      ],
-      clinicalNotes: "Routine diabetes screening.",
-    },
-    {
-      id: "LAB-2026-0885",
-      patientId: "DHH0005",
-      patientName: "Chidi Nnamdi",
-      gender: "M",
-      age: 35,
-      doctorName: "Dr. A. Okonkwo",
-      testCategory: "Microbiology",
-      testName: "Urinalysis & Microscopy",
-      sampleType: "Mid-Stream Urine",
-      specimenBarcode: "SMP-99100-U",
-      status: "VERIFIED",
-      urgency: "STAT",
-      createdAt: "2026-08-14 14:20",
-      collectedAt: "2026-08-14 14:35",
-      analyzedAt: "2026-08-14 15:10",
-      verifiedBy: "Dr. K. Balogun (Consultant Pathologist)",
-      parameters: [
-        { id: "p5", paramName: "Protein", value: "Trace", unit: "-", refRange: "Negative" },
-        { id: "p6", paramName: "Pus Cells", value: "8-10", unit: "/hpf", refRange: "0 - 5", isAbnormal: true },
-      ],
-      clinicalNotes: "Dysuria and dyspnea.",
-    },
-  ]);
+  const [requests, setRequests] = useState<LabRequest[]>([]);
+  const [tests, setTests] = useState<LabTest[]>([]);
+  const [critical, setCritical] = useState<LabCritical[]>([]);
 
-  const [activeOrderId, setActiveOrderId] = useState<string>("LAB-2026-0890");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const selectedOrder = orders.find((o) => o.id === activeOrderId);
+  // Result entry state.
+  const [activeRequest, setActiveRequest] = useState<LabRequest | null>(null);
+  const [resultValues, setResultValues] = useState<Record<string, string>>({});
+  const [criticalFlags, setCriticalFlags] = useState<Record<string, boolean>>({});
+  const [savingResults, setSavingResults] = useState(false);
 
-  // Workflow Handlers
-  const handleCollectSample = (id: string) => {
-    const timeNow = new Date().toISOString().replace("T", " ").substring(0, 16);
-    setOrders(
-      orders.map((o) =>
-        o.id === id ? { ...o, status: "SAMPLE_COLLECTED", collectedAt: timeNow } : o
-      )
+  // New request form.
+  const [patientSearch, setPatientSearch] = useState("");
+  const [patients, setPatients] = useState<PatientSummary[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientSummary | null>(null);
+  const [selectedTests, setSelectedTests] = useState<string[]>([]);
+  const [priority, setPriority] = useState("routine");
+  const [clinicalNotes, setClinicalNotes] = useState("");
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const [reqRes, testsRes, critRes] = await Promise.allSettled([
+      apiFetch<LabRequest[]>("/lab/requests"),
+      apiFetch<LabTest[]>("/lab/tests"),
+      apiFetch<LabCritical[]>("/lab/critical"),
+    ]);
+    const errors: string[] = [];
+    if (reqRes.status === "fulfilled") {
+      setRequests(reqRes.value);
+    } else {
+      errors.push(reqRes.reason instanceof Error ? reqRes.reason.message : "Could not load lab requests.");
+    }
+    if (testsRes.status === "fulfilled") {
+      setTests(testsRes.value);
+    } else {
+      errors.push(testsRes.reason instanceof Error ? testsRes.reason.message : "Could not load the test catalogue.");
+    }
+    if (critRes.status === "fulfilled") {
+      setCritical(critRes.value);
+    } else {
+      errors.push(critRes.reason instanceof Error ? critRes.reason.message : "Could not load critical notifications.");
+    }
+    setError(errors.join(" "));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+
+  // Debounced patient search for the new-request form.
+  useEffect(() => {
+    const q = patientSearch.trim();
+    if (!q) {
+      setPatients([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await apiFetch<PatientSummary[]>(`/patients/search?q=${encodeURIComponent(q)}`);
+        if (!cancelled) setPatients(results);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Patient search failed.");
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [patientSearch]);
+
+  const filteredRequests = requests.filter((r) => filterStatus === "ALL" || r.status === filterStatus);
+
+  async function apiAction(fn: () => Promise<unknown>, successMessage?: string) {
+    setError("");
+    try {
+      await fn();
+      await loadAll();
+      if (successMessage) setError(successMessage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Request failed.");
+    }
+  }
+
+  function collectSpecimens(r: LabRequest) {
+    const specimens = r.items.map((it) => ({ itemId: it.id, specimenType: it.specimenType }));
+    return apiAction(() =>
+      apiFetch<unknown>(`/lab/requests/${r.id}/collect`, { method: "POST", body: JSON.stringify({ specimens }) }),
     );
-  };
+  }
 
-  const handleStartAnalysis = (id: string) => {
-    setOrders(orders.map((o) => (o.id === id ? { ...o, status: "IN_ANALYSIS" } : o)));
-    setActiveOrderId(id);
+  function beginAnalysis(r: LabRequest) {
+    return apiAction(() =>
+      apiFetch<unknown>(`/lab/requests/${r.id}/status`, { method: "POST", body: JSON.stringify({ status: "processing" }) }),
+    );
+  }
+
+  function openEntry(r: LabRequest) {
+    setActiveRequest(r);
+    const values: Record<string, string> = {};
+    const flags: Record<string, boolean> = {};
+    for (const it of r.items) {
+      values[it.id] = it.resultText ?? "";
+      flags[it.id] = it.critical;
+    }
+    setResultValues(values);
+    setCriticalFlags(flags);
     setActiveTab("entry");
-  };
+  }
 
-  const handleUpdateParamValue = (paramId: string, val: string, isAbnormal: boolean) => {
-    if (!selectedOrder) return;
-    const updatedParams = selectedOrder.parameters.map((p) =>
-      p.id === paramId ? { ...p, value: val, isAbnormal } : p
-    );
-    setOrders(orders.map((o) => (o.id === selectedOrder.id ? { ...o, parameters: updatedParams } : o)));
-  };
+  async function verifyAndRelease(r: LabRequest) {
+    setError("");
+    try {
+      for (const it of r.items) {
+        await apiFetch<unknown>(`/lab/items/${it.id}/verify`, { method: "POST" });
+      }
+      await apiFetch<unknown>(`/lab/requests/${r.id}/release`, { method: "POST" });
+      await loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed (note: you cannot verify results you entered yourself).");
+    }
+  }
 
-  const handlePublishResults = (e: React.FormEvent) => {
+  function releaseResults(r: LabRequest) {
+    return apiAction(() => apiFetch<unknown>(`/lab/requests/${r.id}/release`, { method: "POST" }));
+  }
+
+  async function handleSaveResults(e: FormEvent) {
     e.preventDefault();
-    if (!selectedOrder) return;
-    const timeNow = new Date().toISOString().replace("T", " ").substring(0, 16);
+    if (!activeRequest) return;
+    setSavingResults(true);
+    setError("");
+    try {
+      const entries = activeRequest.items.map((it) => ({
+        itemId: it.id,
+        resultValue: resultValues[it.id] ?? "",
+        resultText: resultValues[it.id] ?? "",
+        critical: criticalFlags[it.id] ?? false,
+      }));
+      await apiFetch<unknown>(`/lab/requests/${activeRequest.id}/results`, {
+        method: "POST",
+        body: JSON.stringify({ entries }),
+      });
+      await loadAll();
+      setActiveTab("queue");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save results.");
+    } finally {
+      setSavingResults(false);
+    }
+  }
 
-    setOrders(
-      orders.map((o) =>
-        o.id === selectedOrder.id
-          ? {
-              ...o,
-              status: "VERIFIED",
-              analyzedAt: timeNow,
-              verifiedBy: "Dr. K. Balogun (Lab Director)",
-            }
-          : o
-      )
+  async function handleCreateRequest(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedPatient) {
+      setError("Select a patient for the lab request.");
+      return;
+    }
+    if (selectedTests.length === 0) {
+      setError("Select at least one test.");
+      return;
+    }
+    setError("");
+    try {
+      await apiFetch<unknown>("/lab/requests", {
+        method: "POST",
+        body: JSON.stringify({
+          patientId: selectedPatient.id,
+          priority,
+          clinicalNotes,
+          testIds: selectedTests,
+        }),
+      });
+      setSelectedPatient(null);
+      setPatientSearch("");
+      setSelectedTests([]);
+      setClinicalNotes("");
+      await loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create the lab request.");
+    }
+  }
+
+  async function acknowledgeCritical(n: LabCritical) {
+    await apiAction(() =>
+      apiFetch<unknown>(`/lab/critical/${n.id}/acknowledge`, { method: "POST", body: JSON.stringify({ notes: "" }) }),
     );
-    alert(`Diagnostic Report ${selectedOrder.id} successfully verified, signed, and published to patient EMR!`);
-    setActiveTab("queue");
-  };
+  }
 
-  const filteredOrders = orders.filter(
-    (o) => filterUrgency === "ALL" || o.urgency === filterUrgency
-  );
+  const pendingCount = requests.filter((r) => r.status === "requested" || r.status === "payment").length;
+  const inAnalysisCount = requests.filter((r) => r.status === "processing" || r.status === "specimen_collected" || r.status === "received").length;
+  const statCount = requests.filter((r) => r.priority === "stat" || r.priority === "urgent").length;
+  const verifiedCount = requests.filter((r) => r.status === "verified" || r.status === "released").length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* Top Controls & KPI Bar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>PENDING SAMPLES</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#d97706" }}>
-            {orders.filter((o) => o.status === "REQUESTED").length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>IN ANALYSIS</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#2563eb" }}>
-            {orders.filter((o) => o.status === "IN_ANALYSIS").length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>CRITICAL / STAT</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#dc2626" }}>
-            {orders.filter((o) => o.urgency === "STAT" || o.urgency === "URGENT").length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>VERIFIED TODAY</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#16a34a" }}>
-            {orders.filter((o) => o.status === "VERIFIED").length}
-          </div>
-        </div>
+        <Kpi label="PENDING SAMPLES" value={pendingCount} color="#d97706" />
+        <Kpi label="IN ANALYSIS" value={inAnalysisCount} color="#2563eb" />
+        <Kpi label="CRITICAL / STAT" value={statCount} color="#dc2626" />
+        <Kpi label="VERIFIED / RELEASED" value={verifiedCount} color="#16a34a" />
       </div>
 
       {/* Navigation Tabs */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid #e2e8f0", paddingBottom: "0.5rem" }}>
         <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button
-            onClick={() => setActiveTab("queue")}
-            style={{
-              padding: "0.5rem 1.2rem",
-              border: "none",
-              background: activeTab === "queue" ? "#0284c7" : "transparent",
-              color: activeTab === "queue" ? "#fff" : "#64748b",
-              borderRadius: "6px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => setActiveTab("queue")} style={tabStyle(activeTab === "queue")}>
             Laboratory Work Queue
           </button>
-          <button
-            onClick={() => setActiveTab("entry")}
-            style={{
-              padding: "0.5rem 1.2rem",
-              border: "none",
-              background: activeTab === "entry" ? "#0284c7" : "transparent",
-              color: activeTab === "entry" ? "#fff" : "#64748b",
-              borderRadius: "6px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => setActiveTab("entry")} style={tabStyle(activeTab === "entry")}>
             Diagnostic Result Entry & Signoff
           </button>
         </div>
 
         {activeTab === "queue" && (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem" }}>
-            <span style={{ color: "#64748b", fontWeight: 600 }}>Urgency Filter:</span>
-            <select
-              value={filterUrgency}
-              onChange={(e) => setFilterUrgency(e.target.value)}
-              style={{ padding: "0.3rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="ALL">All Priorities</option>
-              <option value="STAT">STAT (Critical Emergency)</option>
-              <option value="URGENT">Urgent</option>
-              <option value="ROUTINE">Routine</option>
+            <span style={{ color: "#64748b", fontWeight: 600 }}>Status Filter:</span>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ padding: "0.3rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1" }}>
+              <option value="ALL">All Statuses</option>
+              {["requested", "payment", "specimen_collected", "received", "processing", "result_entered", "verified", "released"].map((s) => (
+                <option key={s} value={s}>{s.replace("_", " ").toUpperCase()}</option>
+              ))}
             </select>
           </div>
         )}
       </div>
 
-      {/* Tab 1: Work Queue Table */}
-      {activeTab === "queue" && (
-        <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                <th style={{ padding: "0.75rem 1rem" }}>ORDER ID / BARCODE</th>
-                <th style={{ padding: "0.75rem 1rem" }}>PATIENT</th>
-                <th style={{ padding: "0.75rem 1rem" }}>TEST NAME & CATEGORY</th>
-                <th style={{ padding: "0.75rem 1rem" }}>SPECIMEN</th>
-                <th style={{ padding: "0.75rem 1rem" }}>PRIORITY</th>
-                <th style={{ padding: "0.75rem 1rem" }}>STATUS</th>
-                <th style={{ padding: "0.75rem 1rem" }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((ord) => (
-                <tr key={ord.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 700, color: "#0369a1" }}>{ord.id}</div>
-                    <div style={{ fontSize: "0.75rem", fontFamily: "monospace", color: "#64748b" }}>{ord.specimenBarcode}</div>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{ord.patientName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{ord.patientId} • {ord.gender}/{ord.age}Y</div>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 600, color: "#334155" }}>{ord.testName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{ord.testCategory}</div>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem", color: "#475569", fontSize: "0.8rem" }}>
-                    {ord.sampleType}
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <span
-                      style={{
-                        padding: "0.2rem 0.5rem",
-                        borderRadius: "4px",
-                        fontSize: "0.7rem",
-                        fontWeight: 700,
-                        background: ord.urgency === "STAT" ? "#fef2f2" : ord.urgency === "URGENT" ? "#fffbebe" : "#f1f5f9",
-                        color: ord.urgency === "STAT" ? "#dc2626" : ord.urgency === "URGENT" ? "#d97706" : "#475569",
-                        border: ord.urgency === "STAT" ? "1px solid #fca5a5" : "none"
-                      }}
-                    >
-                      {ord.urgency}
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <span
-                      style={{
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "4px",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        background:
-                          ord.status === "VERIFIED" ? "#f0fdf4" :
-                          ord.status === "IN_ANALYSIS" ? "#eff6ff" :
-                          ord.status === "SAMPLE_COLLECTED" ? "#fefce8" : "#f1f5f9",
-                        color:
-                          ord.status === "VERIFIED" ? "#16a34a" :
-                          ord.status === "IN_ANALYSIS" ? "#2563eb" :
-                          ord.status === "SAMPLE_COLLECTED" ? "#ca8a04" : "#475569",
-                      }}
-                    >
-                      {ord.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    {ord.status === "REQUESTED" && (
-                      <button
-                        onClick={() => handleCollectSample(ord.id)}
-                        style={{ padding: "0.35rem 0.75rem", background: "#0284c7", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" }}
-                      >
-                        Collect Sample
-                      </button>
-                    )}
-                    {ord.status === "SAMPLE_COLLECTED" && (
-                      <button
-                        onClick={() => handleStartAnalysis(ord.id)}
-                        style={{ padding: "0.35rem 0.75rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" }}
-                      >
-                        Begin Analysis
-                      </button>
-                    )}
-                    {ord.status === "IN_ANALYSIS" && (
-                      <button
-                        onClick={() => {
-                          setActiveOrderId(ord.id);
-                          setActiveTab("entry");
-                        }}
-                        style={{ padding: "0.35rem 0.75rem", background: "#d97706", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" }}
-                      >
-                        Enter Results
-                      </button>
-                    )}
-                    {ord.status === "VERIFIED" && (
-                      <button
-                        onClick={() => {
-                          setActiveOrderId(ord.id);
-                          setActiveTab("entry");
-                        }}
-                        style={{ padding: "0.35rem 0.75rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" }}
-                      >
-                        View Report
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <p role="alert" style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c" }}>
+          {error}
+        </p>
+      )}
+
+      {/* Critical notifications strip */}
+      {critical.length > 0 && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", padding: "1rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "#991b1b", fontWeight: 700, marginBottom: "0.5rem" }}>
+            CRITICAL RESULTS — {critical.filter((c) => c.status === "pending").length} UNACKNOWLEDGED
+          </div>
+          {critical.filter((c) => c.status === "pending").map((c) => (
+            <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#7f1d1d", padding: "0.25rem 0" }}>
+              <span>Notified to {c.notifiedToName} on {new Date(c.notifiedAt).toLocaleString()}</span>
+              <button onClick={() => acknowledgeCritical(c)} style={actionBtn("#dc2626")}>
+                Acknowledge
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Tab 2: Enterprise Result Entry & Verification Sheet */}
-      {activeTab === "entry" && selectedOrder && (
-        <form onSubmit={handlePublishResults} style={{ background: "#fff", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Header Metadata Block */}
-          <div style={{ display: "flex", justifyContent: "space-between", background: "#f8fafc", padding: "1rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
-            <div>
-              <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>{selectedOrder.testName}</div>
-              <div style={{ fontSize: "0.8rem", color: "#64748b" }}>Category: <strong>{selectedOrder.testCategory}</strong> | Order ID: <strong>{selectedOrder.id}</strong></div>
-              <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.2rem" }}>Specimen: <strong>{selectedOrder.sampleType}</strong> ({selectedOrder.specimenBarcode})</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#334155" }}>Patient: {selectedOrder.patientName}</div>
-              <div style={{ fontSize: "0.8rem", color: "#64748b" }}>MRN: {selectedOrder.patientId} | Doctor: {selectedOrder.doctorName}</div>
-              <div style={{ marginTop: "0.4rem" }}>
-                <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "#e2e8f0", color: "#334155", fontWeight: 700 }}>
-                  STATUS: {selectedOrder.status}
-                </span>
+      {loading && <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Loading laboratory data…</p>}
+
+      {/* Tab 1: Work Queue */}
+      {!loading && activeTab === "queue" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* New request form */}
+          <form onSubmit={handleCreateRequest} style={{ background: "#fff", padding: "1.25rem", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <h3 style={{ margin: 0, color: "#0f172a", fontSize: "1rem" }}>New Lab Request</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+              <div>
+                <FieldLabel>Patient</FieldLabel>
+                {selectedPatient ? (
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#0f172a" }}>
+                      {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientNo})
+                    </span>
+                    <button type="button" onClick={() => setSelectedPatient(null)} style={ghostBtn}>×</button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Search patient..."
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    style={input}
+                  />
+                )}
+                {patients.length > 0 && !selectedPatient && (
+                  <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", marginTop: "0.25rem", overflow: "hidden" }}>
+                    {patients.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPatient(p);
+                          setPatients([]);
+                          setPatientSearch("");
+                        }}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", cursor: "pointer", fontSize: "0.85rem" }}
+                      >
+                        <strong style={{ color: "#0369a1" }}>{p.patientNo}</strong> — {p.firstName} {p.lastName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <FieldLabel>Priority</FieldLabel>
+                <select value={priority} onChange={(e) => setPriority(e.target.value)} style={input}>
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>{p.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Clinical notes</FieldLabel>
+                <input value={clinicalNotes} onChange={(e) => setClinicalNotes(e.target.value)} placeholder="e.g. Suspected malaria" style={input} />
               </div>
             </div>
-          </div>
-
-          {/* Clinical Context Note */}
-          {selectedOrder.clinicalNotes && (
-            <div style={{ background: "#eff6ff", borderLeft: "4px solid #3b82f6", padding: "0.75rem 1rem", borderRadius: "0 6px 6px 0", fontSize: "0.85rem", color: "#1e40af" }}>
-              <strong>Ordering Clinical Note:</strong> {selectedOrder.clinicalNotes}
+            <div>
+              <FieldLabel>Tests (select one or more)</FieldLabel>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {tests.map((t) => (
+                  <label
+                    key={t.id}
+                    style={{
+                      padding: "0.35rem 0.7rem",
+                      borderRadius: "999px",
+                      border: selectedTests.includes(t.id) ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                      background: selectedTests.includes(t.id) ? "#e0f2fe" : "#fff",
+                      color: selectedTests.includes(t.id) ? "#0369a1" : "#475569",
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedTests.includes(t.id)}
+                      onChange={(e) =>
+                        setSelectedTests((prev) => (e.target.checked ? [...prev, t.id] : prev.filter((x) => x !== t.id)))
+                      }
+                      style={{ display: "none" }}
+                    />
+                    {t.name}
+                  </label>
+                ))}
+              </div>
             </div>
-          )}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="submit" style={primaryBtn}>Create Lab Request</button>
+            </div>
+          </form>
 
-          {/* Structured Parameter Matrix */}
-          <div>
-            <h4 style={{ margin: "0 0 0.75rem 0", color: "#1e293b" }}>Test Parameter Findings</h4>
+          {/* Requests table */}
+          <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
               <thead>
-                <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #cbd5e1", color: "#475569" }}>
-                  <th style={{ padding: "0.6rem 0.8rem" }}>PARAMETER</th>
-                  <th style={{ padding: "0.6rem 0.8rem" }}>OBSERVED VALUE</th>
-                  <th style={{ padding: "0.6rem 0.8rem" }}>UNIT</th>
-                  <th style={{ padding: "0.6rem 0.8rem" }}>REFERENCE RANGE</th>
-                  <th style={{ padding: "0.6rem 0.8rem" }}>ABNORMAL FLAG</th>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+                  <th style={{ padding: "0.75rem 1rem" }}>REQUEST NO</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>PATIENT / CLIENT</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>TESTS</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>PRIORITY</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>STATUS</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {selectedOrder.parameters.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "0.6rem 0.8rem", fontWeight: 600, color: "#334155" }}>{p.paramName}</td>
-                    <td style={{ padding: "0.6rem 0.8rem" }}>
-                      {selectedOrder.status === "VERIFIED" ? (
-                        <span style={{ fontWeight: 700, color: p.isAbnormal ? "#dc2626" : "#0f172a" }}>{p.value}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={p.value}
-                          onChange={(e) => handleUpdateParamValue(p.id, e.target.value, p.isAbnormal || false)}
-                          placeholder="Enter metric"
-                          style={{
-                            padding: "0.4rem",
-                            borderRadius: "4px",
-                            border: "1px solid #cbd5e1",
-                            fontWeight: 600,
-                            color: p.isAbnormal ? "#dc2626" : "#0f172a",
-                          }}
-                        />
-                      )}
+                {filteredRequests.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "1.5rem", textAlign: "center", color: "#64748b" }}>
+                      No lab requests match this filter.
                     </td>
-                    <td style={{ padding: "0.6rem 0.8rem", color: "#64748b" }}>{p.unit}</td>
-                    <td style={{ padding: "0.6rem 0.8rem", color: "#64748b", fontFamily: "monospace" }}>{p.refRange}</td>
-                    <td style={{ padding: "0.6rem 0.8rem" }}>
-                      {selectedOrder.status === "VERIFIED" ? (
-                        p.isAbnormal && <span style={{ background: "#fef2f2", color: "#dc2626", padding: "0.2rem 0.5rem", borderRadius: "4px", fontWeight: 700, fontSize: "0.75rem" }}>ABNORMAL / HIGH</span>
-                      ) : (
-                        <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>
-                          <input
-                            type="checkbox"
-                            checked={p.isAbnormal || false}
-                            onChange={(e) => handleUpdateParamValue(p.id, p.value, e.target.checked)}
-                          />
-                          Flag Abnormal
-                        </label>
+                  </tr>
+                )}
+                {filteredRequests.map((r) => (
+                  <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#0369a1" }}>{r.requestNo}</td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{r.patientName || r.clientName || "—"}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Ordered by {r.orderedByName}</div>
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem", color: "#334155" }}>
+                      {r.items.map((it) => it.testName).join(", ")}
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <PriorityBadge priority={r.priority} />
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      {(r.status === "requested" || r.status === "payment") && (
+                        <button onClick={() => collectSpecimens(r)} style={actionBtn("#0284c7")}>
+                          Collect Specimens
+                        </button>
+                      )}
+                      {(r.status === "specimen_collected" || r.status === "received") && (
+                        <button onClick={() => beginAnalysis(r)} style={actionBtn("#2563eb")}>
+                          Begin Analysis
+                        </button>
+                      )}
+                      {r.status === "processing" && (
+                        <button onClick={() => openEntry(r)} style={actionBtn("#d97706")}>
+                          Enter Results
+                        </button>
+                      )}
+                      {r.status === "result_entered" && (
+                        <button onClick={() => verifyAndRelease(r)} style={actionBtn("#16a34a")}>
+                          Verify & Release
+                        </button>
+                      )}
+                      {r.status === "verified" && (
+                        <button onClick={() => releaseResults(r)} style={actionBtn("#16a34a")}>
+                          Release Results
+                        </button>
+                      )}
+                      {(r.status === "released" || r.status === "cancelled") && (
+                        <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>
+                          {r.status === "released" ? "Released" : "Cancelled"}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -438,37 +483,166 @@ export default function LabPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
 
-          {/* Dual Signoff Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
-            <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-              {selectedOrder.verifiedBy ? (
-                <div>Signed & Verified By: <strong style={{ color: "#16a34a" }}>{selectedOrder.verifiedBy}</strong> on {selectedOrder.analyzedAt}</div>
-              ) : (
-                <div>Awaiting Consultant Pathologist Signoff</div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", gap: "0.75rem" }}>
+      {/* Tab 2: Result Entry */}
+      {activeTab === "entry" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {requests.map((r) => (
               <button
-                type="button"
-                onClick={() => setActiveTab("queue")}
-                style={{ padding: "0.6rem 1.2rem", background: "transparent", border: "1px solid #cbd5e1", color: "#64748b", borderRadius: "6px", fontWeight: 600, cursor: "pointer" }}
+                key={r.id}
+                onClick={() => openEntry(r)}
+                style={{
+                  padding: "0.4rem 0.8rem",
+                  borderRadius: "6px",
+                  border: activeRequest?.id === r.id ? "1px solid #0284c7" : "1px solid #cbd5e1",
+                  background: activeRequest?.id === r.id ? "#e0f2fe" : "#fff",
+                  color: activeRequest?.id === r.id ? "#0369a1" : "#475569",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  cursor: "pointer",
+                }}
               >
-                Back to Queue
+                {r.requestNo}
               </button>
-              {selectedOrder.status !== "VERIFIED" && (
-                <button
-                  type="submit"
-                  style={{ padding: "0.6rem 1.5rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" }}
-                >
-                  Verify, Sign & Publish to EMR
-                </button>
-              )}
-            </div>
+            ))}
           </div>
-        </form>
+
+          {activeRequest ? (
+            <form onSubmit={handleSaveResults} style={{ background: "#fff", padding: "1.5rem", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", background: "#f8fafc", padding: "1rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                <div>
+                  <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>{activeRequest.requestNo}</div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                    Patient: <strong>{activeRequest.patientName || "—"}</strong> • Ordered by {activeRequest.orderedByName}
+                  </div>
+                  {activeRequest.clinicalNotes && (
+                    <div style={{ fontSize: "0.8rem", color: "#1e40af", marginTop: "0.2rem" }}>Notes: {activeRequest.clinicalNotes}</div>
+                  )}
+                </div>
+                <StatusBadge status={activeRequest.status} />
+              </div>
+
+              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+                <thead>
+                  <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #cbd5e1", color: "#475569" }}>
+                    <th style={{ padding: "0.6rem 0.8rem" }}>TEST</th>
+                    <th style={{ padding: "0.6rem 0.8rem" }}>SPECIMEN</th>
+                    <th style={{ padding: "0.6rem 0.8rem" }}>RESULT</th>
+                    <th style={{ padding: "0.6rem 0.8rem" }}>CRITICAL</th>
+                    <th style={{ padding: "0.6rem 0.8rem" }}>VERIFIED</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeRequest.items.map((it) => (
+                    <tr key={it.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "0.6rem 0.8rem", fontWeight: 600, color: "#334155" }}>
+                        {it.testName}
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 400 }}>{it.testCode}</div>
+                      </td>
+                      <td style={{ padding: "0.6rem 0.8rem", color: "#64748b" }}>{it.specimenType}</td>
+                      <td style={{ padding: "0.6rem 0.8rem" }}>
+                        <input
+                          type="text"
+                          value={resultValues[it.id] ?? ""}
+                          onChange={(e) => setResultValues((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                          placeholder="Enter result"
+                          style={{ padding: "0.4rem", borderRadius: "4px", border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box" }}
+                        />
+                      </td>
+                      <td style={{ padding: "0.6rem 0.8rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={criticalFlags[it.id] ?? false}
+                          onChange={(e) => setCriticalFlags((prev) => ({ ...prev, [it.id]: e.target.checked }))}
+                        />
+                      </td>
+                      <td style={{ padding: "0.6rem 0.8rem", fontSize: "0.8rem", color: it.resultVerifiedAt ? "#16a34a" : "#94a3b8", fontWeight: 600 }}>
+                        {it.resultVerifiedAt ? "Yes" : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button type="button" onClick={() => setActiveTab("queue")} style={ghostBtn}>
+                  Back to Queue
+                </button>
+                <button type="submit" disabled={savingResults} style={primaryBtn}>
+                  {savingResults ? "Saving…" : "Save Results"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Select a lab request to enter results.</p>
+          )}
+        </div>
       )}
     </div>
   );
 }
+
+function Kpi({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "0.2rem" }}>{children}</label>;
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  const stat = priority === "stat";
+  const urgent = priority === "urgent";
+  const background = stat ? "#fef2f2" : urgent ? "#fffbeb" : "#f1f5f9";
+  const color = stat ? "#dc2626" : urgent ? "#d97706" : "#475569";
+  return (
+    <span style={{ padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700, background, color, border: stat ? "1px solid #fca5a5" : "none" }}>
+      {priority.toUpperCase()}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, [string, string]> = {
+    released: ["#f0fdf4", "#16a34a"],
+    verified: ["#f0fdf4", "#16a34a"],
+    result_entered: ["#eff6ff", "#2563eb"],
+    processing: ["#eff6ff", "#2563eb"],
+    received: ["#fefce8", "#ca8a04"],
+    specimen_collected: ["#fefce8", "#ca8a04"],
+    payment: ["#fefce8", "#ca8a04"],
+    requested: ["#f1f5f9", "#475569"],
+    cancelled: ["#fef2f2", "#dc2626"],
+  };
+  const [background, color] = map[status] ?? ["#f1f5f9", "#475569"];
+  return (
+    <span style={{ padding: "0.25rem 0.5rem", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, background, color }}>
+      {status.replace("_", " ").toUpperCase()}
+    </span>
+  );
+}
+
+function tabStyle(active: boolean): CSSProperties {
+  return {
+    padding: "0.5rem 1.2rem",
+    border: "none",
+    background: active ? "#0284c7" : "transparent",
+    color: active ? "#fff" : "#64748b",
+    borderRadius: "6px",
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+}
+
+const input: CSSProperties = { width: "100%", padding: "0.4rem", borderRadius: "4px", border: "1px solid #cbd5e1", boxSizing: "border-box" };
+const primaryBtn: CSSProperties = { padding: "0.6rem 1.5rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" };
+const ghostBtn: CSSProperties = { padding: "0.5rem 1.2rem", background: "transparent", border: "1px solid #cbd5e1", color: "#64748b", borderRadius: "6px", fontWeight: 600, cursor: "pointer" };
+const actionBtn = (bg: string): CSSProperties => ({ padding: "0.35rem 0.75rem", background: bg, color: "#fff", border: "none", borderRadius: "4px", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" });

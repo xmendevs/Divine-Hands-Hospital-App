@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/backup"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/config"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
@@ -15,6 +16,14 @@ type Option func(*server)
 func WithChecks(checks map[string]Checker) Option {
 	return func(s *server) {
 		s.checks = checks
+	}
+}
+
+// WithBackupManager attaches the backup & DR manager. When nil (the
+// default), backup endpoints report backup_not_configured.
+func WithBackupManager(m *backup.Manager) Option {
+	return func(s *server) {
+		s.backupMgr = m
 	}
 }
 
@@ -39,6 +48,10 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/v1/auth/password-reset/request", s.handlePasswordResetRequest)
 	mux.HandleFunc("POST /api/v1/auth/password-reset/confirm", s.handlePasswordResetConfirm)
+	mux.HandleFunc("POST /api/v1/auth/license", s.handleValidateLicense)
+
+	// Authenticated downloads (installer is served only when APP_INSTALLER_PATH is set).
+	mux.Handle("GET /api/v1/downloads/installer", s.requireAuth(http.HandlerFunc(s.handleDownloadInstaller)))
 
 	// Authenticated.
 	mux.Handle("GET /api/v1/auth/me", s.requireAuth(http.HandlerFunc(s.handleMe)))

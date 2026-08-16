@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/auth"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
@@ -27,6 +28,10 @@ func main() {
 		log.Fatalf("connect: %v", err)
 	}
 	defer st.Close()
+
+	// License keys are seeded on every run so re-running with additional
+	// SEED_LICENSE_KEYS values works even when the super admin already exists.
+	seedLicenseKeys(ctx, st)
 
 	if _, err := st.GetUserByLogin(ctx, username); err == nil {
 		log.Printf("super admin %q already exists; skipping", username)
@@ -56,6 +61,33 @@ func main() {
 		log.Fatalf("create super admin: %v", err)
 	}
 	log.Printf("created super admin %q (id=%s)", username, id)
+}
+
+// seedLicenseKeys inserts license keys from SEED_LICENSE_KEYS. The format is a
+// comma-separated list of `key` or `key:label` entries, e.g.
+//   SEED_LICENSE_KEYS='DH-ALPHA-1:Front desk,DH-ALPHA-2:Lab'
+// Once at least one key exists, the desktop client requires a valid key to
+// sign in (see POST /api/v1/auth/license).
+func seedLicenseKeys(ctx context.Context, st *store.Store) {
+	raw := os.Getenv("SEED_LICENSE_KEYS")
+	if raw == "" {
+		return
+	}
+	for _, entry := range strings.Split(raw, ",") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		key, label := entry, ""
+		if i := strings.Index(entry, ":"); i >= 0 {
+			key = strings.TrimSpace(entry[:i])
+			label = strings.TrimSpace(entry[i+1:])
+		}
+		if err := st.InsertLicense(ctx, key, label); err != nil {
+			log.Fatalf("seed license key: %v", err)
+		}
+		log.Printf("seeded license key %q (label=%q)", key, label)
+	}
 }
 
 func getenv(key, def string) string {

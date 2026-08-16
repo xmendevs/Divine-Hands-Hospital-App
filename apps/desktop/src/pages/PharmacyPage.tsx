@@ -1,156 +1,215 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { apiFetch } from "../api/client";
 
-export interface StockItem {
+interface Medicine {
   id: string;
-  name: string;
-  category: "Antibiotics" | "Analgesics" | "Antihypertensives" | "Consumables";
+  code: string;
+  genericName: string;
+  brand: string;
+  strength: string;
   dosageForm: string;
-  batchNumber: string;
-  quantityInStock: number;
+  category: string;
+  supplier: string;
   reorderLevel: number;
-  unitPrice: number;
-  expiryDate: string;
+  storageLocation: string;
+  unitCost: number;
+  sellingPrice: number;
+  active: boolean;
 }
 
-export interface PrescriptionOrder {
+interface Batch {
   id: string;
+  medicineId: string;
+  batchNumber: string;
+  manufacturingDate?: string;
+  expiryDate?: string;
+  quantityOnHand: number;
+  purchaseCost: number;
+  sellingPrice: number;
+  supplier: string;
+  status: string;
+  receivedAt: string;
+}
+
+interface Order {
+  id: string;
+  orderNo: string;
   patientId: string;
-  patientName: string;
-  doctorName: string;
-  drugName: string;
-  dosage: string;
-  frequency: string;
-  durationDays: number;
-  status: "PENDING" | "DISPENSED" | "OUT_OF_STOCK";
+  orderType: string;
+  status: string;
+  details: Record<string, unknown>;
   createdAt: string;
 }
 
+interface Dispensation {
+  id: string;
+  dispensationNo: string;
+  prescriptionOrderId: string;
+  patientId: string;
+  dispensedBy: string;
+  totalAmount: number;
+  notes?: string;
+  createdAt: string;
+}
+
+interface LowStockItem {
+  medicine: Medicine;
+  totalQuantity: number;
+}
+
+interface AlertBatch extends Batch {
+  medicineName: string;
+  medicineCode: string;
+}
+
+interface PharmacyAlerts {
+  lowStock: LowStockItem[];
+  expiring: AlertBatch[];
+  expired: AlertBatch[];
+}
+
+interface MedicineDetail {
+  medicine: Medicine;
+  batches: Batch[];
+}
+
 export default function PharmacyPage() {
-  const [activeTab, setActiveTab] = useState<"dispense" | "inventory" | "reorder">("dispense");
+  const [activeTab, setActiveTab] = useState<"dispense" | "inventory">("dispense");
 
-  // Initial Inventory State
-  const [inventory, setInventory] = useState<StockItem[]>([
-    {
-      id: "DRG-001",
-      name: "Amoxicillin / Clavulanic Acid (Augmentin)",
-      category: "Antibiotics",
-      dosageForm: "625mg Tablet",
-      batchNumber: "AUG-2026-X9",
-      quantityInStock: 140,
-      reorderLevel: 50,
-      unitPrice: 450,
-      expiryDate: "2027-03-31",
-    },
-    {
-      id: "DRG-002",
-      name: "Paracetamol (Acetaminophen)",
-      category: "Analgesics",
-      dosageForm: "500mg Tablet",
-      batchNumber: "PCM-2026-B1",
-      quantityInStock: 12,
-      reorderLevel: 100,
-      unitPrice: 50,
-      expiryDate: "2026-09-15",
-    },
-    {
-      id: "DRG-003",
-      name: "Amlodipine Besylate",
-      category: "Antihypertensives",
-      dosageForm: "5mg Tablet",
-      batchNumber: "AML-2025-Z4",
-      quantityInStock: 85,
-      reorderLevel: 30,
-      unitPrice: 200,
-      expiryDate: "2028-01-20",
-    },
-  ]);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [queue, setQueue] = useState<Order[]>([]);
+  const [dispensations, setDispensations] = useState<Dispensation[]>([]);
+  const [alerts, setAlerts] = useState<PharmacyAlerts | null>(null);
 
-  // Initial Prescription Orders Queue
-  const [prescriptions, setPrescriptions] = useState<PrescriptionOrder[]>([
-    {
-      id: "RX-8801",
-      patientId: "DHHA0001",
-      patientName: "Blessing Okon",
-      doctorName: "Dr. Amina",
-      drugName: "Amoxicillin / Clavulanic Acid (Augmentin)",
-      dosage: "625mg",
-      frequency: "BD (Twice Daily)",
-      durationDays: 7,
-      status: "PENDING",
-      createdAt: "2026-08-15 08:30",
-    },
-    {
-      id: "RX-8802",
-      patientId: "DHH0001",
-      patientName: "Emmanuel Adebayo",
-      doctorName: "Dr. A. Okonkwo",
-      drugName: "Paracetamol (Acetaminophen)",
-      dosage: "1000mg",
-      frequency: "TDS (Thrice Daily)",
-      durationDays: 5,
-      status: "PENDING",
-      createdAt: "2026-08-15 09:15",
-    },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Dispense Handler (Deducts stock automatically)
-  const handleDispense = (rxId: string, drugName: string) => {
-    const stockItem = inventory.find((item) => item.name === drugName);
+  // Per-order dispense quantity (keyed by order id).
+  const [qtyByOrder, setQtyByOrder] = useState<Record<string, string>>({});
+  const [dispensingId, setDispensingId] = useState<string | null>(null);
 
-    if (!stockItem || stockItem.quantityInStock <= 0) {
-      alert(`Cannot dispense. ${drugName} is OUT OF STOCK!`);
+  // Expanded medicine rows -> lazily fetched { medicine, batches }.
+  const [expanded, setExpanded] = useState<Record<string, MedicineDetail>>({});
+  const [expandingId, setExpandingId] = useState<string | null>(null);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const [meds, queueRes, dispRes, alertsRes] = await Promise.allSettled([
+      apiFetch<Medicine[]>("/pharmacy/medicines"),
+      apiFetch<Order[]>("/orders/actionable"),
+      apiFetch<Dispensation[]>("/pharmacy/dispensations"),
+      apiFetch<PharmacyAlerts>("/pharmacy/alerts"),
+    ]);
+
+    const errors: string[] = [];
+    if (meds.status === "fulfilled") {
+      setMedicines(meds.value);
+    } else {
+      errors.push(meds.reason instanceof Error ? meds.reason.message : "Could not load medicines.");
+    }
+    if (queueRes.status === "fulfilled") {
+      setQueue(queueRes.value.filter((o) => o.orderType === "prescription"));
+    } else {
+      errors.push(queueRes.reason instanceof Error ? queueRes.reason.message : "Could not load the dispensing queue.");
+    }
+    if (dispRes.status === "fulfilled") {
+      setDispensations(dispRes.value);
+    } else {
+      errors.push(dispRes.reason instanceof Error ? dispRes.reason.message : "Could not load dispensations.");
+    }
+    if (alertsRes.status === "fulfilled") {
+      setAlerts(alertsRes.value);
+    } else {
+      errors.push(alertsRes.reason instanceof Error ? alertsRes.reason.message : "Could not load stock alerts.");
+    }
+
+    setError(errors.join(" "));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+
+  async function toggleMedicine(m: Medicine) {
+    if (expanded[m.id]) {
+      setExpanded((prev) => {
+        const next = { ...prev };
+        delete next[m.id];
+        return next;
+      });
+      return;
+    }
+    setExpandingId(m.id);
+    setError("");
+    try {
+      const detail = await apiFetch<MedicineDetail>(`/pharmacy/medicines/${m.id}`);
+      setExpanded((prev) => ({ ...prev, [m.id]: detail }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load batches.");
+    } finally {
+      setExpandingId(null);
+    }
+  }
+
+  /** Match a prescription's medication line to a medicine master record. */
+  function findMedicine(medication: string): Medicine | undefined {
+    const q = medication.trim().toLowerCase();
+    if (!q) return undefined;
+    return (
+      medicines.find((m) => m.genericName.trim().toLowerCase() === q) ||
+      medicines.find((m) => m.brand.trim().toLowerCase() === q) ||
+      medicines.find((m) => m.genericName.trim().toLowerCase().includes(q)) ||
+      medicines.find((m) => `${m.genericName} ${m.strength}`.trim().toLowerCase().includes(q))
+    );
+  }
+
+  async function handleDispense(order: Order) {
+    const medication = String(order.details?.medication ?? "").trim();
+    const medicine = findMedicine(medication);
+    if (!medicine) {
+      setError(
+        `No medicine master record matches “${medication || "(no medication)"}”. Register it in the inventory tab first.`,
+      );
+      return;
+    }
+    const quantity = Number(qtyByOrder[order.id] ?? "");
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setError("Enter a quantity to dispense.");
       return;
     }
 
-    // Deduct stock quantity (e.g. 10 tablets)
-    const qtyToDeduct = 10;
-    setInventory(
-      inventory.map((item) =>
-        item.name === drugName
-          ? { ...item, quantityInStock: Math.max(0, item.quantityInStock - qtyToDeduct) }
-          : item
-      )
-    );
+    setDispensingId(order.id);
+    setError("");
+    try {
+      await apiFetch<Dispensation>("/pharmacy/dispense", {
+        method: "POST",
+        body: JSON.stringify({
+          orderId: order.id,
+          items: [{ medicineId: medicine.id, quantity }],
+          notes: "",
+        }),
+      });
+      setQtyByOrder((prev) => ({ ...prev, [order.id]: "" }));
+      await loadAll();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Dispense failed.");
+    } finally {
+      setDispensingId(null);
+    }
+  }
 
-    // Update prescription status
-    setPrescriptions(
-      prescriptions.map((rx) => (rx.id === rxId ? { ...rx, status: "DISPENSED" } : rx))
-    );
-
-    alert(`Prescription ${rxId} successfully dispensed! Inventory updated.`);
-  };
-
-  const lowStockItems = inventory.filter((item) => item.quantityInStock <= item.reorderLevel);
+  const lowStockCount = alerts?.lowStock.length ?? 0;
+  const pendingCount = queue.length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      
       {/* Enterprise KPI Summary Bar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>PENDING DISPENSE</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0284c7" }}>
-            {prescriptions.filter((p) => p.status === "PENDING").length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>LOW STOCK ALERTS</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: lowStockItems.length > 0 ? "#dc2626" : "#16a34a" }}>
-            {lowStockItems.length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>TOTAL SKUs IN STOCK</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#334155" }}>
-            {inventory.length}
-          </div>
-        </div>
-        <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>DISPENSED TODAY</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#16a34a" }}>
-            {prescriptions.filter((p) => p.status === "DISPENSED").length}
-          </div>
-        </div>
+        <Kpi label="PENDING DISPENSE" value={pendingCount} color="#0284c7" />
+        <Kpi label="LOW STOCK ALERTS" value={lowStockCount} color={lowStockCount > 0 ? "#dc2626" : "#16a34a"} />
+        <Kpi label="MEDICINES ON FILE" value={medicines.length} color="#334155" />
+        <Kpi label="DISPENSED TODAY" value={dispensations.length} color="#16a34a" />
       </div>
 
       {/* Tab Navigation */}
@@ -185,120 +244,108 @@ export default function PharmacyPage() {
         </button>
       </div>
 
+      {error && (
+        <p role="alert" style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c" }}>
+          {error}
+        </p>
+      )}
+
+      {loading && (
+        <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Loading pharmacy data…</p>
+      )}
+
       {/* Tab 1: Dispensing Queue */}
-      {activeTab === "dispense" && (
+      {!loading && activeTab === "dispense" && (
         <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
             <thead>
               <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                <th style={{ padding: "0.75rem 1rem" }}>RX ID</th>
+                <th style={{ padding: "0.75rem 1rem" }}>ORDER NO</th>
                 <th style={{ padding: "0.75rem 1rem" }}>PATIENT</th>
-                <th style={{ padding: "0.75rem 1rem" }}>PRESCRIBED DRUG & DOSAGE</th>
-                <th style={{ padding: "0.75rem 1rem" }}>FREQUENCY / DURATION</th>
+                <th style={{ padding: "0.75rem 1rem" }}>PRESCRIBED MEDICATION</th>
+                <th style={{ padding: "0.75rem 1rem" }}>INSTRUCTIONS</th>
                 <th style={{ padding: "0.75rem 1rem" }}>STATUS</th>
                 <th style={{ padding: "0.75rem 1rem" }}>ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {prescriptions.map((rx) => (
-                <tr key={rx.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#0369a1" }}>{rx.id}</td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{rx.patientName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{rx.patientId} • Prescribed by {rx.doctorName}</div>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <div style={{ fontWeight: 600, color: "#334155" }}>{rx.drugName}</div>
-                    <div style={{ fontSize: "0.75rem", color: "#0284c7", fontWeight: 600 }}>Dose: {rx.dosage}</div>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>
-                    {rx.frequency} ({rx.durationDays} Days)
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    <span
-                      style={{
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "4px",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        background: rx.status === "DISPENSED" ? "#f0fdf4" : "#fefce8",
-                        color: rx.status === "DISPENSED" ? "#16a34a" : "#ca8a04",
-                      }}
-                    >
-                      {rx.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "0.85rem 1rem" }}>
-                    {rx.status === "PENDING" ? (
-                      <button
-                        onClick={() => handleDispense(rx.id, rx.drugName)}
-                        style={{
-                          padding: "0.4rem 0.8rem",
-                          background: "#16a34a",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: "4px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          fontSize: "0.75rem",
-                        }}
-                      >
-                        Verify & Dispense
-                      </button>
-                    ) : (
-                      <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>Dispensed</span>
-                    )}
+              {queue.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: "1.5rem", textAlign: "center", color: "#64748b" }}>
+                    No prescriptions awaiting dispensing.
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Tab 2: Inventory & Stock Control */}
-      {activeTab === "inventory" && (
-        <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
-            <thead>
-              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                <th style={{ padding: "0.75rem 1rem" }}>DRUG SKU</th>
-                <th style={{ padding: "0.75rem 1rem" }}>MEDICATION & CATEGORY</th>
-                <th style={{ padding: "0.75rem 1rem" }}>BATCH NO.</th>
-                <th style={{ padding: "0.75rem 1rem" }}>EXPIRY DATE</th>
-                <th style={{ padding: "0.75rem 1rem" }}>STOCK LEVEL</th>
-                <th style={{ padding: "0.75rem 1rem" }}>UNIT PRICE (₦)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventory.map((item) => {
-                const isLow = item.quantityInStock <= item.reorderLevel;
+              )}
+              {queue.map((order) => {
+                const medication = String(order.details?.medication ?? "");
+                const dosage = String(order.details?.dosage ?? "");
+                const frequency = String(order.details?.frequency ?? "");
+                const durationDays = order.details?.durationDays;
+                const matched = findMedicine(medication);
                 return (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#334155" }}>{item.id}</td>
+                  <tr key={order.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#0369a1" }}>{order.orderNo}</td>
                     <td style={{ padding: "0.85rem 1rem" }}>
-                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{item.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{item.category} • {item.dosageForm}</div>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>Patient</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", fontFamily: "monospace" }}>{order.patientId}</div>
                     </td>
-                    <td style={{ padding: "0.85rem 1rem", fontFamily: "monospace", color: "#475569" }}>{item.batchNumber}</td>
-                    <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>{item.expiryDate}</td>
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <div style={{ fontWeight: 600, color: "#334155" }}>{medication || "—"}</div>
+                      {matched && (
+                        <div style={{ fontSize: "0.75rem", color: "#0284c7", fontWeight: 600 }}>
+                          Stock ref: {matched.code} • {matched.strength || matched.dosageForm}
+                        </div>
+                      )}
+                      {!matched && (
+                        <div style={{ fontSize: "0.75rem", color: "#b45309", fontWeight: 600 }}>
+                          No matching medicine master record
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>
+                      {[dosage, frequency, durationDays != null ? `${durationDays} days` : ""].filter(Boolean).join(" · ") || "—"}
+                    </td>
                     <td style={{ padding: "0.85rem 1rem" }}>
                       <span
                         style={{
-                          padding: "0.25rem 0.6rem",
+                          padding: "0.25rem 0.5rem",
                           borderRadius: "4px",
+                          fontSize: "0.75rem",
                           fontWeight: 700,
-                          fontSize: "0.8rem",
-                          background: isLow ? "#fef2f2" : "#f0fdf4",
-                          color: isLow ? "#dc2626" : "#16a34a",
-                          border: isLow ? "1px solid #fca5a5" : "none",
+                          background: "#fefce8",
+                          color: "#ca8a04",
                         }}
                       >
-                        {item.quantityInStock} units {isLow && "(LOW STOCK)"}
+                        {order.status.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#0f172a" }}>
-                      ₦{item.unitPrice.toLocaleString()}
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <input
+                          type="number"
+                          min={1}
+                          value={qtyByOrder[order.id] ?? ""}
+                          placeholder="Qty"
+                          onChange={(e) => setQtyByOrder((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                          style={{ width: "4.5rem", padding: "0.4rem", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "0.8rem" }}
+                        />
+                        <button
+                          onClick={() => handleDispense(order)}
+                          disabled={dispensingId === order.id || !matched}
+                          style={{
+                            padding: "0.4rem 0.8rem",
+                            background: matched ? "#16a34a" : "#94a3b8",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "4px",
+                            fontWeight: 700,
+                            cursor: matched ? "pointer" : "not-allowed",
+                            fontSize: "0.75rem",
+                          }}
+                        >
+                          {dispensingId === order.id ? "Dispensing…" : "Verify & Dispense"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -307,6 +354,209 @@ export default function PharmacyPage() {
           </table>
         </div>
       )}
+
+      {/* Tab 2: Inventory & Stock Control */}
+      {!loading && activeTab === "inventory" && (
+        <>
+          {alerts && (alerts.expiring.length > 0 || alerts.expired.length > 0) && (
+            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px", padding: "1rem" }}>
+              <div style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, marginBottom: "0.5rem" }}>
+                EXPIRY WATCH
+              </div>
+              {alerts.expired.map((b) => (
+                <div key={b.id} style={{ fontSize: "0.85rem", color: "#7c2d12" }}>
+                  • <strong>EXPIRED</strong> — {b.medicineName} ({b.medicineCode}), batch {b.batchNumber}, expiry {b.expiryDate ?? "unknown"}, {b.quantityOnHand} units on hand
+                </div>
+              ))}
+              {alerts.expiring.map((b) => (
+                <div key={b.id} style={{ fontSize: "0.85rem", color: "#92400e" }}>
+                  • Expiring soon — {b.medicineName} ({b.medicineCode}), batch {b.batchNumber}, expiry {b.expiryDate ?? "unknown"}, {b.quantityOnHand} units on hand
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
+                  <th style={{ padding: "0.75rem 1rem" }}>CODE</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>MEDICATION & CATEGORY</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>STRENGTH / FORM</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>REORDER LEVEL</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>SELLING PRICE (₦)</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>BATCHES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {medicines.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "1.5rem", textAlign: "center", color: "#64748b" }}>
+                      No medicines on file yet.
+                    </td>
+                  </tr>
+                )}
+                {medicines.map((m) => {
+                  const low = alerts?.lowStock.find((l) => l.medicine.id === m.id);
+                  const isExpanded = Boolean(expanded[m.id]);
+                  const batches = expanded[m.id]?.batches ?? [];
+                  return (
+                    <MedicineRow
+                      key={m.id}
+                      medicine={m}
+                      lowStock={low}
+                      isExpanded={isExpanded}
+                      expanding={expandingId === m.id}
+                      batches={batches}
+                      onToggle={() => toggleMedicine(m)}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
+function MedicineRow({
+  medicine: m,
+  lowStock,
+  isExpanded,
+  expanding,
+  batches,
+  onToggle,
+}: {
+  medicine: Medicine;
+  lowStock: LowStockItem | undefined;
+  isExpanded: boolean;
+  expanding: boolean;
+  batches: Batch[];
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+        <td style={{ padding: "0.85rem 1rem", fontWeight: 700, color: "#334155" }}>{m.code}</td>
+        <td style={{ padding: "0.85rem 1rem" }}>
+          <div style={{ fontWeight: 600, color: "#0f172a" }}>
+            {m.genericName}
+            {m.brand ? ` (${m.brand})` : ""}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+            {m.category || "Uncategorised"} • {m.storageLocation || "—"}
+          </div>
+          {lowStock && (
+            <span
+              style={{
+                display: "inline-block",
+                marginTop: "0.25rem",
+                padding: "0.2rem 0.5rem",
+                borderRadius: "4px",
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                background: "#fef2f2",
+                color: "#dc2626",
+              }}
+            >
+              LOW STOCK — {lowStock.totalQuantity} units total
+            </span>
+          )}
+        </td>
+        <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>
+          {m.strength || "—"}
+          {m.dosageForm ? `, ${m.dosageForm}` : ""}
+        </td>
+        <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>{m.reorderLevel}</td>
+        <td style={{ padding: "0.85rem 1rem", fontWeight: 600, color: "#0f172a" }}>
+          {m.sellingPrice.toLocaleString()}
+        </td>
+        <td style={{ padding: "0.85rem 1rem" }}>
+          <button onClick={onToggle} style={viewBtn}>
+            {expanding ? "Loading…" : isExpanded ? "Hide batches" : "View batches"}
+          </button>
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr>
+          <td colSpan={6} style={{ padding: "0 1rem 1rem 1rem", background: "#f8fafc" }}>
+            {batches.length === 0 ? (
+              <p style={{ margin: "0.5rem 0", fontSize: "0.85rem", color: "#64748b" }}>
+                No batches received for this medicine yet.
+              </p>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
+                <thead>
+                  <tr style={{ color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>
+                    <th style={{ padding: "0.5rem" }}>BATCH NO.</th>
+                    <th style={{ padding: "0.5rem" }}>EXPIRY</th>
+                    <th style={{ padding: "0.5rem" }}>ON HAND</th>
+                    <th style={{ padding: "0.5rem" }}>UNIT COST</th>
+                    <th style={{ padding: "0.5rem" }}>SELLING</th>
+                    <th style={{ padding: "0.5rem" }}>SUPPLIER</th>
+                    <th style={{ padding: "0.5rem" }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batches.map((b) => (
+                    <tr key={b.id} style={{ borderBottom: "1px solid #eef2f7" }}>
+                      <td style={{ padding: "0.5rem", fontFamily: "monospace", color: "#334155" }}>{b.batchNumber}</td>
+                      <td style={{ padding: "0.5rem", color: b.expiryDate && b.expiryDate < today() ? "#dc2626" : "#475569" }}>
+                        {b.expiryDate ?? "—"}
+                      </td>
+                      <td style={{ padding: "0.5rem", fontWeight: 600, color: b.quantityOnHand <= 0 ? "#dc2626" : "#0f172a" }}>
+                        {b.quantityOnHand}
+                      </td>
+                      <td style={{ padding: "0.5rem", color: "#475569" }}>₦{b.purchaseCost.toLocaleString()}</td>
+                      <td style={{ padding: "0.5rem", color: "#475569" }}>₦{b.sellingPrice.toLocaleString()}</td>
+                      <td style={{ padding: "0.5rem", color: "#475569" }}>{b.supplier || "—"}</td>
+                      <td style={{ padding: "0.5rem" }}>
+                        <BatchStatus status={b.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function BatchStatus({ status }: { status: string }) {
+  const ok = status === "available" || status === "active";
+  const quarantined = status === "quarantined";
+  const background = quarantined ? "#fef2f2" : ok ? "#f0fdf4" : "#f1f5f9";
+  const color = quarantined ? "#dc2626" : ok ? "#16a34a" : "#475569";
+  return (
+    <span style={{ padding: "0.2rem 0.5rem", borderRadius: "4px", fontSize: "0.7rem", fontWeight: 700, background, color }}>
+      {status.toUpperCase()}
+    </span>
+  );
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function Kpi({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ background: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      <div style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: "1.5rem", fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+const viewBtn: CSSProperties = {
+  padding: "0.35rem 0.75rem",
+  background: "#f1f5f9",
+  border: "1px solid #cbd5e1",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontSize: "0.8rem",
+};

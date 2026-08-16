@@ -25,6 +25,7 @@ type Config struct {
 	PostgresPort      int
 	RedisHost         string
 	RedisPort         int
+	InstallerPath     string
 	ReadHeaderTimeout time.Duration
 }
 
@@ -45,6 +46,7 @@ func Load() Config {
 		PostgresPort:      getenvInt("POSTGRES_PORT", 5432),
 		RedisHost:         getenv("REDIS_HOST", "127.0.0.1"),
 		RedisPort:         getenvInt("REDIS_PORT", 6379),
+		InstallerPath:     getenv("APP_INSTALLER_PATH", ""),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }

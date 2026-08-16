@@ -6,7 +6,7 @@ Production-grade Hospital Information Management System (HIMS) for desktop use.
 
 | Concern         | Technology                                          |
 | --------------- | --------------------------------------------------- |
-| Desktop client  | Tauri + React + TypeScript                          |
+| Desktop client  | Electron + Tauri + React + TypeScript               |
 | Core services   | Go (high-throughput / core domain)                  |
 | Python services | FastAPI (analytics, reporting, docs, ML)            |
 | Database        | PostgreSQL                                          |
@@ -45,8 +45,11 @@ cd apps/go-api
 go run ./cmd/migrate -command up
 SEED_SUPERADMIN_PASSWORD='<a strong password>' go run ./cmd/seed
 
-# Desktop client
+# Desktop client (Tauri)
 cd apps/desktop && pnpm tauri dev
+
+# Desktop client (Electron, loads the production build)
+cd apps/desktop && pnpm build && pnpm start
 
 # Go core service
 cd apps/go-api && go run ./cmd/server
@@ -60,6 +63,48 @@ Verify everything:
 ```bash
 scripts/verify.sh
 ```
+
+## Windows desktop app (Electron)
+
+The React UI ships as a Windows desktop app. Two packaging paths coexist:
+
+| Path     | Command                 | Output                                          |
+| -------- | ----------------------- | ----------------------------------------------- |
+| Electron | `cd apps/desktop && pnpm dist` | `apps/desktop/release/*.exe` (NSIS installer) |
+| Tauri    | `cd apps/desktop && pnpm tauri build` | `src-tauri/target/release/bundle/nsis|msi`    |
+
+### Downloading the installer
+
+The latest installer is attached to every GitHub **Release** (tag `v*`):
+
+> **Releases → [latest release](https://github.com/xmendevs/divine-hands-hospital-app/releases/latest) → Assets → `Divine Hands Hospital Setup <version>.exe`**
+
+The installer is also served by the Go API at `GET /api/v1/downloads/installer`
+when the server runs with `APP_INSTALLER_PATH` set to the file on disk — so
+hospitals can fetch the exact build from their own main PC instead of GitHub.
+
+### License keys (access control)
+
+The app is **license-gated**: it cannot be signed in to without a valid license
+key, so only authorized installations can use the software.
+
+- The installer itself is public; the **activation key gates the app**: the
+  desktop client asks for a key before the sign-in form, and the server rejects
+  logins (`401 license_required`) that do not carry a valid key.
+- Seed keys on the main PC when setting up the database:
+
+  ```bash
+  SEED_LICENSE_KEYS='DH-ALPHA-1:Front desk,DH-ALPHA-2:Lab' \
+    SEED_SUPERADMIN_PASSWORD='<a strong password>' \
+    go run ./cmd/seed
+  ```
+
+  Each entry is `key` or `key:label`, comma-separated. Re-running the seed with
+  extra keys adds them without touching existing data.
+- While **no keys are configured**, licensing is disabled and any key is
+  accepted — existing deployments keep working until the hospital seeds keys.
+- The download endpoint requires an authenticated session, and the Go API only
+  serves the installer when `APP_INSTALLER_PATH` is configured on the server.
 
 ## Documentation
 
