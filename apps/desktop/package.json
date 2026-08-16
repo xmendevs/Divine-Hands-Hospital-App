@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Divine Hands Hospital desktop client (Tauri + Electron packaging)",
   "author": "Divine Hands Hospital",
-  "main": "main.js",
+  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -47,7 +47,7 @@
     "productName": "Divine Hands Hospital",
     "files": [
       "dist/**/*",
-      "main.js",
+      "main.cjs",
       "package.json"
     ],
     "directories": {

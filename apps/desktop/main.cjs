@@ -1,5 +1,9 @@
 // Electron main process entry for the Divine Hands Hospital desktop client.
 //
+// Named .cjs on purpose: the package.json declares "type": "module" (Vite
+// convention), so a .js entry would be loaded as an ES module and `require`
+// would crash. Electron treats .cjs as CommonJS regardless of "type".
+//
 // The packaged app loads the production build produced by `pnpm build`
 // (dist/index.html). The renderer talks to the Go API over plain HTTP at
 // http://127.0.0.1:8080 (configurable in the Settings page), which the API
@@ -20,7 +24,6 @@ function createWindow() {
     minHeight: 700,
     title: "Divine Hands Hospital",
     autoHideMenuBar: true,
-    icon: path.join(__dirname, "src-tauri", "icons", "icon.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
