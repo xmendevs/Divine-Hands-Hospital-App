@@ -3,6 +3,9 @@ from datetime import UTC, datetime
 from fastapi import APIRouter
 
 from ...config import get_settings
+from .analytics import router as analytics_router
+from .documents import router as documents_router
+from .ml import router as ml_router
 
 router = APIRouter()
 
@@ -16,3 +19,8 @@ def version() -> dict:
         "timezone": settings.app_timezone,
         "utcNow": datetime.now(UTC).isoformat(),
     }
+
+
+router.include_router(analytics_router)
+router.include_router(ml_router)
+router.include_router(documents_router)
