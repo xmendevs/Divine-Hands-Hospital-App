@@ -275,10 +275,16 @@ func checksForRestored(ctx context.Context, conn *pgx.Conn, res *VerifyResult) e
 // comments (which pg_dump emits containing semicolons), so semicolons inside
 // data never split statements. psql meta-command lines (\restrict,
 // \unrestrict, ...) are psql-only directives and are dropped before parsing.
+// Session parameters the target server may not support (transaction_timeout
+// is PostgreSQL 17+; pg_dump 17+ emits it unconditionally and PG16 replay
+// rejects it) are dropped too, since they are safety timeouts, not data.
 func SplitSQL(data []byte) []string {
 	var filtered bytes.Buffer
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, `\`) {
+			continue
+		}
+		if isUnsupportedDumpSetting(line) {
 			continue
 		}
 		filtered.WriteString(line)
@@ -351,6 +357,19 @@ func SplitSQL(data []byte) []string {
 		out = append(out, s)
 	}
 	return out
+}
+
+// isUnsupportedDumpSetting reports whether a dump line sets a session
+// parameter that older servers may not understand. transaction_timeout was
+// added in PostgreSQL 17 but pg_dump 17+ writes it into every dump header;
+// dropping the line keeps dumps replayable on PostgreSQL 16 and earlier.
+func isUnsupportedDumpSetting(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(strings.ToLower(trimmed), "set transaction_timeout") {
+		return false
+	}
+	// Only drop the full-line form; never a SET embedded inside data.
+	return strings.HasPrefix(trimmed, "SET") || strings.HasPrefix(trimmed, "set")
 }
 
 func dollarQuoteEnd(data []byte, start int) (int, bool) {

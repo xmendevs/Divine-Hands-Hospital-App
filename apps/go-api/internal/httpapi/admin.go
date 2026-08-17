@@ -387,9 +387,11 @@ func (s *server) handleSetSetting(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
-	// Backup settings take effect immediately (rebuild the manager/scheduler).
+	// Backup settings take effect immediately (rebuild the manager/scheduler),
+	// without an immediate run: the Settings screen saves keys one at a time
+	// and an immediate run per key would abort in-flight restores.
 	if strings.HasPrefix(key, backupSettingPrefix) {
-		s.rebuildBackupMgr()
+		s.rebuildBackupMgr(false)
 	}
 	s.recordAudit(r, domain.ActionSettingsUpdate, "setting", key, nil, map[string]any{"key": key})
 	w.WriteHeader(http.StatusNoContent)

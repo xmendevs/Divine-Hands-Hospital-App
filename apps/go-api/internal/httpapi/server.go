@@ -15,12 +15,13 @@ import (
 const serviceVersion = "0.5.0"
 
 type server struct {
-	cfg       config.Config
-	logger    *slog.Logger
-	store     *store.Store
-	checks    map[string]Checker
-	mfaCipher *auth.Cipher
-	backupMgr *backup.Manager
+	cfg               config.Config
+	logger            *slog.Logger
+	store             *store.Store
+	checks            map[string]Checker
+	mfaCipher         *auth.Cipher
+	backupMgr         *backup.Manager
+	backupMgrExplicit bool
 }
 
 func newServer(cfg config.Config, logger *slog.Logger, st *store.Store) *server {

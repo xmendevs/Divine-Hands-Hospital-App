@@ -4,6 +4,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -233,13 +235,17 @@ func TestBackupRunLocalEndToEnd(t *testing.T) {
 	}
 	var st map[string]any
 	_ = json.Unmarshal(rr.Body.Bytes(), &st)
-	if st["enabled"] != true || st["localHealthy"] != true {
+	if st["enabled"] != true || st["local_healthy"] != true {
 		t.Fatalf("status unexpected: %s", rr.Body.String())
+	}
+	// The dashboard banner derives from health_status: it must be populated.
+	if hs, ok := st["health_status"].(string); !ok || hs == "" {
+		t.Fatalf("health_status missing/empty: %s", rr.Body.String())
 	}
 
 	// Job ledger records the run.
 	rr = doBackupJSON(t, h, http.MethodGet, "/api/v1/backups/jobs", adminToken, nil)
-	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"JobType":"local"`)) {
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"job_type":"local"`)) {
 		t.Fatalf("jobs unexpected: %d %s", rr.Code, rr.Body.String())
 	}
 
@@ -369,7 +375,7 @@ func TestBackupCloudUploadsAndPrunes(t *testing.T) {
 
 	// Status reports the cloud destination as healthy.
 	rr = doBackupJSON(t, h, http.MethodGet, "/api/v1/backups/status", adminToken, nil)
-	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"cloudHealthy":true`)) {
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"cloud_healthy":true`)) {
 		t.Fatalf("cloud health status: %d %s", rr.Code, rr.Body.String())
 	}
 
@@ -401,7 +407,7 @@ func TestBackupFailureAlertsAdmins(t *testing.T) {
 	}
 
 	rr = doBackupJSON(t, h, http.MethodGet, "/api/v1/backups/jobs", adminToken, nil)
-	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"Status":"failed"`)) {
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"status":"failed"`)) {
 		t.Fatalf("failed job not recorded: %d %s", rr.Code, rr.Body.String())
 	}
 
@@ -414,17 +420,145 @@ func TestBackupFailureAlertsAdmins(t *testing.T) {
 	}
 }
 
+// buildTestURL rebuilds a postgres:// URL from a parsed config, mirroring the
+// backup package's connString helper (unexported there).
+func buildTestURL(cfg pgx.ConnConfig) string {
+	q := url.Values{}
+	for k, v := range cfg.RuntimeParams {
+		q.Set(k, v)
+	}
+	sslmode := "disable"
+	if cfg.TLSConfig != nil {
+		sslmode = "require"
+	}
+	q.Set("sslmode", sslmode)
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s",
+		url.QueryEscape(cfg.User), url.QueryEscape(cfg.Password), cfg.Host, cfg.Port, cfg.Database, q.Encode())
+}
+
+// maintenanceConn connects to the "postgres" database of the test server so
+// tests can create/drop scratch databases. It uses a bounded background
+// context (not t.Context) because it is also called from t.Cleanup, where the
+// test context is already canceled.
+func maintenanceConn(t *testing.T) *pgx.Conn {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cfg, err := pgx.ParseConfig(testDBURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	maint := *cfg
+	maint.Database = "postgres"
+	conn, err := pgx.Connect(ctx, buildTestURL(maint))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return conn
+}
+
+func dropAndCreateDB(t *testing.T, name string) string {
+	t.Helper()
+	conn := maintenanceConn(t)
+	defer conn.Close(t.Context())
+	_, _ = conn.Exec(t.Context(), `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = `+quoteTest(name))
+	_, _ = conn.Exec(t.Context(), `DROP DATABASE IF EXISTS `+quoteTest(name))
+	if _, err := conn.Exec(t.Context(), `CREATE DATABASE `+quoteTest(name)); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := pgx.ParseConfig(testDBURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scratch := *cfg
+	scratch.Database = name
+	return buildTestURL(scratch)
+}
+
+func dropTestDB(t *testing.T, name string) {
+	t.Helper()
+	conn := maintenanceConn(t)
+	defer conn.Close(t.Context())
+	_, _ = conn.Exec(t.Context(), `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = `+quoteTest(name))
+	_, _ = conn.Exec(t.Context(), `DROP DATABASE IF EXISTS `+quoteTest(name))
+}
+
+func quoteTest(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+}
+
+func TestBackupCloudRestoresIntoNeonTarget(t *testing.T) {
+	dir := t.TempDir()
+
+	// A scratch database on the local test server stands in for the Neon
+	// project: the restore path is identical (a remote Postgres).
+	scratchName := "hims_neon_test"
+	neonURL := dropAndCreateDB(t, scratchName)
+	t.Cleanup(func() { dropTestDB(t, scratchName) })
+
+	key, _ := hex.DecodeString(testBackupKey)
+	mgr := backup.NewManager(backup.Config{
+		Enabled:       true,
+		LocalDir:      dir,
+		Neon:          &backup.NeonConfig{ConnectionString: neonURL},
+		EncryptionKey: key,
+		PGDumpPath:    findPgDump(t),
+		DatabaseURL:   testDBURL,
+		MigrationsDir: findMigrationsDir(),
+		Retention:     backup.RetentionPolicy{Daily: 2, Weekly: 1, Monthly: 1},
+	}, testStore, testStore, nil)
+	h := newBackupRouter(t, mgr)
+
+	rr := doBackupJSON(t, h, http.MethodPost, "/api/v1/backups/run", adminToken, map[string]string{"target": "cloud"})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("neon cloud run status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+
+	// The destination database now holds a fresh copy of the schema + data.
+	conn, err := pgx.Connect(t.Context(), neonURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close(t.Context())
+	var tables int
+	if err := conn.QueryRow(t.Context(), `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`).Scan(&tables); err != nil {
+		t.Fatal(err)
+	}
+	if tables < 20 {
+		t.Fatalf("restored schema has %d tables, want >= 20", tables)
+	}
+	var users int64
+	if err := conn.QueryRow(t.Context(), `SELECT count(*) FROM public.users`).Scan(&users); err != nil {
+		t.Fatal(err)
+	}
+	if users == 0 {
+		t.Fatal("restored database has no users; restore did not load data")
+	}
+
+	// The job ledger records the run as a cloud job.
+	rr = doBackupJSON(t, h, http.MethodGet, "/api/v1/backups/jobs", adminToken, nil)
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"job_type":"cloud"`)) {
+		t.Fatalf("jobs unexpected: %d %s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestBackupEndpointsRequireConfiguration(t *testing.T) {
-	// A router without a backup manager returns 503.
+	// A store-backed router always builds a backup manager from settings; with
+	// no backup.* settings it reports backups as disabled (200, enabled:false)
+	// and rejects runs, instead of serving a phantom "healthy" state.
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := config.Config{ServiceName: "go-api", Timezone: "UTC"}
 	plain := NewRouter(cfg, logger, testStore)
 	rr := doBackupJSON(t, plain, http.MethodGet, "/api/v1/backups/status", adminToken, nil)
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want 503", rr.Code)
+	if rr.Code != http.StatusOK || !bytes.Contains(rr.Body.Bytes(), []byte(`"enabled":false`)) {
+		t.Fatalf("status = %d, want 200 with enabled:false: %s", rr.Code, rr.Body.String())
+	}
+	rr = doBackupJSON(t, plain, http.MethodPost, "/api/v1/backups/run", adminToken, map[string]string{"target": "local"})
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("run on disabled service = %d, want 500", rr.Code)
 	}
 	rr = doBackupJSON(t, plain, http.MethodPost, "/api/v1/backups/verify", adminToken, nil)
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Fatalf("verify = %d, want 503", rr.Code)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("verify on disabled service = %d, want 500", rr.Code)
 	}
 }

@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/backup"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
 )
@@ -201,11 +203,20 @@ func (s *server) buildBackupConfig(ctx context.Context) *backup.Config {
 		s.logger.Warn("backups disabled: BACKUP_ENCRYPTION_KEY is not set to a valid 32-byte key")
 	}
 
+	// An empty stored local_dir (the Settings screen saves the key even when
+	// blank) must not override the default, or local backups would write to "".
+	localDir := settingString(settings, "backup.local_dir", "")
+	if localDir == "" {
+		localDir = envDefault("BACKUP_LOCAL_DIR", "./backups")
+	}
+
 	cfg := &backup.Config{
 		Enabled:       enabled,
-		LocalDir:      settingString(settings, "backup.local_dir", envDefault("BACKUP_LOCAL_DIR", "./backups")),
+		LocalDir:      localDir,
 		EncryptionKey: encKey,
-		PGDumpPath:    envDefault("BACKUP_PGDUMP_PATH", "pg_dump"),
+		// BACKUP_PG_DUMP_PATH is the documented name (main.cjs, .env.example,
+		// docs); BACKUP_PGDUMP_PATH is accepted for backward compatibility.
+		PGDumpPath:    envDefault("BACKUP_PG_DUMP_PATH", envDefault("BACKUP_PGDUMP_PATH", "pg_dump")),
 		DatabaseURL:   s.cfg.DatabaseURL,
 		MigrationsDir: envDefault("MIGRATIONS_DIR", "../../db/migrations"),
 		ConfigFiles:   envSplit("BACKUP_CONFIG_FILES"),
@@ -219,28 +230,82 @@ func (s *server) buildBackupConfig(ctx context.Context) *backup.Config {
 		VerifyInterval: parseDuration(settingString(settings, "backup.verify_interval", envDefault("BACKUP_VERIFY_INTERVAL", "24h"))),
 	}
 
-	if ep := settingString(settings, "backup.s3.endpoint", ""); ep != "" {
-		s3cfg := &backup.S3Config{
-			Endpoint:  ep,
-			Region:    settingString(settings, "backup.s3.region", ""),
-			Bucket:    settingString(settings, "backup.s3.bucket", ""),
-			Prefix:    settingString(settings, "backup.s3.prefix", ""),
-			AccessKey: settingString(settings, "backup.s3.access_key", ""),
-			SecretKey: settingString(settings, "backup.s3.secret_key", ""),
-			PathStyle: settingBool(settings, "backup.s3.path_style", false),
+	// Cloud destination: "neon" (serverless Postgres) or "s3" (default, any
+	// S3-compatible object store). Only the destination selected on the Super
+	// Admin Settings screen is activated.
+	switch settingString(settings, "backup.cloud_destination", "s3") {
+	case "neon":
+		connStr := settingString(settings, "backup.neon.connection_string", envDefault("BACKUP_NEON_CONNECTION_STRING", ""))
+		if connStr != "" {
+			if _, err := pgx.ParseConfig(connStr); err != nil {
+				s.logger.Warn("neon backup ignored: connection string is invalid", "error", err)
+			} else {
+				cfg.Neon = &backup.NeonConfig{ConnectionString: connStr}
+			}
 		}
-		// A cloud target needs endpoint + bucket + credentials.
-		if s3cfg.Bucket != "" && s3cfg.AccessKey != "" && s3cfg.SecretKey != "" {
-			cfg.S3 = s3cfg
+	default:
+		if ep := settingString(settings, "backup.s3.endpoint", ""); ep != "" {
+			s3cfg := &backup.S3Config{
+				Endpoint:  ep,
+				Region:    settingString(settings, "backup.s3.region", ""),
+				Bucket:    settingString(settings, "backup.s3.bucket", ""),
+				Prefix:    settingString(settings, "backup.s3.prefix", ""),
+				AccessKey: settingString(settings, "backup.s3.access_key", ""),
+				SecretKey: settingString(settings, "backup.s3.secret_key", ""),
+				PathStyle: settingBool(settings, "backup.s3.path_style", false),
+			}
+			// A cloud target needs endpoint + bucket + credentials.
+			if s3cfg.Bucket != "" && s3cfg.AccessKey != "" && s3cfg.SecretKey != "" {
+				cfg.S3 = s3cfg
+			}
 		}
 	}
 	return cfg
 }
 
+// handleBackupTestNeon verifies the server can reach a Neon database, using
+// the connection string saved in settings or one supplied in the request
+// (so the Super Admin can test before saving). It never writes settings.
+func (s *server) handleBackupTestNeon(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ConnectionString string `json:"connectionString"`
+	}
+	_ = decodeJSON(r, &body)
+
+	connStr := strings.TrimSpace(body.ConnectionString)
+	if connStr == "" {
+		settings, err := s.store.GetSettingsMap(r.Context())
+		if err != nil {
+			s.logger.Error("read settings for neon test failed", "error", err)
+			writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+		connStr = settingString(settings, "backup.neon.connection_string", "")
+	}
+	if connStr == "" {
+		writeError(w, r, http.StatusBadRequest, "missing_connection_string", "enter a Neon connection string to test")
+		return
+	}
+
+	// Audit the action without ever logging the connection string (it embeds
+	// the database password).
+	actor := userFromContext(r.Context())
+	s.recordAudit(r, domain.ActionBackupTestNeon, "backups", "test-neon", &actor.ID, nil)
+
+	version, db, err := backup.TestNeonConnection(r.Context(), connStr)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "serverVersion": version, "database": db})
+}
+
 // rebuildBackupMgr rebuilds the backup manager from current settings and
 // restarts its scheduler so changed values take effect immediately. Called at
-// startup and after every backup.* setting update.
-func (s *server) rebuildBackupMgr() {
+// startup (immediate first run) and after every backup.* setting update
+// (no immediate run: the Settings screen saves keys one at a time, and an
+// immediate run per key would abort in-flight restores).
+func (s *server) rebuildBackupMgr(immediate bool) {
 	if s.backupMgr != nil {
 		s.backupMgr.Stop()
 	}
@@ -251,6 +316,10 @@ func (s *server) rebuildBackupMgr() {
 	}
 	mgr := backup.NewManager(*cfg, s.store, s.store, nil)
 	mgr.SetLogger(s.logger.Info)
-	mgr.Start(context.Background())
+	if immediate {
+		mgr.Start(context.Background())
+	} else {
+		mgr.StartDelayed(context.Background())
+	}
 	s.backupMgr = mgr
 }

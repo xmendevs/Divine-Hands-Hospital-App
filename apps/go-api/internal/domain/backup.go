@@ -20,8 +20,9 @@ const (
 )
 
 const (
-	ActionBackupRun    = "backup:run"
-	ActionBackupVerify = "backup:verify"
+	ActionBackupRun      = "backup.run"
+	ActionBackupVerify   = "backup.verify"
+	ActionBackupTestNeon = "backup.test_neon"
 )
 
 type BackupJob struct {

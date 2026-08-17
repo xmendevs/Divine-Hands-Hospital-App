@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/backup"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/auth"
+	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/backup"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
 
@@ -70,8 +70,8 @@ func TestBackupSecurity(t *testing.T) {
 		token := makeSession(t.Context(), testStore, uid)
 		h := newBackupRouter(t, mustTestManager(t, ""))
 		testPaths := []struct {
-			path    string
-			method  string
+			path   string
+			method string
 		}{
 			{"/api/v1/backups/status", http.MethodGet},
 			{"/api/v1/backups/jobs", http.MethodGet},

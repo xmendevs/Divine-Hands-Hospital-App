@@ -340,15 +340,14 @@ func TestLogout(t *testing.T) {
 }
 
 func TestMFARequiredAndEnroll(t *testing.T) {
-	// super_admin role requires MFA; not enrolled yet, so login must fail.
+	// A brand-new privileged account has no TOTP secret yet, so the first
+	// sign-in succeeds without a code; demanding one there would lock the
+	// account forever. MFA is enforced once a secret is enrolled.
 	rr := doJSON(t, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
 		"username": "superadmin", "password": superPassword,
 	})
-	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("login without MFA status = %d, want 401", rr.Code)
-	}
-	if !bytes.Contains(rr.Body.Bytes(), []byte("mfa_required")) {
-		t.Fatalf("expected mfa_required, got %s", rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("first login without MFA status = %d, want 200 (enroll later)", rr.Code)
 	}
 
 	// Enroll MFA using a directly-created session.
@@ -366,6 +365,14 @@ func TestMFARequiredAndEnroll(t *testing.T) {
 	rr = doJSON(t, http.MethodPost, "/api/v1/auth/mfa/confirm", superToken, map[string]string{"code": code})
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("mfa confirm status = %d, body=%s", rr.Code, rr.Body.String())
+	}
+
+	// Once a secret is enrolled, logging in without a code is rejected.
+	rr = doJSON(t, http.MethodPost, "/api/v1/auth/login", "", map[string]string{
+		"username": "superadmin", "password": superPassword,
+	})
+	if rr.Code != http.StatusUnauthorized || !bytes.Contains(rr.Body.Bytes(), []byte("mfa_required")) {
+		t.Fatalf("login without code after enroll = %d %s, want 401 mfa_required", rr.Code, rr.Body.String())
 	}
 
 	code2, _ := totp.GenerateCode(secret, time.Now())

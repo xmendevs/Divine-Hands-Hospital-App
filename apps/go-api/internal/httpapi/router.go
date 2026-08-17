@@ -20,10 +20,12 @@ func WithChecks(checks map[string]Checker) Option {
 }
 
 // WithBackupManager attaches the backup & DR manager. When nil (the
-// default), backup endpoints report backup_not_configured.
+// default), backup endpoints report backup_not_configured. Passing a manager
+// here opts out of the settings-driven rebuild in NewRouter.
 func WithBackupManager(m *backup.Manager) Option {
 	return func(s *server) {
 		s.backupMgr = m
+		s.backupMgrExplicit = true
 	}
 }
 
@@ -308,10 +310,14 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/backups/jobs", s.admin("backups.view", s.handleBackupJobs))
 	mux.Handle("POST /api/v1/backups/run", s.admin("backups.run", s.handleBackupRun))
 	mux.Handle("POST /api/v1/backups/verify", s.admin("backups.verify", s.handleBackupVerify))
+	mux.Handle("POST /api/v1/backups/test-neon", s.admin("backups.view", s.handleBackupTestNeon))
 
 	// Build the backup manager from DB settings so the Super Admin can manage
-	// cloud backup from the app. Backups stay disabled until configured.
-	s.rebuildBackupMgr()
+	// cloud backup from the app. Backups stay disabled until configured. An
+	// explicitly-attached manager (tests, embedded deployments) is kept as-is.
+	if !s.backupMgrExplicit {
+		s.rebuildBackupMgr(true)
+	}
 
 	return withMiddleware(mux, logger)
 }

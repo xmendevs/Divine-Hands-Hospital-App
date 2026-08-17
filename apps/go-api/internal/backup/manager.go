@@ -20,8 +20,9 @@ import (
 type Config struct {
 	Enabled        bool
 	LocalDir       string
-	S3             *S3Config
-	EncryptionKey  []byte // 32 bytes, hex-decoded by the caller
+	S3             *S3Config   // object-storage destination
+	Neon           *NeonConfig // Neon Postgres destination (alternative to S3)
+	EncryptionKey  []byte      // 32 bytes, hex-decoded by the caller
 	PGDumpPath     string
 	DatabaseURL    string
 	MigrationsDir  string
@@ -231,19 +232,23 @@ func (m *Manager) backupConfigFiles(ctx context.Context, tier string, now time.T
 	return names, nil
 }
 
-// RunCloud uploads the current local backup (creating it first) to the
-// object store, then prunes the cloud to the retention window.
+// RunCloud pushes the current local backup (creating it first) to the
+// configured cloud destination. For S3 that means uploading the encrypted
+// payload; for Neon it means restoring a fresh dump into the Neon database.
 func (m *Manager) RunCloud(ctx context.Context) error {
 	if !m.cfg.Enabled {
 		return errors.New("backup service is not enabled")
 	}
-	if m.cfg.S3 == nil {
+	if m.cfg.S3 == nil && m.cfg.Neon == nil {
 		return errors.New("cloud backup is not configured")
 	}
 	return m.runJob(ctx, domain.BackupJobCloud, m.doCloud)
 }
 
 func (m *Manager) doCloud(ctx context.Context, res *jobResult) error {
+	if m.cfg.Neon != nil {
+		return m.doCloudNeon(ctx, res)
+	}
 	if err := m.doLocal(ctx, res); err != nil {
 		return err
 	}
@@ -282,6 +287,34 @@ func (m *Manager) doCloud(ctx context.Context, res *jobResult) error {
 	}
 
 	details, _ := json.Marshal(map[string]any{"object": prefix + "backups/" + res.target, "deleted": len(toDelete)})
+	res.details = details
+	return nil
+}
+
+// doCloudNeon keeps the encrypted local backup (doLocal) and additionally
+// restores a fresh dump into the Neon database, replacing its data with the
+// latest snapshot. Neon keeps no per-run history; the local backups do.
+func (m *Manager) doCloudNeon(ctx context.Context, res *jobResult) error {
+	if err := m.doLocal(ctx, res); err != nil {
+		return err
+	}
+
+	tmp, err := os.MkdirTemp("", "hims-neon-*")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+
+	plainPath := filepath.Join(tmp, "dump.sql.gz")
+	if _, err := Dump(ctx, m.cfg.PGDumpPath, m.cfg.DatabaseURL, plainPath); err != nil {
+		return fmt.Errorf("dump for neon restore: %w", err)
+	}
+	restored, err := RestoreToNeon(ctx, m.cfg.Neon.ConnectionString, plainPath)
+	if err != nil {
+		return fmt.Errorf("restore to neon: %w", err)
+	}
+
+	details, _ := json.Marshal(map[string]any{"destination": "neon", "restore": restored})
 	res.details = details
 	return nil
 }
@@ -482,6 +515,7 @@ func (m *Manager) Status(ctx context.Context) (domain.BackupStatus, error) {
 func (m *Manager) DecorateStatus(st *domain.BackupStatus) {
 	st.Enabled = m.cfg.Enabled
 	if !m.cfg.Enabled {
+		st.HealthStatus = "disabled"
 		return
 	}
 	healthy := func(j *domain.BackupJob) bool {
@@ -492,6 +526,22 @@ func (m *Manager) DecorateStatus(st *domain.BackupStatus) {
 	}
 	st.LocalHealthy = healthy(st.LastLocal)
 	st.CloudHealthy = healthy(st.LastCloud)
+
+	// Overall health for the dashboard banner: healthy only when a local
+	// backup exists and every configured cloud destination is healthy. A
+	// cloud target that is configured but never succeeded is degraded, not
+	// healthy.
+	cloudConfigured := m.cfg.S3 != nil || m.cfg.Neon != nil
+	switch {
+	case !st.LocalHealthy:
+		st.HealthStatus = "local_backup_unhealthy"
+	case cloudConfigured && !st.CloudHealthy:
+		st.HealthStatus = "cloud_backup_unhealthy"
+	case st.FailedLast24h > 0:
+		st.HealthStatus = "recent_failures"
+	default:
+		st.HealthStatus = "healthy"
+	}
 
 	finished := func(j *domain.BackupJob) time.Time {
 		if j != nil && j.FinishedAt != nil {
@@ -514,7 +564,7 @@ func (m *Manager) DecorateStatus(st *domain.BackupStatus) {
 		next := m.now().Add(m.cfg.LocalInterval).UTC().Format(time.RFC3339)
 		st.NextLocalAt = &next
 	}
-	if m.cfg.S3 != nil && m.cfg.CloudInterval > 0 {
+	if (m.cfg.S3 != nil || m.cfg.Neon != nil) && m.cfg.CloudInterval > 0 {
 		next := m.now().Add(m.cfg.CloudInterval).UTC().Format(time.RFC3339)
 		st.NextCloudAt = &next
 	}
@@ -545,14 +595,26 @@ func localStorageBytes(dir string) int64 {
 // then on their intervals; verification runs only after its interval so the
 // first verification exercises a real backup.
 func (m *Manager) Start(ctx context.Context) {
+	m.start(ctx, true)
+}
+
+// StartDelayed launches the scheduler without the immediate first run. Used
+// when the manager is rebuilt after a settings change: the settings save loop
+// PUTs one key at a time, and an immediate run per PUT would abort in-flight
+// restores (for Neon that leaves the destination half-restored).
+func (m *Manager) StartDelayed(ctx context.Context) {
+	m.start(ctx, false)
+}
+
+func (m *Manager) start(ctx context.Context, immediate bool) {
 	ctx, m.cancel = context.WithCancel(ctx)
 	if m.cfg.Enabled && m.cfg.LocalInterval > 0 {
 		m.wg.Add(1)
-		go m.loop(ctx, "local", m.cfg.LocalInterval, m.RunLocal, true)
+		go m.loop(ctx, "local", m.cfg.LocalInterval, m.RunLocal, immediate)
 	}
-	if m.cfg.Enabled && m.cfg.S3 != nil && m.cfg.CloudInterval > 0 {
+	if m.cfg.Enabled && (m.cfg.S3 != nil || m.cfg.Neon != nil) && m.cfg.CloudInterval > 0 {
 		m.wg.Add(1)
-		go m.loop(ctx, "cloud", m.cfg.CloudInterval, m.RunCloud, true)
+		go m.loop(ctx, "cloud", m.cfg.CloudInterval, m.RunCloud, immediate)
 	}
 	if m.cfg.Enabled && m.cfg.VerifyInterval > 0 {
 		m.wg.Add(1)
