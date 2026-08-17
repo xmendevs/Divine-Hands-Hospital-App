@@ -36,7 +36,12 @@ export interface LoginResult {
 interface AuthState {
   me: Me | null;
   loading: boolean;
-  login: (username: string, password: string, totpCode?: string, deviceName?: string) => Promise<Me>;
+  login: (
+    username: string,
+    password: string,
+    totpCode?: string,
+    deviceName?: string,
+  ) => Promise<Me>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -71,7 +76,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function login(username: string, password: string, totpCode?: string, deviceName?: string): Promise<Me> {
+  async function login(
+    username: string,
+    password: string,
+    totpCode?: string,
+    deviceName?: string,
+  ): Promise<Me> {
     const result = await apiFetch<LoginResult>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password, totpCode, deviceName }),

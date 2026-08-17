@@ -1,4 +1,16 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import {
+  theme,
+  Button,
+  Card,
+  Checkbox,
+  DataTable,
+  FormField,
+  Input,
+  PageHeader,
+  StatusBadge,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch, downloadInstaller, getBaseUrl, setBaseUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { HimsServerInfo } from "../hims";
@@ -42,7 +54,9 @@ interface BackupStatus {
 
 interface BackupForm {
   enabled: boolean;
+  cloud_destination: string; // "s3" (object storage) or "neon" (serverless Postgres)
   local_dir: string;
+  neon_connection_string: string;
   s3_endpoint: string;
   s3_region: string;
   s3_bucket: string;
@@ -60,7 +74,9 @@ interface BackupForm {
 
 const EMPTY_BACKUP_FORM: BackupForm = {
   enabled: false,
+  cloud_destination: "s3",
   local_dir: "",
+  neon_connection_string: "",
   s3_endpoint: "",
   s3_region: "",
   s3_bucket: "",
@@ -88,6 +104,13 @@ function numStr(v: unknown): string {
   return typeof v === "number" ? String(v) : str(v);
 }
 
+function jobStatusBadge(status: string): StatusVariant {
+  if (status === "success") return "approved";
+  if (status === "failed") return "error";
+  if (status === "running" || status === "pending") return "running";
+  return "draft";
+}
+
 export default function SettingsPage() {
   const { me, logout } = useAuth();
   const isSuperAdmin = me?.roles?.some((r) => r.code === "super_admin") ?? false;
@@ -106,6 +129,8 @@ export default function SettingsPage() {
   const [backupMsg, setBackupMsg] = useState("");
   const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null);
   const [statusError, setStatusError] = useState("");
+  const [neonTestMsg, setNeonTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [neonTesting, setNeonTesting] = useState(false);
 
   const [dlError, setDlError] = useState("");
   const [dlBusy, setDlBusy] = useState(false);
@@ -139,7 +164,11 @@ export default function SettingsPage() {
         const get = (key: string) => settings.find((s) => s.key === key)?.value;
         setBackupForm({
           enabled: bool(get("backup.enabled")),
+          cloud_destination: str(get("backup.cloud_destination")) || "s3",
           local_dir: str(get("backup.local_dir")),
+          // The Neon connection string is a secret: never load it back, keep
+          // the field blank so a blank save preserves the stored value.
+          neon_connection_string: "",
           s3_endpoint: str(get("backup.s3.endpoint")),
           s3_region: str(get("backup.s3.region")),
           s3_bucket: str(get("backup.s3.bucket")),
@@ -213,6 +242,7 @@ export default function SettingsPage() {
     try {
       const puts: Array<[string, unknown]> = [
         ["backup.enabled", backupForm.enabled],
+        ["backup.cloud_destination", backupForm.cloud_destination],
         ["backup.local_dir", backupForm.local_dir.trim()],
         ["backup.retention_daily", parseInt(backupForm.retention_daily || "0", 10) || 0],
         ["backup.retention_weekly", parseInt(backupForm.retention_weekly || "0", 10) || 0],
@@ -227,10 +257,13 @@ export default function SettingsPage() {
         ["backup.s3.access_key", backupForm.s3_access_key.trim()],
         ["backup.s3.path_style", backupForm.s3_path_style],
       ];
-      // Only write the secret when the user typed one, so a blank field keeps
-      // the previously stored key.
+      // Only write the secrets when the user typed one, so a blank field
+      // keeps the previously stored value.
       if (backupForm.s3_secret_key.trim() !== "") {
         puts.push(["backup.s3.secret_key", backupForm.s3_secret_key.trim()]);
+      }
+      if (backupForm.neon_connection_string.trim() !== "") {
+        puts.push(["backup.neon.connection_string", backupForm.neon_connection_string.trim()]);
       }
       for (const [key, value] of puts) {
         await apiFetch<unknown>(`/admin/settings/${encodeURIComponent(key)}`, {
@@ -248,13 +281,48 @@ export default function SettingsPage() {
     }
   }
 
+  async function testNeon() {
+    setNeonTestMsg(null);
+    setNeonTesting(true);
+    try {
+      const typed = backupForm.neon_connection_string.trim();
+      const res = await apiFetch<{
+        ok: boolean;
+        serverVersion?: string;
+        database?: string;
+        error?: string;
+      }>("/backups/test-neon", {
+        method: "POST",
+        body: JSON.stringify(typed !== "" ? { connectionString: typed } : {}),
+      });
+      setNeonTestMsg(
+        res.ok
+          ? {
+              ok: true,
+              text: `Connected to Neon database \u201c${res.database ?? ""}\u201d (${res.serverVersion ?? ""})`,
+            }
+          : { ok: false, text: res.error ?? "Connection failed." },
+      );
+    } catch (err) {
+      setNeonTestMsg({
+        ok: false,
+        text: err instanceof Error ? err.message : "Connection failed.",
+      });
+    } finally {
+      setNeonTesting(false);
+    }
+  }
+
   async function runBackup(target: "local" | "cloud") {
     setBackupMsg("");
     try {
-      const res = await apiFetch<{ success: boolean; target?: string; error?: string }>("/backups/run", {
-        method: "POST",
-        body: JSON.stringify({ target }),
-      });
+      const res = await apiFetch<{ success: boolean; target?: string; error?: string }>(
+        "/backups/run",
+        {
+          method: "POST",
+          body: JSON.stringify({ target }),
+        },
+      );
       setBackupMsg(
         res.success
           ? `${target === "cloud" ? "Cloud" : "Local"} backup finished.`
@@ -301,352 +369,485 @@ export default function SettingsPage() {
     }
   }
 
-  const healthColor = backupStatus?.health_status === "healthy" ? "#15803d" : "#b45309";
+  const healthColor = backupStatus?.health_status === "healthy" ? theme.action.success : theme.action.warning;
   const lastLocal = backupStatus?.last_local;
   const lastCloud = backupStatus?.last_cloud;
 
+  const jobsColumns = [
+    { key: "type", header: "Type", render: (j: BackupJob) => j.job_type },
+    {
+      key: "status",
+      header: "Status",
+      render: (j: BackupJob) => <StatusBadge variant={jobStatusBadge(j.status)} label={j.status} />,
+    },
+    { key: "started", header: "Started", render: (j: BackupJob) => new Date(j.started_at).toLocaleString() },
+    {
+      key: "size",
+      header: "Size",
+      render: (j: BackupJob) => (j.size_bytes ? `${(j.size_bytes / 1024 / 1024).toFixed(2)} MB` : "—"),
+    },
+    { key: "error", header: "Error", render: (j: BackupJob) => j.error_message ?? "—" },
+  ];
+
   return (
-    <div style={wrap}>
-      <h2 style={heading}>Settings</h2>
+    <div style={{ maxWidth: 860 }}>
+      <PageHeader
+        title="System Settings & Administration"
+        description="Server connection, hospital network, backups and account security."
+      />
 
       {me?.mustChangePassword && (
-        <p style={{ padding: "0.75rem", borderRadius: "6px", background: "#fef2f2", color: "#b91c1c", fontSize: "0.85rem", margin: "0 0 1rem" }}>
+        <div
+          role="alert"
+          style={{
+            padding: theme.spacing["3"],
+            borderRadius: theme.radius.md,
+            background: "#fef2f2",
+            color: theme.text.danger,
+            fontSize: theme.fontSize.base,
+            marginBottom: theme.spacing["4"],
+            border: "1px solid #fecaca",
+          }}
+        >
           You must change your password before continuing.
-        </p>
+        </div>
       )}
 
-      <section style={section}>
-        <h3 style={sub}>Server connection</h3>
-        <p style={hint}>
-          The address of the main PC running the backend. Other PCs set this to the main PC&apos;s
-          network address (e.g. http://192.168.1.10:8080).
-        </p>
-        <form onSubmit={handleSaveUrl} style={row}>
-          <input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} style={input} placeholder="http://127.0.0.1:8080" />
-          <button type="submit" style={button}>
-            Save
-          </button>
-        </form>
-        {saved && <p style={{ color: "#15803d", fontSize: "0.8rem" }}>Saved. Reconnect to apply.</p>}
-      </section>
-
-      <section style={section}>
-        <h3 style={sub}>Hospital network &amp; app updates</h3>
-        <p style={hint}>
-          This PC is the hospital server. Other PCs connect over WiFi (no internet needed) by
-          entering this address in their Connection settings. When a new version is installed here,
-          staff PCs can download it straight from this server.
-        </p>
-        <div style={row}>
-          <button type="button" onClick={handleDownloadUpdate} disabled={dlBusy} style={button}>
-            {dlBusy ? "Downloading…" : "Download app update"}
-          </button>
-        </div>
-        {dlError && <p style={{ color: "#b91c1c", fontSize: "0.8rem" }}>{dlError}</p>}
-        <p style={hint}>
-          {dlError === ""
-            ? "Note: the server serves the installer only when APP_INSTALLER_PATH is set on the main PC."
-            : ""}
-        </p>
-      </section>
-
-      {serverInfo?.isServer && (
-        <section style={section}>
-          <h3 style={sub}>Hospital server (this PC)</h3>
-          <p style={hint}>
-            This install bundles the database and server, which are started automatically in the
-            background - no terminal needed. Keep this PC powered on; it runs the hospital.
-          </p>
-          {serverInfo.running ? (
-            <p style={{ fontSize: "0.85rem", color: "#15803d" }}>● Server running on port 8080</p>
-          ) : (
-            <p style={{ fontSize: "0.85rem", color: "#b91c1c" }}>
-              ● Server failed to start: {serverInfo.error || "unknown error"}
+      <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+        <Card
+          title="Server Connection"
+          hint="The address of the main PC running the backend. Other PCs set this to the main PC's network address (e.g. http://192.168.1.10:8080)."
+        >
+          <form onSubmit={handleSaveUrl} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center", maxWidth: 480 }}>
+            <Input
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="http://127.0.0.1:8080"
+              style={{ flex: 1 }}
+            />
+            <Button type="submit">Save</Button>
+          </form>
+          {saved && (
+            <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.action.success, fontSize: theme.fontSize.base }}>
+              Saved. Reconnect to apply.
             </p>
           )}
-          {serverInfo.superadminUsername && (
-            <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-              <div style={{ fontSize: "0.85rem", color: "#334155" }}>
-                <strong>First sign-in:</strong> username <code style={codeStyle}>{serverInfo.superadminUsername}</code>
-              </div>
-              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <span style={{ fontSize: "0.85rem", color: "#334155" }}>
-                  password <code style={codeStyle}>{serverInfo.superadminPassword}</code>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void copyText("password", serverInfo.superadminPassword ?? "")}
-                  style={secondaryBtn}
-                >
-                  {copied === "password" ? "Copied!" : "Copy"}
-                </button>
-              </div>
-              <p style={{ margin: 0, fontSize: "0.75rem", color: "#b45309" }}>
-                Change it after signing in (Settings → Change password). Keep this PC's screen and
-                network secure.
+        </Card>
+
+        <Card
+          title="Hospital Network & App Updates"
+          hint="This PC is the hospital server. Other PCs connect over WiFi (no internet needed) by entering this address in their Connection settings. When a new version is installed here, staff PCs can download it straight from this server."
+        >
+          <Button onClick={() => void handleDownloadUpdate()} loading={dlBusy}>
+            Download app update
+          </Button>
+          {dlError && (
+            <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.text.danger, fontSize: theme.fontSize.base }}>{dlError}</p>
+          )}
+          {dlError === "" && (
+            <p style={{ margin: `${theme.spacing["2"]} 0 0`, fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+              Note: the server serves the installer only when APP_INSTALLER_PATH is set on the main PC.
+            </p>
+          )}
+        </Card>
+
+        {serverInfo?.isServer && (
+          <Card
+            title="Hospital Server (This PC)"
+            hint="This install bundles the database and server, which are started automatically in the background - no terminal needed. Keep this PC powered on; it runs the hospital."
+          >
+            {serverInfo.running ? (
+              <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.action.success }}>
+                ● Server running on port 8080
               </p>
-            </div>
-          )}
-        </section>
-      )}
-
-      {isSuperAdmin && (
-        <section style={section}>
-          <h3 style={sub}>Backup &amp; cloud storage (Super Admin)</h3>
-          <p style={hint}>
-            Backups are encrypted before leaving this PC. Enter your cloud object-storage details
-            (any S3-compatible provider: Amazon S3, Backblaze B2, Cloudflare R2, MinIO…) so the
-            hospital data is safe even if the building is not. The encryption key is set on the
-            server (BACKUP_ENCRYPTION_KEY) and is never stored here.
-          </p>
-
-          {statusError && <p style={{ color: "#b91c1c", fontSize: "0.8rem" }}>{statusError}</p>}
-
-          {backupStatus && (
-            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.75rem", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
-              <strong style={{ color: healthColor }}>
-                {backupStatus.health_status === "healthy" ? "Backups healthy" : `Health: ${backupStatus.health_status || "unknown"}`}
-              </strong>
-              {backupStatus.enabled ? (
-                <span style={{ color: "#64748b" }}>
-                  {" "}· automatic backups enabled
-                  {backupStatus.next_local_at ? ` · next local ${new Date(backupStatus.next_local_at).toLocaleString()}` : ""}
-                  {backupStatus.next_cloud_at ? ` · next cloud ${new Date(backupStatus.next_cloud_at).toLocaleString()}` : ""}
-                </span>
-              ) : (
-                <span style={{ color: "#b45309" }}> · backups disabled</span>
-              )}
-              <div style={{ marginTop: "0.25rem", color: "#64748b" }}>
-                Last local: {lastLocal ? `${lastLocal.status}${lastLocal.error_message ? ` — ${lastLocal.error_message}` : ""} (${new Date(lastLocal.started_at).toLocaleString()})` : "none"}
-                {" · "}Last cloud: {lastCloud ? `${lastCloud.status}${lastCloud.error_message ? ` — ${lastCloud.error_message}` : ""} (${new Date(lastCloud.started_at).toLocaleString()})` : "none"}
-                {" · "}Storage: {backupStatus.storage_bytes ? `${(backupStatus.storage_bytes / 1024 / 1024).toFixed(1)} MB` : "0 MB"}
+            ) : (
+              <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+                ● Server failed to start: {serverInfo.error || "unknown error"}
+              </p>
+            )}
+            {serverInfo.superadminUsername && (
+              <div
+                style={{
+                  marginTop: theme.spacing["3"],
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: theme.spacing["2"],
+                }}
+              >
+                <div style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+                  <strong>First sign-in:</strong> username <code style={codeStyle}>{serverInfo.superadminUsername}</code>
+                </div>
+                <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+                  <span style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+                    password <code style={codeStyle}>{serverInfo.superadminPassword}</code>
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void copyText("password", serverInfo.superadminPassword ?? "")}
+                  >
+                    {copied === "password" ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+                <p style={{ margin: 0, fontSize: theme.fontSize.sm, color: theme.action.warning }}>
+                  Change it after signing in (Settings → Change password). Keep this PC's screen and network secure.
+                </p>
               </div>
-            </div>
-          )}
+            )}
+          </Card>
+        )}
 
-          {!backupLoaded && <p style={hint}>Loading backup settings…</p>}
+        {isSuperAdmin && (
+          <Card
+            title="Backup & Cloud Storage"
+            hint={
+              <>
+                Backups are encrypted before leaving this PC. Choose a cloud destination below —{" "}
+                <strong>Neon Postgres</strong> (a serverless cloud database) or any S3-compatible object store
+                (Amazon S3, Backblaze B2, Cloudflare R2, MinIO…) — so the hospital data is safe even if the
+                building is not. The encryption key is set on the server (BACKUP_ENCRYPTION_KEY) and is never
+                stored here.
+              </>
+            }
+          >
+            {statusError && (
+              <p style={{ margin: `0 0 ${theme.spacing["3"]}`, color: theme.text.danger, fontSize: theme.fontSize.base }}>
+                {statusError}
+              </p>
+            )}
 
-          <form onSubmit={handleSaveBackup} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={checkLabel}>
-              <input
-                type="checkbox"
+            {backupStatus && (
+              <div
+                style={{
+                  background: theme.surface.subtle,
+                  border: `1px solid ${theme.surface.border}`,
+                  borderRadius: theme.radius.md,
+                  padding: theme.spacing["3"],
+                  marginBottom: theme.spacing["3"],
+                  fontSize: theme.fontSize.base,
+                }}
+              >
+                <strong style={{ color: healthColor }}>
+                  {backupStatus.health_status === "healthy"
+                    ? "Backups healthy"
+                    : `Health: ${backupStatus.health_status || "unknown"}`}
+                </strong>
+                {backupStatus.enabled ? (
+                  <span style={{ color: theme.text.muted }}>
+                    {" "}
+                    · automatic backups enabled
+                    {backupStatus.next_local_at
+                      ? ` · next local ${new Date(backupStatus.next_local_at).toLocaleString()}`
+                      : ""}
+                    {backupStatus.next_cloud_at
+                      ? ` · next cloud ${new Date(backupStatus.next_cloud_at).toLocaleString()}`
+                      : ""}
+                  </span>
+                ) : (
+                  <span style={{ color: theme.action.warning }}> · backups disabled</span>
+                )}
+                <div style={{ marginTop: theme.spacing["1"], color: theme.text.muted }}>
+                  Last local:{" "}
+                  {lastLocal
+                    ? `${lastLocal.status}${lastLocal.error_message ? ` — ${lastLocal.error_message}` : ""} (${new Date(lastLocal.started_at).toLocaleString()})`
+                    : "none"}
+                  {" · "}Last cloud:{" "}
+                  {lastCloud
+                    ? `${lastCloud.status}${lastCloud.error_message ? ` — ${lastCloud.error_message}` : ""} (${new Date(lastCloud.started_at).toLocaleString()})`
+                    : "none"}
+                  {" · "}Storage:{" "}
+                  {backupStatus.storage_bytes
+                    ? `${(backupStatus.storage_bytes / 1024 / 1024).toFixed(1)} MB`
+                    : "0 MB"}
+                </div>
+              </div>
+            )}
+
+            {!backupLoaded && (
+              <p style={{ margin: `0 0 ${theme.spacing["2"]}`, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                Loading backup settings…
+              </p>
+            )}
+
+            <form onSubmit={handleSaveBackup} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+              <Checkbox
                 checked={backupForm.enabled}
                 onChange={(e) => setBackupForm((f) => ({ ...f, enabled: e.target.checked }))}
+                label="Enable automatic backups"
               />
-              Enable automatic backups
-            </label>
 
-            <div style={twoCol}>
-              <label style={label}>
-                Local backup folder
-                <input value={backupForm.local_dir} onChange={(e) => setBackupForm((f) => ({ ...f, local_dir: e.target.value }))} style={input} placeholder="./backups" />
-              </label>
-              <label style={label}>
-                Cloud endpoint
-                <input value={backupForm.s3_endpoint} onChange={(e) => setBackupForm((f) => ({ ...f, s3_endpoint: e.target.value }))} style={input} placeholder="https://s3.amazonaws.com" />
-              </label>
-              <label style={label}>
-                Region
-                <input value={backupForm.s3_region} onChange={(e) => setBackupForm((f) => ({ ...f, s3_region: e.target.value }))} style={input} placeholder="us-east-1" />
-              </label>
-              <label style={label}>
-                Bucket
-                <input value={backupForm.s3_bucket} onChange={(e) => setBackupForm((f) => ({ ...f, s3_bucket: e.target.value }))} style={input} placeholder="hims-backups" />
-              </label>
-              <label style={label}>
-                Prefix (optional)
-                <input value={backupForm.s3_prefix} onChange={(e) => setBackupForm((f) => ({ ...f, s3_prefix: e.target.value }))} style={input} placeholder="hospital/" />
-              </label>
-              <label style={label}>
-                Access key
-                <input value={backupForm.s3_access_key} onChange={(e) => setBackupForm((f) => ({ ...f, s3_access_key: e.target.value }))} style={input} placeholder="AKIA…" />
-              </label>
-              <label style={label}>
-                Secret key
-                <input
-                  type="password"
-                  value={backupForm.s3_secret_key}
-                  onChange={(e) => setBackupForm((f) => ({ ...f, s3_secret_key: e.target.value }))}
-                  style={input}
-                  placeholder="leave blank to keep the current key"
+              <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["1"] }}>
+                <span style={{ fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.bold, color: theme.text.secondary }}>
+                  Cloud backup destination
+                </span>
+                <label style={checkLabel}>
+                  <input
+                    type="radio"
+                    name="cloud_destination"
+                    checked={backupForm.cloud_destination === "neon"}
+                    onChange={() => setBackupForm((f) => ({ ...f, cloud_destination: "neon" }))}
+                    style={{ accentColor: theme.action.primary }}
+                  />
+                  Neon Postgres (serverless cloud database)
+                </label>
+                <label style={checkLabel}>
+                  <input
+                    type="radio"
+                    name="cloud_destination"
+                    checked={backupForm.cloud_destination === "s3"}
+                    onChange={() => setBackupForm((f) => ({ ...f, cloud_destination: "s3" }))}
+                    style={{ accentColor: theme.action.primary }}
+                  />
+                  S3-compatible object storage (Amazon S3, Backblaze B2, Cloudflare R2, MinIO…)
+                </label>
+              </div>
+
+              <FormField label="Local backup folder">
+                <Input
+                  value={backupForm.local_dir}
+                  onChange={(e) => setBackupForm((f) => ({ ...f, local_dir: e.target.value }))}
+                  placeholder="./backups"
                 />
-              </label>
-            </div>
+              </FormField>
 
-            <label style={checkLabel}>
-              <input
-                type="checkbox"
-                checked={backupForm.s3_path_style}
-                onChange={(e) => setBackupForm((f) => ({ ...f, s3_path_style: e.target.checked }))}
+              {backupForm.cloud_destination === "neon" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"] }}>
+                  <p style={hint}>
+                    Each cloud backup replaces the data in your Neon database with a fresh copy of the hospital
+                    database (a point-in-time snapshot). Create a free project at neon.tech, then paste its{" "}
+                    <strong>connection string</strong> (Neon console → Connect → Connection string, e.g.{" "}
+                    <code style={codeStyle}>postgresql://user:password@ep-…aws.neon.tech/dbname</code>).
+                  </p>
+                  <p style={hint}>
+                    In the Neon console, open <strong>Settings → IP Allow</strong> and add{" "}
+                    <code style={codeStyle}>0.0.0.0/0</code>: the hospital&apos;s internet address changes, so it
+                    cannot be allowlisted by IP. Use a strong password and keep this PC on the hospital network only.
+                  </p>
+                  <FormField label="Neon connection string">
+                    <Input
+                      type="password"
+                      value={backupForm.neon_connection_string}
+                      onChange={(e) => setBackupForm((f) => ({ ...f, neon_connection_string: e.target.value }))}
+                      placeholder="postgresql://user:password@ep-…aws.neon.tech/dbname (blank keeps the stored one)"
+                    />
+                  </FormField>
+                  <div>
+                    <Button variant="outline" onClick={() => void testNeon()} loading={neonTesting}>
+                      Test Neon connection
+                    </Button>
+                  </div>
+                  {neonTestMsg && (
+                    <p
+                      style={{
+                        color: neonTestMsg.ok ? theme.action.success : theme.text.danger,
+                        fontSize: theme.fontSize.base,
+                        margin: 0,
+                      }}
+                    >
+                      {neonTestMsg.text}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {backupForm.cloud_destination === "s3" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"] }}>
+                  <div style={twoCol}>
+                    <FormField label="Cloud endpoint">
+                      <Input
+                        value={backupForm.s3_endpoint}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_endpoint: e.target.value }))}
+                        placeholder="https://s3.amazonaws.com"
+                      />
+                    </FormField>
+                    <FormField label="Region">
+                      <Input
+                        value={backupForm.s3_region}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_region: e.target.value }))}
+                        placeholder="us-east-1"
+                      />
+                    </FormField>
+                    <FormField label="Bucket">
+                      <Input
+                        value={backupForm.s3_bucket}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_bucket: e.target.value }))}
+                        placeholder="hims-backups"
+                      />
+                    </FormField>
+                    <FormField label="Prefix (optional)">
+                      <Input
+                        value={backupForm.s3_prefix}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_prefix: e.target.value }))}
+                        placeholder="hospital/"
+                      />
+                    </FormField>
+                    <FormField label="Access key">
+                      <Input
+                        value={backupForm.s3_access_key}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_access_key: e.target.value }))}
+                        placeholder="AKIA…"
+                      />
+                    </FormField>
+                    <FormField label="Secret key">
+                      <Input
+                        type="password"
+                        value={backupForm.s3_secret_key}
+                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_secret_key: e.target.value }))}
+                        placeholder="leave blank to keep the current key"
+                      />
+                    </FormField>
+                  </div>
+
+                  <Checkbox
+                    checked={backupForm.s3_path_style}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, s3_path_style: e.target.checked }))}
+                    label="Use path-style URLs (required for MinIO and some self-hosted storage)"
+                  />
+                </div>
+              )}
+
+              <div style={twoCol}>
+                <FormField label="Keep daily backups">
+                  <Input
+                    value={backupForm.retention_daily}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_daily: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Keep weekly backups">
+                  <Input
+                    value={backupForm.retention_weekly}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_weekly: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Keep monthly backups">
+                  <Input
+                    value={backupForm.retention_monthly}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_monthly: e.target.value }))}
+                  />
+                </FormField>
+                <FormField label="Local interval">
+                  <Input
+                    value={backupForm.local_interval}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, local_interval: e.target.value }))}
+                    placeholder="24h"
+                  />
+                </FormField>
+                <FormField label="Cloud upload interval">
+                  <Input
+                    value={backupForm.cloud_interval}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, cloud_interval: e.target.value }))}
+                    placeholder="24h"
+                  />
+                </FormField>
+                <FormField label="Verify interval">
+                  <Input
+                    value={backupForm.verify_interval}
+                    onChange={(e) => setBackupForm((f) => ({ ...f, verify_interval: e.target.value }))}
+                    placeholder="24h"
+                  />
+                </FormField>
+              </div>
+
+              <div style={{ display: "flex", gap: theme.spacing["2"], flexWrap: "wrap" }}>
+                <Button type="submit" loading={backupSaving}>
+                  Save backup settings
+                </Button>
+                <Button variant="outline" onClick={() => void runBackup("local")}>
+                  Run backup now
+                </Button>
+                <Button variant="outline" onClick={() => void runBackup("cloud")}>
+                  Upload to cloud now
+                </Button>
+                <Button variant="outline" onClick={() => void runVerify()}>
+                  Verify latest backup
+                </Button>
+              </div>
+              {backupMsg && (
+                <p
+                  style={{
+                    color:
+                      backupMsg.startsWith("Save failed") || backupMsg.includes("failed")
+                        ? theme.text.danger
+                        : theme.action.success,
+                    fontSize: theme.fontSize.base,
+                  }}
+                >
+                  {backupMsg}
+                </p>
+              )}
+            </form>
+          </Card>
+        )}
+
+        {isSuperAdmin && backupStatus && backupStatus.recent_jobs.length > 0 && (
+          <Card title="Backup Activity & Logs" hint="Recent backup jobs across local, cloud and verification targets.">
+            <DataTable columns={jobsColumns} rows={backupStatus.recent_jobs.slice(0, 8)} rowKey={(j) => j.id} dense />
+          </Card>
+        )}
+
+        <Card title="User Account & Password">
+          <p style={{ margin: `0 0 ${theme.spacing["3"]}`, fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+            Signed in as <strong>{me?.username}</strong>
+            {me?.roles?.length ? ` — ${me.roles.map((r) => r.name).join(", ")}` : ""}
+          </p>
+          <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"], maxWidth: 480 }}>
+            <FormField label="Current password">
+              <Input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                placeholder="Current password"
               />
-              Use path-style URLs (required for MinIO and some self-hosted storage)
-            </label>
-
-            <div style={twoCol}>
-              <label style={label}>
-                Keep daily backups
-                <input value={backupForm.retention_daily} onChange={(e) => setBackupForm((f) => ({ ...f, retention_daily: e.target.value }))} style={input} />
-              </label>
-              <label style={label}>
-                Keep weekly backups
-                <input value={backupForm.retention_weekly} onChange={(e) => setBackupForm((f) => ({ ...f, retention_weekly: e.target.value }))} style={input} />
-              </label>
-              <label style={label}>
-                Keep monthly backups
-                <input value={backupForm.retention_monthly} onChange={(e) => setBackupForm((f) => ({ ...f, retention_monthly: e.target.value }))} style={input} />
-              </label>
-              <label style={label}>
-                Local interval
-                <input value={backupForm.local_interval} onChange={(e) => setBackupForm((f) => ({ ...f, local_interval: e.target.value }))} style={input} placeholder="24h" />
-              </label>
-              <label style={label}>
-                Cloud upload interval
-                <input value={backupForm.cloud_interval} onChange={(e) => setBackupForm((f) => ({ ...f, cloud_interval: e.target.value }))} style={input} placeholder="24h" />
-              </label>
-              <label style={label}>
-                Verify interval
-                <input value={backupForm.verify_interval} onChange={(e) => setBackupForm((f) => ({ ...f, verify_interval: e.target.value }))} style={input} placeholder="24h" />
-              </label>
+            </FormField>
+            <FormField label="New password">
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                placeholder="New password (min 8 characters)"
+              />
+            </FormField>
+            <div>
+              <Button type="submit" loading={busy}>
+                Change password
+              </Button>
             </div>
-
-            <div style={{ ...row, flexWrap: "wrap" }}>
-              <button type="submit" disabled={backupSaving} style={button}>
-                {backupSaving ? "Saving…" : "Save backup settings"}
-              </button>
-              <button type="button" onClick={() => void runBackup("local")} style={secondaryBtn}>
-                Run backup now
-              </button>
-              <button type="button" onClick={() => void runBackup("cloud")} style={secondaryBtn}>
-                Upload to cloud now
-              </button>
-              <button type="button" onClick={() => void runVerify()} style={secondaryBtn}>
-                Verify latest backup
-              </button>
-            </div>
-            {backupMsg && <p style={{ color: backupMsg.startsWith("Save failed") || backupMsg.includes("failed") ? "#b91c1c" : "#15803d", fontSize: "0.8rem" }}>{backupMsg}</p>}
           </form>
+          {pwdError && <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.text.danger, fontSize: theme.fontSize.base }}>{pwdError}</p>}
+          {pwdOk && <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.action.success, fontSize: theme.fontSize.base }}>{pwdOk}</p>}
+        </Card>
 
-          {backupStatus && backupStatus.recent_jobs.length > 0 && (
-            <div style={{ marginTop: "1rem" }}>
-              <h4 style={{ margin: "0 0 0.35rem", fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>Recent backup jobs</h4>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
-                <thead>
-                  <tr style={{ color: "#64748b", textAlign: "left" }}>
-                    <th style={th}>Type</th>
-                    <th style={th}>Status</th>
-                    <th style={th}>Started</th>
-                    <th style={th}>Size</th>
-                    <th style={th}>Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {backupStatus.recent_jobs.slice(0, 8).map((j) => (
-                    <tr key={j.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                      <td style={td}>{j.job_type}</td>
-                      <td style={td}>
-                        <span style={{ color: j.status === "success" ? "#15803d" : j.status === "failed" ? "#b91c1c" : "#b45309" }}>{j.status}</span>
-                      </td>
-                      <td style={td}>{new Date(j.started_at).toLocaleString()}</td>
-                      <td style={td}>{j.size_bytes ? `${(j.size_bytes / 1024 / 1024).toFixed(2)} MB` : "—"}</td>
-                      <td style={td}>{j.error_message ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
-
-      <section style={section}>
-        <h3 style={sub}>Account</h3>
-        <p style={hint}>
-          Signed in as <strong>{me?.username}</strong>
-          {me?.roles?.length ? ` — ${me.roles.map((r) => r.name).join(", ")}` : ""}
-        </p>
-      </section>
-
-      <section style={section}>
-        <h3 style={sub}>Change password</h3>
-        <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required style={input} placeholder="Current password" />
-          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} style={input} placeholder="New password (min 8 characters)" />
-          <button type="submit" disabled={busy} style={button}>
-            {busy ? "Changing…" : "Change password"}
-          </button>
-        </form>
-        {pwdError && <p style={{ color: "#b91c1c", fontSize: "0.8rem" }}>{pwdError}</p>}
-        {pwdOk && <p style={{ color: "#15803d", fontSize: "0.8rem" }}>{pwdOk}</p>}
-      </section>
-
-      <button onClick={() => void logout()} style={logoutBtn}>
-        Sign out
-      </button>
+        <div>
+          <Button variant="danger" onClick={() => void logout()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-const wrap: CSSProperties = { padding: "1.5rem", maxWidth: "720px" };
-const heading: CSSProperties = { margin: "0 0 1rem", fontSize: "1.3rem", fontWeight: 800, color: "#0f172a" };
-const sub: CSSProperties = { margin: "0 0 0.25rem", fontSize: "1rem", fontWeight: 700, color: "#0f172a" };
-const hint: CSSProperties = { margin: "0 0 0.5rem", fontSize: "0.8rem", color: "#64748b" };
-const section: CSSProperties = {
-  background: "#fff",
-  borderRadius: "8px",
-  padding: "1rem",
-  marginBottom: "1rem",
-  border: "1px solid #e2e8f0",
-};
-const row: CSSProperties = { display: "flex", gap: "0.5rem", alignItems: "center" };
+const hint: CSSProperties = { margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted };
 const twoCol: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "0.5rem",
+  gap: theme.spacing["3"],
 };
-const label: CSSProperties = {
+const checkLabel: CSSProperties = {
   display: "flex",
-  flexDirection: "column",
-  gap: "0.25rem",
-  fontSize: "0.75rem",
-  fontWeight: 600,
-  color: "#334155",
-};
-const checkLabel: CSSProperties = { display: "flex", gap: "0.4rem", alignItems: "center", fontSize: "0.85rem", color: "#334155", fontWeight: 600 };
-const input: CSSProperties = {
-  padding: "0.5rem",
-  borderRadius: "6px",
-  border: "1px solid #cbd5e1",
-  fontSize: "0.85rem",
-  width: "100%",
-  boxSizing: "border-box",
-};
-const button: CSSProperties = {
-  padding: "0.55rem 1rem",
-  borderRadius: "6px",
-  border: "none",
-  background: "#0f172a",
-  color: "#fff",
-  fontWeight: 700,
+  gap: theme.spacing["2"],
+  alignItems: "center",
+  fontSize: theme.fontSize.base,
+  color: theme.text.secondary,
+  fontWeight: theme.fontWeight.semibold,
   cursor: "pointer",
 };
-const secondaryBtn: CSSProperties = {
-  padding: "0.55rem 1rem",
-  borderRadius: "6px",
-  border: "1px solid #cbd5e1",
-  background: "#f8fafc",
-  color: "#334155",
-  fontWeight: 600,
-  cursor: "pointer",
+const codeStyle: CSSProperties = {
+  background: theme.surface.subtle,
+  padding: "0.1rem 0.35rem",
+  borderRadius: theme.radius.sm,
+  fontSize: theme.fontSize.base,
 };
-const logoutBtn: CSSProperties = {
-  padding: "0.6rem 1rem",
-  borderRadius: "6px",
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#b91c1c",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-const th: CSSProperties = { padding: "0.3rem 0.5rem", fontWeight: 700 };
-const td: CSSProperties = { padding: "0.3rem 0.5rem", color: "#334155", verticalAlign: "top" };
-const codeStyle: CSSProperties = { background: "#f1f5f9", padding: "0.1rem 0.35rem", borderRadius: "4px", fontSize: "0.8rem" };

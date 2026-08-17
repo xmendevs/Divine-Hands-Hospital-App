@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { theme, Button, Card, DataTable, EmptyState, FormField, Input, Modal, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
 import { apiFetch, getBaseUrl } from "../api/client";
 
 interface InvoiceItem {
@@ -95,7 +96,19 @@ const PAYMENT_METHODS = ["cash", "pos", "card", "transfer", "online", "insurance
 const BILL_TO = ["patient", "insurance", "corporate"];
 
 const currency = (val: number) =>
-  new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(val);
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(val);
+
+function invoiceStatusBadge(status: string): StatusVariant {
+  if (status === "paid") return "approved";
+  if (status === "issued") return "active";
+  if (status === "partially_paid") return "running";
+  if (status === "voided") return "error";
+  return "draft";
+}
 
 export default function BillingPage() {
   const [activeTab, setActiveTab] = useState<"invoices" | "payments">("invoices");
@@ -167,7 +180,9 @@ export default function BillingPage() {
     if (sh.status === "fulfilled") {
       setShifts(sh.value);
     } else {
-      errors.push(sh.reason instanceof Error ? sh.reason.message : "Could not load cashier shifts.");
+      errors.push(
+        sh.reason instanceof Error ? sh.reason.message : "Could not load cashier shifts.",
+      );
     }
     setError(errors.join(" "));
     setLoading(false);
@@ -189,7 +204,8 @@ export default function BillingPage() {
         if (!cancelled) setPriceListItems(items);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load price list items.");
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "Could not load price list items.");
       });
     return () => {
       cancelled = true;
@@ -206,7 +222,9 @@ export default function BillingPage() {
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const results = await apiFetch<PatientSummary[]>(`/patients/search?q=${encodeURIComponent(q)}`);
+        const results = await apiFetch<PatientSummary[]>(
+          `/patients/search?q=${encodeURIComponent(q)}`,
+        );
         if (!cancelled) setPatients(results);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Patient search failed.");
@@ -319,22 +337,29 @@ export default function BillingPage() {
     setPaying(true);
     setError("");
     try {
-      const res = await apiFetch<{ payment: Payment; receipt: Receipt }>(`/billing/invoices/${selectedInvoice.id}/payments`, {
-        method: "POST",
-        body: JSON.stringify({
-          amount: Number(payAmount),
-          method: payMethod,
-          reference: payReference,
-          notes: "",
-        }),
-      });
+      const res = await apiFetch<{ payment: Payment; receipt: Receipt }>(
+        `/billing/invoices/${selectedInvoice.id}/payments`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            amount: Number(payAmount),
+            method: payMethod,
+            reference: payReference,
+            notes: "",
+          }),
+        },
+      );
       setShowPay(false);
       setPayAmount("");
       setPayReference("");
       setActiveReceipt(res.receipt);
       await loadAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not record the payment (an open cashier shift is required).");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not record the payment (an open cashier shift is required).",
+      );
     } finally {
       setPaying(false);
     }
@@ -348,462 +373,576 @@ export default function BillingPage() {
       inv.patientNo?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const paymentColumns = [
+    { key: "no", header: "Payment No", render: (p: Payment) => <strong style={{ color: theme.action.info }}>{p.paymentNo}</strong> },
+    { key: "invoice", header: "Invoice", render: (p: Payment) => p.invoiceNo },
+    { key: "patient", header: "Patient", render: (p: Payment) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{p.patientName || "—"}</span> },
+    { key: "method", header: "Method", render: (p: Payment) => p.method.toUpperCase() },
+    { key: "reference", header: "Reference", render: (p: Payment) => p.reference || "—" },
+    { key: "amount", header: "Amount", render: (p: Payment) => <strong style={{ color: theme.action.success }}>{currency(p.amount)}</strong> },
+    { key: "received", header: "Received At", render: (p: Payment) => new Date(p.receivedAt).toLocaleString() },
+  ];
+
+  const invoiceItemColumns = [
+    { key: "name", header: "Item", render: (it: InvoiceItem) => it.name },
+    { key: "category", header: "Category", render: (it: InvoiceItem) => it.category || "—" },
+    { key: "price", header: "Price", align: "right" as const, render: (it: InvoiceItem) => currency(it.unitPrice) },
+    { key: "qty", header: "Qty", align: "center" as const, render: (it: InvoiceItem) => it.quantity },
+    { key: "total", header: "Total", align: "right" as const, render: (it: InvoiceItem) => <strong>{currency(it.lineTotal)}</strong> },
+  ];
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>Billing & Patient Payments</h2>
-          <p style={{ margin: 0, fontSize: "0.875rem", color: "#64748b" }}>
-            Registry billing, payment records, and receipt generation.
-          </p>
-        </div>
-        <button onClick={() => setShowCreate(true)} style={primaryBtn}>
-          + Create Invoice
-        </button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
+      <PageHeader
+        title="Billing & Cashier"
+        description="Registry billing, payment records, and receipt generation."
+        actions={<Button onClick={() => setShowCreate(true)}>+ Create Invoice</Button>}
+      />
 
       {/* Cashier shift strip */}
-      <div style={{ background: openShift ? "#f0fdf4" : "#fffbeb", border: openShift ? "1px solid #bbf7d0" : "1px solid #fcd34d", borderRadius: "8px", padding: "0.85rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+      <div
+        style={{
+          background: openShift ? theme.badge.approved.bg : theme.badge.running.bg,
+          border: `1px solid ${openShift ? theme.badge.approved.border : theme.badge.running.border}`,
+          borderRadius: theme.radius.lg,
+          padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: theme.spacing["4"],
+          flexWrap: "wrap",
+        }}
+      >
         {openShift ? (
           <>
-            <div style={{ fontSize: "0.85rem", color: "#166534" }}>
-              <strong>Shift {openShift.shiftNo} open</strong> — opened {new Date(openShift.openedAt).toLocaleString()} with {currency(openShift.openingCash)}. Payments can be received.
+            <div style={{ fontSize: theme.fontSize.base, color: theme.badge.approved.text }}>
+              <strong>Shift {openShift.shiftNo} open</strong> — opened{" "}
+              {new Date(openShift.openedAt).toLocaleString()} with {currency(openShift.openingCash)}
+              . Payments can be received.
             </div>
-            <form onSubmit={handleCloseShift} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
+            <form onSubmit={handleCloseShift} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+              <Input
                 type="number"
                 min={0}
                 placeholder="Closing cash"
                 value={closingCash}
                 onChange={(e) => setClosingCash(e.target.value)}
-                style={smallInput}
+                style={{ width: "8rem" }}
               />
-              <button type="submit" style={actionBtn("#92400e")}>Close Shift</button>
+              <Button type="submit" size="sm" style={{ background: theme.action.warning }}>
+                Close Shift
+              </Button>
             </form>
           </>
         ) : (
           <>
-            <div style={{ fontSize: "0.85rem", color: "#78350f" }}>
+            <div style={{ fontSize: theme.fontSize.base, color: theme.badge.running.text }}>
               No open cashier shift. Open one before receiving payments.
             </div>
-            <form onSubmit={handleOpenShift} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
+            <form onSubmit={handleOpenShift} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+              <Input
                 type="number"
                 min={0}
                 placeholder="Opening cash"
                 value={openingCash}
                 onChange={(e) => setOpeningCash(e.target.value)}
-                style={smallInput}
+                style={{ width: "8rem" }}
               />
-              <button type="submit" style={actionBtn("#b45309")}>Open Shift</button>
+              <Button type="submit" size="sm" style={{ background: theme.action.warning }}>
+                Open Shift
+              </Button>
             </form>
           </>
         )}
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "1rem", borderBottom: "2px solid #e2e8f0" }}>
-        <button onClick={() => setActiveTab("invoices")} style={tabStyle(activeTab === "invoices")}>
-          Invoices & Billing Matrix
-        </button>
-        <button onClick={() => setActiveTab("payments")} style={tabStyle(activeTab === "payments")}>
-          Payments & Receipts
-        </button>
-      </div>
+      <TabNav
+        tabs={[
+          { key: "invoices", label: "Invoices & Billing Matrix" },
+          { key: "payments", label: "Payments & Receipts" },
+        ]}
+        active={activeTab}
+        onChange={(k) => setActiveTab(k as "invoices" | "payments")}
+      />
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c" }}>
+        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
           {error}
         </p>
       )}
 
-      {loading && <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Loading billing data…</p>}
+      {loading && (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading billing data…</p>
+      )}
 
       {/* TAB 1: Invoices */}
       {!loading && activeTab === "invoices" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "1.5rem", alignItems: "start" }}>
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
-            <input
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: theme.spacing["6"], alignItems: "start" }}>
+          <Card bodyStyle={{ padding: theme.spacing["4"] }}>
+            <Input
               type="text"
               placeholder="Search by patient name, ID or invoice no..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: "100%", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "1rem", boxSizing: "border-box" }}
+              style={{ marginBottom: theme.spacing["4"] }}
             />
-            <div style={{ overflowY: "auto", maxHeight: "500px" }}>
+            <div style={{ overflowY: "auto", maxHeight: 500 }}>
               {filteredInvoices.length === 0 && (
-                <p style={{ color: "#64748b", fontSize: "0.85rem" }}>No invoices match.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>No invoices match.</p>
               )}
               {filteredInvoices.map((inv) => (
                 <div
                   key={inv.id}
                   onClick={() => setSelectedInvoice(inv)}
                   style={{
-                    padding: "0.85rem",
-                    borderBottom: "1px solid #f1f5f9",
-                    borderRadius: "6px",
+                    padding: theme.spacing["3"],
+                    borderBottom: `1px solid ${theme.surface.border}`,
+                    borderRadius: theme.radius.md,
                     cursor: "pointer",
                     backgroundColor: selectedInvoice?.id === inv.id ? "#f0f9ff" : "transparent",
-                    borderLeft: selectedInvoice?.id === inv.id ? "4px solid #0284c7" : "4px solid transparent",
+                    borderLeft: selectedInvoice?.id === inv.id ? `4px solid ${theme.action.info}` : "4px solid transparent",
                     marginBottom: "0.25rem",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, color: "#0284c7", fontSize: "0.85rem" }}>{inv.invoiceNo}</span>
-                    <StatusPill status={inv.status} />
+                    <span style={{ fontWeight: theme.fontWeight.bold, color: theme.action.info, fontSize: theme.fontSize.base }}>
+                      {inv.invoiceNo}
+                    </span>
+                    <StatusBadge variant={invoiceStatusBadge(inv.status)} label={inv.status.replace("_", " ")} />
                   </div>
-                  <div style={{ fontWeight: 600, margin: "0.25rem 0", fontSize: "0.9rem" }}>
+                  <div style={{ fontWeight: theme.fontWeight.semibold, margin: "0.25rem 0", fontSize: theme.fontSize.base }}>
                     {inv.patientName || "Walk-in"}{" "}
-                    <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{inv.patientNo ? `(${inv.patientNo})` : ""}</span>
+                    <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+                      {inv.patientNo ? `(${inv.patientNo})` : ""}
+                    </span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", fontSize: "0.8rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: theme.text.muted, fontSize: theme.fontSize.base }}>
                     <span>{inv.billTo.toUpperCase()}</span>
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>{currency(inv.totalAmount)}</span>
+                    <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>{currency(inv.totalAmount)}</span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {selectedInvoice && (
-            <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1.5rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "1rem" }}>
+            <Card>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${theme.surface.border}`, paddingBottom: theme.spacing["4"], marginBottom: theme.spacing["4"], gap: theme.spacing["4"], flexWrap: "wrap" }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>INVOICE DETAILS</h3>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                  <h3 style={{ margin: 0, fontSize: theme.fontSize.lg, color: theme.text.primary }}>INVOICE DETAILS</h3>
+                  <span style={{ fontSize: theme.fontSize.base, color: theme.text.muted }}>
                     Ref: {selectedInvoice.invoiceNo} | Date: {new Date(selectedInvoice.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center", flexWrap: "wrap" }}>
                   {selectedInvoice.status === "draft" && (
-                    <button onClick={() => issueInvoice(selectedInvoice)} style={actionBtn("#2563eb")}>
+                    <Button size="sm" onClick={() => issueInvoice(selectedInvoice)}>
                       Issue Invoice
-                    </button>
+                    </Button>
                   )}
-                  {selectedInvoice.balanceDue > 0 && (selectedInvoice.status === "issued" || selectedInvoice.status === "partially_paid") && (
-                    <button
-                      onClick={() => {
-                        setPayAmount(String(selectedInvoice.balanceDue));
-                        setShowPay(true);
-                      }}
-                      style={actionBtn("#16a34a")}
-                    >
-                      Receive Payment
-                    </button>
-                  )}
+                  {selectedInvoice.balanceDue > 0 &&
+                    (selectedInvoice.status === "issued" || selectedInvoice.status === "partially_paid") && (
+                      <Button
+                        size="sm"
+                        style={{ background: theme.action.success }}
+                        onClick={() => {
+                          setPayAmount(String(selectedInvoice.balanceDue));
+                          setShowPay(true);
+                        }}
+                      >
+                        Receive Payment
+                      </Button>
+                    )}
                 </div>
               </div>
 
-              <div style={{ backgroundColor: "#f8fafc", padding: "0.85rem", borderRadius: "6px", marginBottom: "1rem", fontSize: "0.85rem" }}>
-                <div><strong>Patient:</strong> {selectedInvoice.patientName || "Walk-in"}</div>
-                <div><strong>Bill to:</strong> {selectedInvoice.billTo.toUpperCase()} {selectedInvoice.payerName ? `(${selectedInvoice.payerName})` : ""}</div>
+              <div
+                style={{
+                  backgroundColor: theme.surface.subtle,
+                  padding: theme.spacing["3"],
+                  borderRadius: theme.radius.md,
+                  marginBottom: theme.spacing["4"],
+                  fontSize: theme.fontSize.base,
+                }}
+              >
+                <div>
+                  <strong>Patient:</strong> {selectedInvoice.patientName || "Walk-in"}
+                </div>
+                <div>
+                  <strong>Bill to:</strong> {selectedInvoice.billTo.toUpperCase()}{" "}
+                  {selectedInvoice.payerName ? `(${selectedInvoice.payerName})` : ""}
+                </div>
               </div>
 
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", marginBottom: "1.5rem" }}>
-                <thead>
-                  <tr style={{ background: "#f1f5f9", textAlign: "left", color: "#475569" }}>
-                    <th style={{ padding: "0.6rem" }}>Item</th>
-                    <th style={{ padding: "0.6rem" }}>Category</th>
-                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Price</th>
-                    <th style={{ padding: "0.6rem", textAlign: "center" }}>Qty</th>
-                    <th style={{ padding: "0.6rem", textAlign: "right" }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInvoice.items.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "0.6rem" }}>{item.name}</td>
-                      <td style={{ padding: "0.6rem", color: "#64748b" }}>{item.category || "—"}</td>
-                      <td style={{ padding: "0.6rem", textAlign: "right" }}>{currency(item.unitPrice)}</td>
-                      <td style={{ padding: "0.6rem", textAlign: "center" }}>{item.quantity}</td>
-                      <td style={{ padding: "0.6rem", textAlign: "right", fontWeight: 600 }}>{currency(item.lineTotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div style={{ marginBottom: "1.5rem" }}>
+                <DataTable columns={invoiceItemColumns} rows={selectedInvoice.items} rowKey={(it) => it.id} dense />
+              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.3rem", fontSize: "0.9rem" }}>
-                <div>Subtotal: <strong>{currency(selectedInvoice.subtotal)}</strong></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.3rem", fontSize: theme.fontSize.base }}>
+                <div>
+                  Subtotal: <strong>{currency(selectedInvoice.subtotal)}</strong>
+                </div>
                 {selectedInvoice.discountAmount > 0 && (
-                  <div>Discount: <strong>-{currency(selectedInvoice.discountAmount)}</strong></div>
+                  <div>
+                    Discount: <strong>-{currency(selectedInvoice.discountAmount)}</strong>
+                  </div>
                 )}
-                {selectedInvoice.taxAmount > 0 && <div>Tax: <strong>{currency(selectedInvoice.taxAmount)}</strong></div>}
-                <div>Total: <strong>{currency(selectedInvoice.totalAmount)}</strong></div>
-                <div style={{ color: "#16a34a" }}>Amount Paid: <strong>{currency(selectedInvoice.amountPaid)}</strong></div>
-                <div style={{ fontSize: "1.05rem", fontWeight: 800, color: selectedInvoice.balanceDue > 0 ? "#dc2626" : "#16a34a" }}>
+                {selectedInvoice.taxAmount > 0 && (
+                  <div>
+                    Tax: <strong>{currency(selectedInvoice.taxAmount)}</strong>
+                  </div>
+                )}
+                <div>
+                  Total: <strong>{currency(selectedInvoice.totalAmount)}</strong>
+                </div>
+                <div style={{ color: theme.action.success }}>
+                  Amount Paid: <strong>{currency(selectedInvoice.amountPaid)}</strong>
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.05rem",
+                    fontWeight: theme.fontWeight.bold,
+                    color: selectedInvoice.balanceDue > 0 ? theme.action.danger : theme.action.success,
+                  }}
+                >
                   Balance Due: {currency(selectedInvoice.balanceDue)}
                 </div>
                 {selectedInvoice.voidReason && (
-                  <div style={{ fontSize: "0.8rem", color: "#dc2626" }}>Voided: {selectedInvoice.voidReason}</div>
+                  <div style={{ fontSize: theme.fontSize.base, color: theme.action.danger }}>
+                    Voided: {selectedInvoice.voidReason}
+                  </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
 
       {/* TAB 2: Payments & receipts */}
       {!loading && activeTab === "payments" && (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1.5rem" }}>
-          <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", color: "#0f172a" }}>Payment Ledger</h3>
+        <Card title="Payment Ledger" bodyStyle={{ padding: 0 }}>
           {payments.length === 0 ? (
-            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>No payments recorded yet.</p>
+            <EmptyState icon="cash" description="No payments recorded yet." />
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
-              <thead>
-                <tr style={{ background: "#f1f5f9", textAlign: "left", color: "#475569" }}>
-                  <th style={{ padding: "0.75rem" }}>Payment No</th>
-                  <th style={{ padding: "0.75rem" }}>Invoice</th>
-                  <th style={{ padding: "0.75rem" }}>Patient</th>
-                  <th style={{ padding: "0.75rem" }}>Method</th>
-                  <th style={{ padding: "0.75rem" }}>Reference</th>
-                  <th style={{ padding: "0.75rem", textAlign: "right" }}>Amount</th>
-                  <th style={{ padding: "0.75rem" }}>Received At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "0.75rem", fontWeight: 700, color: "#0284c7" }}>{p.paymentNo}</td>
-                    <td style={{ padding: "0.75rem" }}>{p.invoiceNo}</td>
-                    <td style={{ padding: "0.75rem", fontWeight: 600 }}>{p.patientName || "—"}</td>
-                    <td style={{ padding: "0.75rem" }}>{p.method.toUpperCase()}</td>
-                    <td style={{ padding: "0.75rem", color: "#64748b" }}>{p.reference || "—"}</td>
-                    <td style={{ padding: "0.75rem", textAlign: "right", fontWeight: 600, color: "#16a34a" }}>{currency(p.amount)}</td>
-                    <td style={{ padding: "0.75rem", color: "#64748b" }}>{new Date(p.receivedAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable columns={paymentColumns} rows={payments} rowKey={(p) => p.id} dense />
           )}
-        </div>
+        </Card>
       )}
 
       {/* Create invoice modal */}
-      {showCreate && (
-        <Modal onClose={() => setShowCreate(false)} title="Create Invoice & Link Patient" width="640px">
-          <form onSubmit={handleCreateInvoice} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div>
-              <FieldLabel>Patient</FieldLabel>
-              {selectedPatient ? (
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "#0f172a" }}>
-                    {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientNo})
-                  </span>
-                  <button type="button" onClick={() => setSelectedPatient(null)} style={ghostBtn}>×</button>
-                </div>
-              ) : (
-                <input type="text" placeholder="Search patient by name or patient number..." value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} style={input} />
-              )}
-              {patients.length > 0 && !selectedPatient && (
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", marginTop: "0.25rem", overflow: "hidden" }}>
-                  {patients.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPatient(p);
-                        setPatients([]);
-                        setPatientSearch("");
-                      }}
-                      style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem 0.75rem", border: "none", borderBottom: "1px solid #f1f5f9", background: "#fff", cursor: "pointer", fontSize: "0.85rem" }}
-                    >
-                      <strong style={{ color: "#0369a1" }}>{p.patientNo}</strong> — {p.firstName} {p.lastName}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-              <div>
-                <FieldLabel>Price list</FieldLabel>
-                <select value={selectedPriceList} onChange={(e) => setSelectedPriceList(e.target.value)} style={input}>
-                  {priceLists.map((pl) => (
-                    <option key={pl.id} value={pl.id}>
-                      {pl.name} ({pl.currency})
-                    </option>
-                  ))}
-                </select>
+      <Modal
+        open={showCreate}
+        title="Create Invoice & Link Patient"
+        onClose={() => setShowCreate(false)}
+        width={640}
+      >
+        <form onSubmit={handleCreateInvoice} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+          <FormField label="Patient">
+            {selectedPatient ? (
+              <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+                <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>
+                  {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientNo})
+                </span>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedPatient(null)}>
+                  ×
+                </Button>
               </div>
-              <div>
-                <FieldLabel>Bill to</FieldLabel>
-                <select value={billTo} onChange={(e) => setBillTo(e.target.value)} style={input}>
-                  {BILL_TO.map((b) => (
-                    <option key={b} value={b}>{b.toUpperCase()}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <FieldLabel>Discount (₦)</FieldLabel>
-                <input type="number" min={0} value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} style={input} />
-              </div>
-            </div>
-
-            {billTo !== "patient" && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <FieldLabel>Payer name</FieldLabel>
-                  <input value={payerName} onChange={(e) => setPayerName(e.target.value)} placeholder="e.g. Hygeia HMO" style={input} />
-                </div>
-                <div>
-                  <FieldLabel>Policy number</FieldLabel>
-                  <input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} style={input} />
-                </div>
+            ) : (
+              <div style={{ position: "relative" }}>
+                <Input
+                  type="text"
+                  placeholder="Search patient by name or patient number..."
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                />
+                {patients.length > 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 4px)",
+                      left: 0,
+                      right: 0,
+                      background: theme.surface.card,
+                      border: `1px solid ${theme.surface.border}`,
+                      borderRadius: theme.radius.md,
+                      boxShadow: theme.shadow.popover,
+                      zIndex: 10,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {patients.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPatient(p);
+                          setPatients([]);
+                          setPatientSearch("");
+                        }}
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          textAlign: "left",
+                          padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
+                          border: "none",
+                          borderBottom: `1px solid ${theme.surface.border}`,
+                          background: theme.surface.card,
+                          cursor: "pointer",
+                          fontSize: theme.fontSize.base,
+                        }}
+                      >
+                        <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> — {p.firstName} {p.lastName}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
+          </FormField>
 
-            <div>
-              <FieldLabel>Line items (from price list)</FieldLabel>
-              <div style={{ maxHeight: "220px", overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: "6px" }}>
-                {priceListItems.length === 0 && (
-                  <p style={{ padding: "0.75rem", color: "#64748b", fontSize: "0.85rem", margin: 0 }}>No items in this price list.</p>
-                )}
-                {priceListItems.map((it) => (
-                  <label key={it.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", borderBottom: "1px solid #f1f5f9", cursor: "pointer", fontSize: "0.85rem" }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedItemIds.includes(it.id)}
-                      onChange={(e) =>
-                        setSelectedItemIds((prev) => (e.target.checked ? [...prev, it.id] : prev.filter((x) => x !== it.id)))
-                      }
-                    />
-                    <span style={{ flex: 1 }}>{it.name} <span style={{ color: "#64748b" }}>({it.code})</span></span>
-                    <span style={{ fontWeight: 600 }}>{currency(it.price)}</span>
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="Qty"
-                      value={quantities[it.id] ?? ""}
-                      onChange={(e) => setQuantities((prev) => ({ ...prev, [it.id]: e.target.value }))}
-                      style={{ width: "4rem", padding: "0.3rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
-                    />
-                  </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["3"] }}>
+            <FormField label="Price list">
+              <Select value={selectedPriceList} onChange={(e) => setSelectedPriceList(e.target.value)}>
+                {priceLists.map((pl) => (
+                  <option key={pl.id} value={pl.id}>
+                    {pl.name} ({pl.currency})
+                  </option>
                 ))}
-              </div>
-            </div>
+              </Select>
+            </FormField>
+            <FormField label="Bill to">
+              <Select value={billTo} onChange={(e) => setBillTo(e.target.value)}>
+                {BILL_TO.map((b) => (
+                  <option key={b} value={b}>
+                    {b.toUpperCase()}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Discount (₦)">
+              <Input
+                type="number"
+                min={0}
+                value={discountAmount}
+                onChange={(e) => setDiscountAmount(e.target.value)}
+              />
+            </FormField>
+          </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
-              <button type="button" onClick={() => setShowCreate(false)} style={ghostBtn}>Cancel</button>
-              <button type="submit" disabled={creating} style={primaryBtn}>{creating ? "Creating…" : "Save & Issue Invoice"}</button>
+          {billTo !== "patient" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}>
+              <FormField label="Payer name">
+                <Input value={payerName} onChange={(e) => setPayerName(e.target.value)} placeholder="e.g. Hygeia HMO" />
+              </FormField>
+              <FormField label="Policy number">
+                <Input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} />
+              </FormField>
             </div>
-          </form>
-        </Modal>
-      )}
+          )}
+
+          <div>
+            <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+              Line items (from price list)
+            </span>
+            <div
+              style={{
+                maxHeight: 220,
+                overflowY: "auto",
+                border: `1px solid ${theme.surface.border}`,
+                borderRadius: theme.radius.md,
+                marginTop: theme.spacing["1"],
+              }}
+            >
+              {priceListItems.length === 0 && (
+                <p style={{ padding: theme.spacing["3"], color: theme.text.muted, fontSize: theme.fontSize.base, margin: 0 }}>
+                  No items in this price list.
+                </p>
+              )}
+              {priceListItems.map((it) => (
+                <label
+                  key={it.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: theme.spacing["2"],
+                    padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
+                    borderBottom: `1px solid ${theme.surface.border}`,
+                    cursor: "pointer",
+                    fontSize: theme.fontSize.base,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedItemIds.includes(it.id)}
+                    onChange={(e) =>
+                      setSelectedItemIds((prev) =>
+                        e.target.checked ? [...prev, it.id] : prev.filter((x) => x !== it.id),
+                      )
+                    }
+                    style={{ accentColor: theme.action.primary }}
+                  />
+                  <span style={{ flex: 1 }}>
+                    {it.name} <span style={{ color: theme.text.muted }}>({it.code})</span>
+                  </span>
+                  <span style={{ fontWeight: theme.fontWeight.semibold }}>{currency(it.price)}</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="Qty"
+                    value={quantities[it.id] ?? ""}
+                    onChange={(e) => setQuantities((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                    style={{ width: "4rem" }}
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing["2"] }}>
+            <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={creating}>
+              Save & Issue Invoice
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Receive payment modal */}
-      {showPay && selectedInvoice && (
-        <Modal onClose={() => setShowPay(false)} title="Process Payment & Generate Receipt" width="420px">
-          <form onSubmit={handleReceivePayment} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {!openShift && (
-              <p style={{ margin: 0, fontSize: "0.8rem", color: "#b45309", background: "#fffbeb", border: "1px solid #fcd34d", padding: "0.5rem 0.75rem", borderRadius: "6px" }}>
-                No open cashier shift — the backend will reject this payment until one is opened.
-              </p>
-            )}
-            <div>
-              <FieldLabel>Amount (₦)</FieldLabel>
-              <input type="number" required min={1} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} style={input} />
-            </div>
-            <div>
-              <FieldLabel>Payment method</FieldLabel>
-              <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} style={input}>
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>{m.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Reference (optional)</FieldLabel>
-              <input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="e.g. transfer reference" style={input} />
-            </div>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button type="button" onClick={() => setShowPay(false)} style={{ ...ghostBtn, flex: 1, padding: "0.6rem" }}>Cancel</button>
-              <button type="submit" disabled={paying} style={{ ...primaryBtn, flex: 1, padding: "0.6rem" }}>
-                {paying ? "Processing…" : "Confirm & Generate Receipt"}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      <Modal
+        open={showPay && !!selectedInvoice}
+        title="Process Payment & Generate Receipt"
+        onClose={() => setShowPay(false)}
+        width={420}
+      >
+        <form onSubmit={handleReceivePayment} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+          {!openShift && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: theme.fontSize.base,
+                color: theme.action.warning,
+                background: theme.badge.running.bg,
+                border: `1px solid ${theme.badge.running.border}`,
+                padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
+                borderRadius: theme.radius.md,
+              }}
+            >
+              No open cashier shift — the backend will reject this payment until one is opened.
+            </p>
+          )}
+          <FormField label="Amount (₦)" required>
+            <Input
+              type="number"
+              required
+              min={1}
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+            />
+          </FormField>
+          <FormField label="Payment method">
+            <Select value={payMethod} onChange={(e) => setPayMethod(e.target.value)}>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m.toUpperCase()}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Reference (optional)">
+            <Input
+              value={payReference}
+              onChange={(e) => setPayReference(e.target.value)}
+              placeholder="e.g. transfer reference"
+            />
+          </FormField>
+          <div style={{ display: "flex", gap: theme.spacing["2"] }}>
+            <Button type="button" variant="ghost" style={{ flex: 1 }} onClick={() => setShowPay(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={paying} style={{ flex: 1 }}>
+              Confirm & Generate Receipt
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Receipt modal */}
-      {activeReceipt && (
-        <Modal onClose={() => setActiveReceipt(null)} title="Receipt Generated" width="450px">
-          <div style={{ textAlign: "center", borderBottom: "2px dashed #cbd5e1", paddingBottom: "1rem", marginBottom: "1rem" }}>
-            <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#0f172a" }}>DIVINE HANDS HOSPITAL</h3>
-            <p style={{ margin: "0.2rem 0", fontSize: "0.75rem", color: "#64748b" }}>Official Payment Receipt</p>
-            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0284c7", marginTop: "0.4rem" }}>Receipt #: {activeReceipt.receiptNo}</div>
-          </div>
-          <div style={{ fontSize: "0.85rem", marginBottom: "1rem", display: "grid", gap: "0.3rem" }}>
-            <div><strong>Patient:</strong> {activeReceipt.patientName || "—"}</div>
-            <div><strong>Invoice:</strong> {activeReceipt.invoiceNo}</div>
-            <div><strong>Method:</strong> {activeReceipt.method.toUpperCase()}</div>
-            <div><strong>Amount:</strong> <span style={{ fontWeight: 800, color: "#16a34a" }}>{currency(activeReceipt.amount)}</span></div>
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button onClick={() => window.open(`${getBaseUrl()}/api/v1/billing/receipts/${activeReceipt.id}/html`, "_blank")} style={{ ...primaryBtn, flex: 1 }}>
-              Print Receipt
-            </button>
-            <button onClick={() => window.open(`${getBaseUrl()}/api/v1/billing/receipts/${activeReceipt.id}/pdf`, "_blank")} style={{ ...ghostBtn, flex: 1 }}>
-              Download PDF
-            </button>
-            <button onClick={() => setActiveReceipt(null)} style={{ ...ghostBtn, flex: 1 }}>Close</button>
-          </div>
-        </Modal>
-      )}
+      <Modal
+        open={!!activeReceipt}
+        title="Receipt Generated"
+        onClose={() => setActiveReceipt(null)}
+        width={450}
+      >
+        {activeReceipt && (
+          <>
+            <div
+              style={{
+                textAlign: "center",
+                borderBottom: "2px dashed #cbd5e1",
+                paddingBottom: theme.spacing["4"],
+                marginBottom: theme.spacing["4"],
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+                DIVINE HANDS HOSPITAL
+              </h3>
+              <p style={{ margin: "0.2rem 0", fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+                Official Payment Receipt
+              </p>
+              <div style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.bold, color: theme.action.info, marginTop: "0.4rem" }}>
+                Receipt #: {activeReceipt.receiptNo}
+              </div>
+            </div>
+            <div style={{ fontSize: theme.fontSize.base, marginBottom: theme.spacing["4"], display: "grid", gap: "0.3rem" }}>
+              <div>
+                <strong>Patient:</strong> {activeReceipt.patientName || "—"}
+              </div>
+              <div>
+                <strong>Invoice:</strong> {activeReceipt.invoiceNo}
+              </div>
+              <div>
+                <strong>Method:</strong> {activeReceipt.method.toUpperCase()}
+              </div>
+              <div>
+                <strong>Amount:</strong>{" "}
+                <span style={{ fontWeight: theme.fontWeight.bold, color: theme.action.success }}>
+                  {currency(activeReceipt.amount)}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: theme.spacing["2"] }}>
+              <Button
+                style={{ flex: 1 }}
+                onClick={() =>
+                  window.open(
+                    `${getBaseUrl()}/api/v1/billing/receipts/${activeReceipt.id}/html`,
+                    "_blank",
+                  )
+                }
+              >
+                Print Receipt
+              </Button>
+              <Button
+                variant="outline"
+                style={{ flex: 1 }}
+                onClick={() =>
+                  window.open(
+                    `${getBaseUrl()}/api/v1/billing/receipts/${activeReceipt.id}/pdf`,
+                    "_blank",
+                  )
+                }
+              >
+                Download PDF
+              </Button>
+              <Button variant="ghost" style={{ flex: 1 }} onClick={() => setActiveReceipt(null)}>
+                Close
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
-
-function Modal({ onClose, title, children, width }: { onClose: () => void; title: string; children: ReactNode; width: string }) {
-  return (
-    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15, 23, 42, 0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
-      <div style={{ background: "#fff", borderRadius: "8px", width: "100%", maxWidth: width, padding: "1.5rem", maxHeight: "90vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h3 style={{ margin: 0, color: "#0f172a" }}>{title}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer" }}>✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    paid: ["#f0fdf4", "#16a34a"],
-    issued: ["#eff6ff", "#2563eb"],
-    partially_paid: ["#fefce8", "#ca8a04"],
-    draft: ["#f1f5f9", "#475569"],
-    voided: ["#fef2f2", "#dc2626"],
-  };
-  const [background, color] = map[status] ?? ["#f1f5f9", "#475569"];
-  return (
-    <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "0.15rem 0.4rem", borderRadius: "4px", background, color }}>
-      {status.replace("_", " ").toUpperCase()}
-    </span>
-  );
-}
-
-function FieldLabel({ children }: { children: string }) {
-  return <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "0.2rem" }}>{children}</label>;
-}
-
-function tabStyle(active: boolean): CSSProperties {
-  return {
-    padding: "0.6rem 1rem",
-    background: "none",
-    border: "none",
-    borderBottom: active ? "2px solid #2563eb" : "none",
-    fontWeight: active ? 700 : 500,
-    color: active ? "#2563eb" : "#64748b",
-    cursor: "pointer",
-  };
-}
-
-const input: CSSProperties = { width: "100%", padding: "0.5rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontSize: "0.9rem", boxSizing: "border-box" };
-const smallInput: CSSProperties = { width: "8rem", padding: "0.4rem", border: "1px solid #cbd5e1", borderRadius: "4px" };
-const primaryBtn: CSSProperties = { padding: "0.6rem 1.2rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" };
-const ghostBtn: CSSProperties = { padding: "0.5rem 1.2rem", background: "transparent", border: "1px solid #cbd5e1", color: "#64748b", borderRadius: "6px", fontWeight: 600, cursor: "pointer" };
-const actionBtn = (bg: string): CSSProperties => ({ padding: "0.5rem 1rem", background: bg, color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" });

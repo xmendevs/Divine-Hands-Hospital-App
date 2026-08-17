@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { theme, Button, Card, DataTable, FormField, Input, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface RosterAssignment {
@@ -49,6 +50,13 @@ const EMPTY_PLAN_FORM = {
   requirements: [] as { shiftId: string; required: string }[],
 };
 
+function planStatusBadge(status: string): StatusVariant {
+  if (status === "approved") return "approved";
+  if (status === "submitted") return "submitted";
+  if (status === "rejected") return "error";
+  return "draft";
+}
+
 export default function RosterPage() {
   const [activeTab, setActiveTab] = useState<"plans" | "generator">("plans");
 
@@ -74,17 +82,25 @@ export default function RosterPage() {
     if (plansRes.status === "fulfilled") {
       setPlans(plansRes.value);
     } else {
-      errors.push(plansRes.reason instanceof Error ? plansRes.reason.message : "Could not load roster plans.");
+      errors.push(
+        plansRes.reason instanceof Error ? plansRes.reason.message : "Could not load roster plans.",
+      );
     }
     if (shiftsRes.status === "fulfilled") {
       setShifts(shiftsRes.value);
     } else {
-      errors.push(shiftsRes.reason instanceof Error ? shiftsRes.reason.message : "Could not load shift definitions.");
+      errors.push(
+        shiftsRes.reason instanceof Error
+          ? shiftsRes.reason.message
+          : "Could not load shift definitions.",
+      );
     }
     if (deptsRes.status === "fulfilled") {
       setDepartments(deptsRes.value);
     } else {
-      errors.push(deptsRes.reason instanceof Error ? deptsRes.reason.message : "Could not load departments.");
+      errors.push(
+        deptsRes.reason instanceof Error ? deptsRes.reason.message : "Could not load departments.",
+      );
     }
     setError(errors.join(" "));
     setLoading(false);
@@ -111,7 +127,10 @@ export default function RosterPage() {
     const reason = window.prompt(`Reason for rejecting roster ${plan.planNo}?`)?.trim();
     if (!reason) return;
     await planAction(plan, (id) =>
-      apiFetch<unknown>(`/roster/plans/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+      apiFetch<unknown>(`/roster/plans/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
     );
   }
 
@@ -158,254 +177,333 @@ export default function RosterPage() {
     }));
   }
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-      <div>
-        <h2 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>
-          Monthly Roster Planning & Daily Shift Governance
-        </h2>
-        <p style={{ margin: "0.2rem 0 0 0", fontSize: "0.875rem", color: "#64748b" }}>
-          Automated monthly scheduling with approval workflow and constraint enforcement.
-        </p>
-      </div>
+  const assignmentsColumns = [
+    { key: "staff", header: "Staff", render: (a: RosterAssignment) => <strong>{a.staffName || a.staffId}</strong> },
+    { key: "no", header: "Employee No", render: (a: RosterAssignment) => a.employeeNo || "—" },
+    { key: "date", header: "Work Date", render: (a: RosterAssignment) => a.workDate },
+    {
+      key: "shift",
+      header: "Shift",
+      render: (a: RosterAssignment) => (
+        <StatusBadge variant="submitted" label={a.shiftName || a.shiftCode} />
+      ),
+    },
+  ];
 
-      <div style={{ display: "flex", gap: "1rem", borderBottom: "2px solid #e2e8f0" }}>
-        <button onClick={() => setActiveTab("plans")} style={tabStyle(activeTab === "plans")}>
-          Roster Plans & Approvals
-        </button>
-        <button onClick={() => setActiveTab("generator")} style={tabStyle(activeTab === "generator")}>
-          Monthly Generator Engine
-        </button>
-      </div>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
+      <PageHeader
+        title="Monthly Roster Planning & Daily Shift Governance"
+        description="Automated monthly scheduling with approval workflow and constraint enforcement."
+      />
+
+      <TabNav
+        tabs={[
+          { key: "plans", label: "Roster Plans & Approvals" },
+          { key: "generator", label: "Monthly Generator Engine" },
+        ]}
+        active={activeTab}
+        onChange={(k) => setActiveTab(k as "plans" | "generator")}
+      />
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c" }}>
+        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
           {error}
         </p>
       )}
 
-      {loading && <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Loading roster data…</p>}
+      {loading && (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading roster data…
+        </p>
+      )}
 
-      {/* Plans list */}
       {!loading && activeTab === "plans" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
           {plans.length === 0 && (
-            <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
+            <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
               No roster plans yet. Use the Monthly Generator Engine to create one.
             </p>
           )}
           {plans.map((p) => (
-            <div key={p.id} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "1.25rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+            <Card key={p.id}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: theme.spacing["3"],
+                  flexWrap: "wrap",
+                  gap: theme.spacing["2"],
+                }}
+              >
                 <div>
-                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: "1rem" }}>{p.name}</span>
-                  <span style={{ marginLeft: "0.75rem", fontSize: "0.8rem", color: "#64748b" }}>
+                  <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary, fontSize: theme.fontSize.lg }}>
+                    {p.name}
+                  </span>
+                  <span style={{ marginLeft: theme.spacing["3"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
                     {p.planNo} · v{p.version} · {p.departmentName || "—"}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <StatusBadge status={p.status} />
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+                  <StatusBadge variant={planStatusBadge(p.status)} label={p.status} />
+                  <span style={{ fontSize: theme.fontSize.base, color: theme.text.muted }}>
                     {p.startDate} → {p.endDate}
                   </span>
                 </div>
               </div>
 
               {p.rejectedReason && (
-                <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.8rem", color: "#b45309", background: "#fffbeb", padding: "0.5rem 0.75rem", borderRadius: "6px" }}>
+                <p
+                  style={{
+                    margin: `0 0 ${theme.spacing["3"]}`,
+                    fontSize: theme.fontSize.base,
+                    color: theme.action.warning,
+                    background: "#fffbeb",
+                    padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
+                    borderRadius: theme.radius.md,
+                  }}
+                >
                   Rejected: {p.rejectedReason}
                 </p>
               )}
 
               {p.assignments.length === 0 ? (
-                <p style={{ color: "#64748b", fontSize: "0.85rem" }}>No assignments generated yet.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  No assignments generated yet.
+                </p>
               ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", marginBottom: "0.75rem" }}>
-                  <thead>
-                    <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569" }}>
-                      <th style={{ padding: "0.5rem" }}>STAFF</th>
-                      <th style={{ padding: "0.5rem" }}>EMPLOYEE NO</th>
-                      <th style={{ padding: "0.5rem" }}>WORK DATE</th>
-                      <th style={{ padding: "0.5rem" }}>SHIFT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {p.assignments.map((a) => (
-                      <tr key={a.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <td style={{ padding: "0.5rem", fontWeight: 600 }}>{a.staffName || a.staffId}</td>
-                        <td style={{ padding: "0.5rem", color: "#64748b" }}>{a.employeeNo || "—"}</td>
-                        <td style={{ padding: "0.5rem" }}>{a.workDate}</td>
-                        <td style={{ padding: "0.5rem" }}>
-                          <span style={{ padding: "0.15rem 0.5rem", borderRadius: "4px", background: "#e0f2fe", color: "#0369a1", fontWeight: 600 }}>
-                            {a.shiftName || a.shiftCode}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {p.unmet.length > 0 && (
-                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "6px", padding: "0.6rem 0.75rem", fontSize: "0.8rem", color: "#991b1b", marginBottom: "0.75rem" }}>
-                  <strong>Unmet requirements:</strong>{" "}
-                  {p.unmet.map((u) => `${u.shiftName || "shift"} (${u.assigned}/${u.required})`).join(", ")}
+                <div style={{ marginBottom: theme.spacing["3"] }}>
+                  <DataTable columns={assignmentsColumns} rows={p.assignments} rowKey={(a) => a.id} dense />
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
+              {p.unmet.length > 0 && (
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    border: "1px solid #fca5a5",
+                    borderRadius: theme.radius.md,
+                    padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
+                    fontSize: theme.fontSize.base,
+                    color: "#991b1b",
+                    marginBottom: theme.spacing["3"],
+                  }}
+                >
+                  <strong>Unmet requirements:</strong>{" "}
+                  {p.unmet
+                    .map((u) => `${u.shiftName || "shift"} (${u.assigned}/${u.required})`)
+                    .join(", ")}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: theme.spacing["2"], justifyContent: "flex-end", flexWrap: "wrap" }}>
                 {p.status === "draft" && (
                   <>
-                    <button disabled={busyId === p.id} onClick={() => planAction(p, (id) => apiFetch<unknown>(`/roster/plans/${id}/regenerate`, { method: "POST" }))} style={actionBtn("#2563eb")}>
-                      {busyId === p.id ? "Working…" : "Regenerate"}
-                    </button>
-                    <button disabled={busyId === p.id} onClick={() => planAction(p, (id) => apiFetch<unknown>(`/roster/plans/${id}/submit`, { method: "POST" }))} style={actionBtn("#d97706")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      loading={busyId === p.id}
+                      onClick={() =>
+                        planAction(p, (id) =>
+                          apiFetch<unknown>(`/roster/plans/${id}/regenerate`, { method: "POST" }),
+                        )
+                      }
+                    >
+                      Regenerate
+                    </Button>
+                    <Button
+                      size="sm"
+                      loading={busyId === p.id}
+                      style={{ background: theme.action.warning }}
+                      onClick={() =>
+                        planAction(p, (id) =>
+                          apiFetch<unknown>(`/roster/plans/${id}/submit`, { method: "POST" }),
+                        )
+                      }
+                    >
                       Submit for Approval
-                    </button>
+                    </Button>
                   </>
                 )}
                 {p.status === "submitted" && (
                   <>
-                    <button disabled={busyId === p.id} onClick={() => planAction(p, (id) => apiFetch<unknown>(`/roster/plans/${id}/approve`, { method: "POST" }))} style={actionBtn("#16a34a")}>
+                    <Button
+                      size="sm"
+                      loading={busyId === p.id}
+                      style={{ background: theme.action.success }}
+                      onClick={() =>
+                        planAction(p, (id) =>
+                          apiFetch<unknown>(`/roster/plans/${id}/approve`, { method: "POST" }),
+                        )
+                      }
+                    >
                       Approve & Publish
-                    </button>
-                    <button disabled={busyId === p.id} onClick={() => rejectPlan(p)} style={actionBtn("#dc2626")}>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={busyId === p.id}
+                      onClick={() => rejectPlan(p)}
+                    >
                       Reject
-                    </button>
+                    </Button>
                   </>
                 )}
                 {p.status === "approved" && (
-                  <button disabled={busyId === p.id} onClick={() => planAction(p, (id) => apiFetch<unknown>(`/roster/plans/${id}/amend`, { method: "POST" }))} style={actionBtn("#0284c7")}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    loading={busyId === p.id}
+                    onClick={() =>
+                      planAction(p, (id) =>
+                        apiFetch<unknown>(`/roster/plans/${id}/amend`, { method: "POST" }),
+                      )
+                    }
+                  >
                     Amend (new draft)
-                  </button>
+                  </Button>
                 )}
                 {p.status === "rejected" && (
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>Rejected — create a new plan or amend.</span>
+                  <span style={{ fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                    Rejected — create a new plan or amend.
+                  </span>
                 )}
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
-      {/* Generator */}
       {!loading && activeTab === "generator" && (
-        <form onSubmit={handleCreatePlan} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "1.5rem", maxWidth: "800px", display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#0f172a" }}>Automated Monthly Roster Generator</h3>
-          <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>
-            Creates a draft plan and generates assignments while enforcing rest periods, night rotation, and coverage requirements.
-          </p>
+        <Card style={{ maxWidth: 800 }}>
+          <form onSubmit={handleCreatePlan} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+            <h3 style={{ margin: 0, fontSize: theme.fontSize.lg, color: theme.text.primary }}>
+              Automated Monthly Roster Generator
+            </h3>
+            <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+              Creates a draft plan and generates assignments while enforcing rest periods, night
+              rotation, and coverage requirements.
+            </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <div>
-              <FieldLabel>Plan name</FieldLabel>
-              <input value={planForm.name} onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })} placeholder="e.g. September Nursing Roster" style={input} />
-            </div>
-            <div>
-              <FieldLabel>Department *</FieldLabel>
-              <select required value={planForm.departmentId} onChange={(e) => setPlanForm({ ...planForm, departmentId: e.target.value })} style={input}>
-                <option value="">Select department…</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>Start date *</FieldLabel>
-              <input type="date" required value={planForm.startDate} onChange={(e) => setPlanForm({ ...planForm, startDate: e.target.value })} style={input} />
-            </div>
-            <div>
-              <FieldLabel>End date *</FieldLabel>
-              <input type="date" required value={planForm.endDate} onChange={(e) => setPlanForm({ ...planForm, endDate: e.target.value })} style={input} />
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-              <FieldLabel>Shift requirements (staff needed per shift)</FieldLabel>
-              <button
-                type="button"
-                onClick={() => setPlanForm((prev) => ({ ...prev, requirements: [...prev.requirements, { shiftId: "", required: "1" }] }))}
-                style={ghostBtn}
-              >
-                + Add Requirement
-              </button>
-            </div>
-            {planForm.requirements.length === 0 && (
-              <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>No shift requirements added yet.</p>
-            )}
-            {planForm.requirements.map((r, idx) => (
-              <div key={idx} style={{ display: "flex", gap: "0.5rem", marginBottom: "0.4rem" }}>
-                <select value={r.shiftId} onChange={(e) => setRequirement(idx, { shiftId: e.target.value })} style={{ ...input, flex: 1 }}>
-                  <option value="">Select shift…</option>
-                  {shifts.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.startTime}–{s.endTime})
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}>
+              <FormField label="Plan name">
+                <Input
+                  value={planForm.name}
+                  onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                  placeholder="e.g. September Nursing Roster"
+                />
+              </FormField>
+              <FormField label="Department" required>
+                <Select
+                  required
+                  value={planForm.departmentId}
+                  onChange={(e) => setPlanForm({ ...planForm, departmentId: e.target.value })}
+                >
+                  <option value="">Select department…</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
                     </option>
                   ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={r.required}
-                  onChange={(e) => setRequirement(idx, { required: e.target.value })}
-                  style={{ ...input, width: "5rem" }}
-                  title="Required staff count"
+                </Select>
+              </FormField>
+              <FormField label="Start date" required>
+                <Input
+                  type="date"
+                  required
+                  value={planForm.startDate}
+                  onChange={(e) => setPlanForm({ ...planForm, startDate: e.target.value })}
                 />
-                <button
-                  type="button"
-                  onClick={() => setPlanForm((prev) => ({ ...prev, requirements: prev.requirements.filter((_, i) => i !== idx) }))}
-                  style={ghostBtn}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
+              </FormField>
+              <FormField label="End date" required>
+                <Input
+                  type="date"
+                  required
+                  value={planForm.endDate}
+                  onChange={(e) => setPlanForm({ ...planForm, endDate: e.target.value })}
+                />
+              </FormField>
+            </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="submit" disabled={saving} style={primaryBtn}>
-              {saving ? "Generating…" : "Generate Roster Plan"}
-            </button>
-          </div>
-        </form>
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: theme.spacing["2"],
+                }}
+              >
+                <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+                  Shift requirements (staff needed per shift)
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setPlanForm((prev) => ({
+                      ...prev,
+                      requirements: [...prev.requirements, { shiftId: "", required: "1" }],
+                    }))
+                  }
+                >
+                  + Add Requirement
+                </Button>
+              </div>
+              {planForm.requirements.length === 0 && (
+                <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                  No shift requirements added yet.
+                </p>
+              )}
+              {planForm.requirements.map((r, idx) => (
+                <div key={idx} style={{ display: "flex", gap: theme.spacing["2"], marginBottom: theme.spacing["2"] }}>
+                  <Select
+                    value={r.shiftId}
+                    onChange={(e) => setRequirement(idx, { shiftId: e.target.value })}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Select shift…</option>
+                    {shifts.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.startTime}–{s.endTime})
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={r.required}
+                    onChange={(e) => setRequirement(idx, { required: e.target.value })}
+                    style={{ width: "5rem" }}
+                    title="Required staff count"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      setPlanForm((prev) => ({
+                        ...prev,
+                        requirements: prev.requirements.filter((_, i) => i !== idx),
+                      }))
+                    }
+                    aria-label={`Remove requirement ${idx + 1}`}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button type="submit" loading={saving} style={{ background: theme.action.success }}>
+                Generate Roster Plan
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
     </div>
   );
 }
-
-function FieldLabel({ children }: { children: string }) {
-  return <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "0.25rem" }}>{children}</label>;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, [string, string]> = {
-    approved: ["#f0fdf4", "#16a34a"],
-    submitted: ["#fefce8", "#ca8a04"],
-    draft: ["#f1f5f9", "#475569"],
-    rejected: ["#fef2f2", "#dc2626"],
-  };
-  const [background, color] = map[status] ?? ["#f1f5f9", "#475569"];
-  return (
-    <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", borderRadius: "6px", background, color, fontWeight: 700 }}>
-      {status.toUpperCase()}
-    </span>
-  );
-}
-
-function tabStyle(active: boolean): CSSProperties {
-  return {
-    padding: "0.6rem 1rem",
-    background: "none",
-    border: "none",
-    borderBottom: active ? "2px solid #2563eb" : "none",
-    fontWeight: active ? 700 : 500,
-    color: active ? "#2563eb" : "#64748b",
-    cursor: "pointer",
-  };
-}
-
-const input: CSSProperties = { width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" };
-const primaryBtn: CSSProperties = { padding: "0.65rem 1.5rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" };
-const ghostBtn: CSSProperties = { padding: "0.3rem 0.7rem", background: "#f1f5f9", border: "1px solid #cbd5e1", borderRadius: "4px", fontSize: "0.75rem", cursor: "pointer" };
-const actionBtn = (bg: string): CSSProperties => ({ padding: "0.45rem 0.9rem", background: bg, color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", fontSize: "0.8rem" });

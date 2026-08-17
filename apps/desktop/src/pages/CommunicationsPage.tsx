@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { theme, Button, Card, EmptyState, Input, PageHeader, TabNav, Textarea } from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface Staff {
@@ -74,22 +75,32 @@ export default function CommunicationsPage() {
     if (staffRes.status === "fulfilled") {
       setStaff(staffRes.value);
     } else {
-      errors.push(staffRes.reason instanceof Error ? staffRes.reason.message : "Could not load the staff directory.");
+      errors.push(
+        staffRes.reason instanceof Error
+          ? staffRes.reason.message
+          : "Could not load the staff directory.",
+      );
     }
     if (chRes.status === "fulfilled") {
       setChannels(chRes.value);
     } else {
-      errors.push(chRes.reason instanceof Error ? chRes.reason.message : "Could not load channels.");
+      errors.push(
+        chRes.reason instanceof Error ? chRes.reason.message : "Could not load channels.",
+      );
     }
     if (annRes.status === "fulfilled") {
       setAnnouncements(annRes.value);
     } else {
-      errors.push(annRes.reason instanceof Error ? annRes.reason.message : "Could not load announcements.");
+      errors.push(
+        annRes.reason instanceof Error ? annRes.reason.message : "Could not load announcements.",
+      );
     }
     if (polRes.status === "fulfilled") {
       setPolicy(polRes.value);
     } else {
-      errors.push(polRes.reason instanceof Error ? polRes.reason.message : "Could not load the comms policy.");
+      errors.push(
+        polRes.reason instanceof Error ? polRes.reason.message : "Could not load the comms policy.",
+      );
     }
     setError(errors.join(" "));
     setLoading(false);
@@ -125,7 +136,11 @@ export default function CommunicationsPage() {
     try {
       const msg = await apiFetch<Message>("/communications/messages", {
         method: "POST",
-        body: JSON.stringify({ recipientId: selectedPeer.userId, body: dmInput.trim(), attachments: [] }),
+        body: JSON.stringify({
+          recipientId: selectedPeer.userId,
+          body: dmInput.trim(),
+          attachments: [],
+        }),
       });
       setDmInput("");
       const updated = [...messages, msg];
@@ -154,10 +169,13 @@ export default function CommunicationsPage() {
     if (!selectedChannel || !channelInput.trim()) return;
     setError("");
     try {
-      const msg = await apiFetch<Message>(`/communications/channels/${selectedChannel.id}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ body: channelInput.trim(), attachments: [] }),
-      });
+      const msg = await apiFetch<Message>(
+        `/communications/channels/${selectedChannel.id}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({ body: channelInput.trim(), attachments: [] }),
+        },
+      );
       setChannelInput("");
       setChannelMessages((prev) => [...prev, msg]);
     } catch (err) {
@@ -193,62 +211,96 @@ export default function CommunicationsPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", height: "100%", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Staff Communications</h1>
-          <p style={{ fontSize: "0.85rem", color: "#64748b", margin: 0 }}>
-            Governed secure messaging, channels, and broadcast announcements.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button onClick={() => setActiveTab("dm")} style={tabStyle(activeTab === "dm")}>Direct Messages</button>
-          <button onClick={() => setActiveTab("channels")} style={tabStyle(activeTab === "channels")}>Channels</button>
-          <button onClick={() => setActiveTab("broadcast")} style={tabStyle(activeTab === "broadcast")}>Broadcasts</button>
-        </div>
-      </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: theme.spacing["4"],
+        height: "100%",
+        boxSizing: "border-box",
+      }}
+    >
+      <PageHeader
+        title="Staff Communications"
+        description="Governed secure messaging, channels, and broadcast announcements."
+      />
+
+      <TabNav
+        tabs={[
+          { key: "dm", label: "Direct Messages" },
+          { key: "channels", label: "Channels" },
+          { key: "broadcast", label: "Broadcasts" },
+        ]}
+        active={activeTab}
+        onChange={(k) => setActiveTab(k as "dm" | "channels" | "broadcast")}
+      />
 
       {policy && !policy.acknowledged && (
-        <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px", padding: "0.85rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
-          <div style={{ fontSize: "0.85rem", color: "#78350f" }}>
-            <strong>Communications policy:</strong> {policy.notice} Messages are retained {policy.retentionDays} days.
+        <div
+          style={{
+            background: "#fffbeb",
+            border: "1px solid #fcd34d",
+            borderRadius: theme.radius.md,
+            padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: theme.spacing["4"],
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ fontSize: theme.fontSize.base, color: "#78350f" }}>
+            <strong>Communications policy:</strong> {policy.notice} Messages are retained{" "}
+            {policy.retentionDays} days.
           </div>
-          <button onClick={() => acknowledgePolicy()} style={actionBtn("#b45309")}>Acknowledge</button>
+          <Button size="sm" style={{ background: theme.action.warning }} onClick={() => acknowledgePolicy()}>
+            Acknowledge
+          </Button>
         </div>
       )}
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: "0.85rem", color: "#b91c1c" }}>
+        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
           {error}
         </p>
       )}
 
-      {loading && <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Loading communications…</p>}
+      {loading && (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading communications…</p>
+      )}
 
       {/* DM tab */}
       {!loading && activeTab === "dm" && (
-        <div style={{ display: "flex", flex: 1, background: "#fff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", minHeight: 420 }}>
-          <div style={{ width: "280px", borderRight: "1px solid #e2e8f0", display: "flex", flexDirection: "column", background: "#f8fafc", flexShrink: 0 }}>
-            <div style={{ padding: "1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 700, fontSize: "0.85rem", color: "#334155" }}>
-              Hospital Staff Directory
-            </div>
+        <PaneShell>
+          <div style={dirPane}>
+            <div style={dirHeader}>Hospital Staff Directory</div>
             <div style={{ flex: 1, overflowY: "auto" }}>
-              {staff.length === 0 && <p style={{ padding: "1rem", fontSize: "0.8rem", color: "#64748b" }}>No staff directory available.</p>}
+              {staff.length === 0 && (
+                <p style={{ padding: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                  No staff directory available.
+                </p>
+              )}
               {staff.map((s) => (
                 <div
                   key={s.userId}
                   onClick={() => openThread(s)}
                   style={{
-                    padding: "0.75rem 1rem",
+                    padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
                     cursor: "pointer",
-                    background: selectedPeer?.userId === s.userId ? "#e0f2fe" : "transparent",
-                    borderBottom: "1px solid #f1f5f9",
+                    background: selectedPeer?.userId === s.userId ? theme.badge.aft.bg : "transparent",
+                    borderBottom: `1px solid ${theme.surface.border}`,
                   }}
                 >
-                  <div style={{ fontSize: "0.85rem", fontWeight: selectedPeer?.userId === s.userId ? 700 : 500, color: "#1e293b" }}>
+                  <div
+                    style={{
+                      fontSize: theme.fontSize.base,
+                      fontWeight: selectedPeer?.userId === s.userId ? theme.fontWeight.bold : theme.fontWeight.medium,
+                      color: theme.text.primary,
+                    }}
+                  >
                     {s.firstName} {s.lastName}
                   </div>
-                  <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                  <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
                     {s.jobTitle || "Staff"} {s.departmentName ? `· ${s.departmentName}` : ""}
                   </div>
                 </div>
@@ -256,72 +308,104 @@ export default function CommunicationsPage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff", minWidth: 0 }}>
-            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid #e2e8f0" }}>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: theme.surface.card, minWidth: 0 }}>
+            <div style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
+              <div style={{ fontWeight: theme.fontWeight.bold, fontSize: theme.fontSize.base, color: theme.text.primary }}>
                 {selectedPeer ? `${selectedPeer.firstName} ${selectedPeer.lastName}` : "Select a staff member"}
               </div>
-              <div style={{ fontSize: "0.7rem", color: "#64748b" }}>Secure Channel</div>
+              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>Secure Channel</div>
             </div>
 
-            <div style={{ flex: 1, padding: "1rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {!selectedPeer && <p style={{ color: "#64748b", fontSize: "0.85rem" }}>Choose a recipient from the directory to start messaging.</p>}
-              {selectedPeer && messages.length === 0 && <p style={{ color: "#64748b", fontSize: "0.85rem" }}>No messages yet in this conversation.</p>}
+            <div style={{ flex: 1, padding: theme.spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+              {!selectedPeer && (
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  Choose a recipient from the directory to start messaging.
+                </p>
+              )}
+              {selectedPeer && messages.length === 0 && (
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  No messages yet in this conversation.
+                </p>
+              )}
               {selectedPeer &&
                 messages.map((msg) => {
                   const isMe = msg.senderId !== selectedPeer.userId;
                   return (
                     <div key={msg.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "70%" }}>
-                      <div style={{ background: isMe ? "#bae6fd" : "#f1f5f9", padding: "0.65rem 0.9rem", borderRadius: "8px", fontSize: "0.85rem", color: "#0f172a" }}>
+                      <div
+                        style={{
+                          background: isMe ? theme.badge.aft.bg : theme.surface.subtle,
+                          padding: `${theme.spacing["2"]} 0.9rem`,
+                          borderRadius: theme.radius.md,
+                          fontSize: theme.fontSize.base,
+                          color: theme.text.primary,
+                        }}
+                      >
                         {msg.body}
                       </div>
-                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: "0.65rem", color: "#64748b", marginTop: "2px" }}>
-                        <span>{isMe ? `${msg.senderName} · ` : ""}{new Date(msg.createdAt).toLocaleString()}</span>
+                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: theme.fontSize.xs, color: theme.text.muted, marginTop: "2px" }}>
+                        <span>
+                          {isMe ? `${msg.senderName} · ` : ""}
+                          {new Date(msg.createdAt).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   );
                 })}
             </div>
 
-            <form onSubmit={sendDm} style={{ padding: "0.75rem 1rem", borderTop: "1px solid #e2e8f0", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
+            <form
+              onSubmit={sendDm}
+              style={{
+                padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
+                borderTop: `1px solid ${theme.surface.border}`,
+                display: "flex",
+                gap: theme.spacing["2"],
+                alignItems: "center",
+              }}
+            >
+              <Input
                 type="text"
                 placeholder={selectedPeer ? `Type secure message to ${selectedPeer.firstName}...` : "Select a recipient first"}
                 value={dmInput}
                 disabled={!selectedPeer}
                 onChange={(e) => setDmInput(e.target.value)}
-                style={{ flex: 1, padding: "0.6rem 0.9rem", borderRadius: "6px", border: "1px solid #cbd5e1", outline: "none", fontSize: "0.85rem" }}
+                style={{ flex: 1 }}
               />
-              <button type="submit" disabled={!selectedPeer} style={sendBtn}>Send</button>
+              <Button type="submit" disabled={!selectedPeer}>
+                Send
+              </Button>
             </form>
           </div>
-        </div>
+        </PaneShell>
       )}
 
       {/* Channels tab */}
       {!loading && activeTab === "channels" && (
-        <div style={{ display: "flex", flex: 1, background: "#fff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", minHeight: 420 }}>
-          <div style={{ width: "280px", borderRight: "1px solid #e2e8f0", display: "flex", flexDirection: "column", background: "#f8fafc", flexShrink: 0 }}>
-            <div style={{ padding: "1rem", borderBottom: "1px solid #e2e8f0", fontWeight: 700, fontSize: "0.85rem", color: "#334155" }}>
-              Hospital Channels
-            </div>
+        <PaneShell>
+          <div style={dirPane}>
+            <div style={dirHeader}>Hospital Channels</div>
             <div style={{ flex: 1, overflowY: "auto" }}>
-              {channels.length === 0 && <p style={{ padding: "1rem", fontSize: "0.8rem", color: "#64748b" }}>No channels available.</p>}
+              {channels.length === 0 && (
+                <p style={{ padding: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                  No channels available.
+                </p>
+              )}
               {channels.map((ch) => (
                 <div
                   key={ch.id}
                   onClick={() => openChannel(ch)}
                   style={{
-                    padding: "0.75rem 1rem",
+                    padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
                     cursor: "pointer",
-                    background: selectedChannel?.id === ch.id ? "#e0f2fe" : "transparent",
-                    borderBottom: "1px solid #f1f5f9",
+                    background: selectedChannel?.id === ch.id ? theme.badge.aft.bg : "transparent",
+                    borderBottom: `1px solid ${theme.surface.border}`,
                   }}
                 >
-                  <div style={{ fontSize: "0.85rem", fontWeight: selectedChannel?.id === ch.id ? 700 : 500, color: "#1e293b" }}>
+                  <div style={{ fontSize: theme.fontSize.base, fontWeight: selectedChannel?.id === ch.id ? theme.fontWeight.bold : theme.fontWeight.medium, color: theme.text.primary }}>
                     #{ch.name}
                   </div>
-                  <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
+                  <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
                     {ch.type.toUpperCase()} · {ch.memberCount} members{ch.isMember ? " · member" : ""}
                   </div>
                 </div>
@@ -329,96 +413,140 @@ export default function CommunicationsPage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#fff", minWidth: 0 }}>
-            <div style={{ padding: "0.75rem 1.25rem", borderBottom: "1px solid #e2e8f0" }}>
-              <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: theme.surface.card, minWidth: 0 }}>
+            <div style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
+              <div style={{ fontWeight: theme.fontWeight.bold, fontSize: theme.fontSize.base, color: theme.text.primary }}>
                 {selectedChannel ? `#${selectedChannel.name}` : "Select a channel"}
               </div>
-              {selectedChannel?.description && <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{selectedChannel.description}</div>}
+              {selectedChannel?.description && (
+                <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>{selectedChannel.description}</div>
+              )}
             </div>
 
-            <div style={{ flex: 1, padding: "1rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {!selectedChannel && <p style={{ color: "#64748b", fontSize: "0.85rem" }}>Choose a channel to view its messages.</p>}
+            <div style={{ flex: 1, padding: theme.spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+              {!selectedChannel && (
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>Choose a channel to view its messages.</p>
+              )}
               {selectedChannel && channelMessages.length === 0 && (
-                <p style={{ color: "#64748b", fontSize: "0.85rem" }}>No messages yet in this channel.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>No messages yet in this channel.</p>
               )}
               {selectedChannel &&
                 channelMessages.map((msg) => (
                   <div key={msg.id} style={{ maxWidth: "80%" }}>
-                    <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "2px" }}>
+                    <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, marginBottom: "2px" }}>
                       <strong>{msg.senderName}</strong> · {new Date(msg.createdAt).toLocaleString()}
                     </div>
-                    <div style={{ background: "#f1f5f9", padding: "0.65rem 0.9rem", borderRadius: "8px", fontSize: "0.85rem", color: "#0f172a" }}>
+                    <div
+                      style={{
+                        background: theme.surface.subtle,
+                        padding: `${theme.spacing["2"]} 0.9rem`,
+                        borderRadius: theme.radius.md,
+                        fontSize: theme.fontSize.base,
+                        color: theme.text.primary,
+                      }}
+                    >
                       {msg.body}
                     </div>
                   </div>
                 ))}
             </div>
 
-            <form onSubmit={sendChannelMessage} style={{ padding: "0.75rem 1rem", borderTop: "1px solid #e2e8f0", display: "flex", gap: "0.5rem", alignItems: "center" }}>
-              <input
+            <form
+              onSubmit={sendChannelMessage}
+              style={{
+                padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
+                borderTop: `1px solid ${theme.surface.border}`,
+                display: "flex",
+                gap: theme.spacing["2"],
+                alignItems: "center",
+              }}
+            >
+              <Input
                 type="text"
                 placeholder={selectedChannel ? `Message #${selectedChannel.name}...` : "Select a channel first"}
                 value={channelInput}
                 disabled={!selectedChannel || !selectedChannel.isMember}
                 onChange={(e) => setChannelInput(e.target.value)}
-                style={{ flex: 1, padding: "0.6rem 0.9rem", borderRadius: "6px", border: "1px solid #cbd5e1", outline: "none", fontSize: "0.85rem" }}
+                style={{ flex: 1 }}
               />
-              <button type="submit" disabled={!selectedChannel || !selectedChannel.isMember} style={sendBtn}>Send</button>
+              <Button type="submit" disabled={!selectedChannel || !selectedChannel.isMember}>
+                Send
+              </Button>
             </form>
           </div>
-        </div>
+        </PaneShell>
       )}
 
       {/* Broadcast tab */}
       {!loading && activeTab === "broadcast" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <form onSubmit={handleBroadcast} style={{ background: "#fff", padding: "1.5rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginTop: 0 }}>Hospital-Wide Broadcast Dispatch</h2>
-            <p style={{ fontSize: "0.8rem", color: "#64748b" }}>Send emergency or shift bulletins to all active staff.</p>
-            <textarea
-              placeholder="Enter broadcast announcement..."
-              value={broadcastInput}
-              onChange={(e) => setBroadcastInput(e.target.value)}
-              style={{ width: "100%", height: "120px", padding: "0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", marginBottom: "1rem", boxSizing: "border-box" }}
-            />
-            <button type="submit" style={{ background: "#0f172a", color: "#fff", border: "none", padding: "0.6rem 1.5rem", borderRadius: "6px", fontWeight: 700, cursor: "pointer" }}>
-              Dispatch Broadcast
-            </button>
-          </form>
-
-          <div style={{ background: "#fff", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-            <div style={{ padding: "0.85rem 1.25rem", borderBottom: "1px solid #e2e8f0", fontWeight: 700, color: "#334155", fontSize: "0.85rem" }}>
-              RECENT ANNOUNCEMENTS
-            </div>
-            {announcements.length === 0 && <p style={{ padding: "1rem", color: "#64748b", fontSize: "0.85rem", margin: 0 }}>No announcements yet.</p>}
-            {announcements.map((a) => (
-              <div key={a.id} style={{ padding: "0.85rem 1.25rem", borderBottom: "1px solid #f1f5f9" }}>
-                <div style={{ fontSize: "0.7rem", color: "#64748b", marginBottom: "0.2rem" }}>
-                  <strong>{a.senderName}</strong> · {new Date(a.createdAt).toLocaleString()}
-                </div>
-                <div style={{ fontSize: "0.9rem", color: "#1e293b" }}>{a.body}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
+          <Card title="Hospital-Wide Broadcast Dispatch" hint="Send emergency or shift bulletins to all active staff.">
+            <form onSubmit={handleBroadcast} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["3"], maxWidth: 720 }}>
+              <Textarea
+                placeholder="Enter broadcast announcement..."
+                value={broadcastInput}
+                onChange={(e) => setBroadcastInput(e.target.value)}
+                style={{ height: 120 }}
+              />
+              <div>
+                <Button type="submit">Dispatch Broadcast</Button>
               </div>
-            ))}
-          </div>
+            </form>
+          </Card>
+
+          <Card title="Recent Announcements" bodyStyle={{ padding: 0 }}>
+            {announcements.length === 0 ? (
+              <EmptyState icon="chat" description="No announcements yet." />
+            ) : (
+              <div>
+                {announcements.map((a) => (
+                  <div key={a.id} style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
+                    <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, marginBottom: "0.2rem" }}>
+                      <strong>{a.senderName}</strong> · {new Date(a.createdAt).toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: theme.fontSize.base, color: theme.text.primary }}>{a.body}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
       )}
     </div>
   );
 }
 
-function tabStyle(active: boolean): CSSProperties {
-  return {
-    background: active ? "#0f172a" : "#e2e8f0",
-    color: active ? "#fff" : "#334155",
-    border: "none",
-    padding: "0.5rem 1rem",
-    borderRadius: "6px",
-    fontWeight: 700,
-    fontSize: "0.8rem",
-    cursor: "pointer",
-  };
+function PaneShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flex: 1,
+        background: theme.surface.card,
+        borderRadius: theme.radius.lg,
+        border: `1px solid ${theme.surface.border}`,
+        overflow: "hidden",
+        minHeight: 420,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
-const sendBtn: CSSProperties = { background: "#0284c7", color: "#fff", border: "none", padding: "0.6rem 1.25rem", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" };
-const actionBtn = (bg: string): CSSProperties => ({ padding: "0.4rem 0.9rem", background: bg, color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" });
+const dirPane = {
+  width: 280,
+  borderRight: `1px solid ${theme.surface.border}`,
+  display: "flex",
+  flexDirection: "column",
+  background: theme.surface.subtle,
+  flexShrink: 0,
+} as const;
+
+const dirHeader = {
+  padding: theme.spacing["4"],
+  borderBottom: `1px solid ${theme.surface.border}`,
+  fontWeight: theme.fontWeight.bold,
+  fontSize: theme.fontSize.base,
+  color: theme.text.secondary,
+} as const;

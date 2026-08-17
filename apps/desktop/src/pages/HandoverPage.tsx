@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { theme, Button, Card, EmptyState, FormField, Input, PageHeader, StatusBadge, Textarea } from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface Handover {
@@ -97,103 +98,166 @@ export default function HandoverPage() {
   }
 
   return (
-    <div style={{ maxWidth: "1100px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>✍️ Shift Handover Log</h2>
-          <p style={{ color: "#64748b", margin: "0.2rem 0 0 0" }}>
-            Manage clinical and administrative shift transitions securely across hospital units.
-          </p>
-        </div>
-        <span style={{ fontSize: "0.75rem", background: "#e0f2fe", color: "#0369a1", padding: "0.3rem 0.75rem", borderRadius: "20px", fontWeight: 700 }}>
-          Active Shift Portal
-        </span>
-      </div>
+    <div style={{ maxWidth: 1100 }}>
+      <PageHeader
+        title="Shift Handover Log"
+        description="Manage clinical and administrative shift transitions securely across hospital units."
+        badge={<StatusBadge variant="submitted" label="Active Shift Portal" />}
+      />
 
       {error && (
-        <p role="alert" style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", color: "#b91c1c" }}>
+        <p role="alert" style={{ margin: `0 0 ${theme.spacing["4"]}`, fontSize: theme.fontSize.base, color: theme.text.danger }}>
           {error}
         </p>
       )}
 
       {/* New Handover Form */}
-      <div style={{ background: "#fff", padding: "1.5rem", borderRadius: "10px", border: "1px solid #e2e8f0", marginBottom: "2rem", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", marginBottom: "1rem" }}>Submit New Shift Handover</h3>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+      <Card title="Submit New Shift Handover" style={{ marginBottom: theme.spacing["8"] }}>
+        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}>
           <FormField label="Patient IDs (comma-separated, optional)">
-            <input type="text" value={form.patientIds} onChange={(e) => setForm({ ...form, patientIds: e.target.value })} placeholder="e.g. patient-uuid-1, patient-uuid-2" style={input} />
+            <Input
+              type="text"
+              value={form.patientIds}
+              onChange={(e) => setForm({ ...form, patientIds: e.target.value })}
+              placeholder="e.g. patient-uuid-1, patient-uuid-2"
+            />
           </FormField>
           <FormField label="Medications (optional)">
-            <input type="text" value={form.medications} onChange={(e) => setForm({ ...form, medications: e.target.value })} placeholder="e.g. IV Ceftriaxone 1g BD" style={input} />
+            <Input
+              type="text"
+              value={form.medications}
+              onChange={(e) => setForm({ ...form, medications: e.target.value })}
+              placeholder="e.g. IV Ceftriaxone 1g BD"
+            />
           </FormField>
           <div style={{ gridColumn: "span 2" }}>
-            <FormField label="Current patient condition & critical notes *">
-              <textarea rows={3} required value={form.currentCondition} onChange={(e) => setForm({ ...form, currentCondition: e.target.value })} placeholder="Summarize patient conditions, critical care steps taken..." style={{ ...input, resize: "vertical" }} />
+            <FormField label="Current patient condition & critical notes" required>
+              <Textarea
+                rows={3}
+                required
+                value={form.currentCondition}
+                onChange={(e) => setForm({ ...form, currentCondition: e.target.value })}
+                placeholder="Summarize patient conditions, critical care steps taken..."
+              />
             </FormField>
           </div>
           <FormField label="Pending investigations">
-            <input type="text" value={form.pendingInvestigations} onChange={(e) => setForm({ ...form, pendingInvestigations: e.target.value })} placeholder="e.g. Pending lab reports" style={input} />
+            <Input
+              type="text"
+              value={form.pendingInvestigations}
+              onChange={(e) => setForm({ ...form, pendingInvestigations: e.target.value })}
+              placeholder="e.g. Pending lab reports"
+            />
           </FormField>
           <FormField label="Pending orders">
-            <input type="text" value={form.pendingOrders} onChange={(e) => setForm({ ...form, pendingOrders: e.target.value })} placeholder="e.g. Pending pharmacy orders" style={input} />
+            <Input
+              type="text"
+              value={form.pendingOrders}
+              onChange={(e) => setForm({ ...form, pendingOrders: e.target.value })}
+              placeholder="e.g. Pending pharmacy orders"
+            />
           </FormField>
           <FormField label="Important observations">
-            <input type="text" value={form.importantObservations} onChange={(e) => setForm({ ...form, importantObservations: e.target.value })} style={input} />
+            <Input
+              type="text"
+              value={form.importantObservations}
+              onChange={(e) => setForm({ ...form, importantObservations: e.target.value })}
+            />
           </FormField>
           <FormField label="Outstanding tasks">
-            <input type="text" value={form.tasks} onChange={(e) => setForm({ ...form, tasks: e.target.value })} style={input} />
+            <Input type="text" value={form.tasks} onChange={(e) => setForm({ ...form, tasks: e.target.value })} />
           </FormField>
           <FormField label="Incidents">
-            <input type="text" value={form.incidents} onChange={(e) => setForm({ ...form, incidents: e.target.value })} style={input} />
+            <Input type="text" value={form.incidents} onChange={(e) => setForm({ ...form, incidents: e.target.value })} />
           </FormField>
           <FormField label="Instructions for incoming shift">
-            <input type="text" value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} style={input} />
+            <Input
+              type="text"
+              value={form.instructions}
+              onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+            />
           </FormField>
           <div style={{ gridColumn: "span 2", display: "flex", justifyContent: "flex-end" }}>
-            <button type="submit" disabled={saving} style={{ padding: "0.65rem 1.5rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" }}>
-              {saving ? "Saving…" : "Save & Sign Handover"}
-            </button>
+            <Button type="submit" loading={saving} style={{ background: theme.action.success }}>
+              Save & Sign Handover
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
 
       {/* Handover Logs List */}
-      <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e293b", marginBottom: "1rem" }}>Recorded Shift Handovers</h3>
+      <h3 style={{ margin: `0 0 ${theme.spacing["4"]}`, fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+        Recorded Shift Handovers
+      </h3>
       {loading ? (
-        <p style={{ color: "#64748b", fontSize: "0.9rem" }}>Loading handovers…</p>
+        <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>Loading handovers…</p>
       ) : handovers.length === 0 ? (
-        <p style={{ color: "#64748b", fontSize: "0.9rem" }}>No handovers recorded yet.</p>
+        <EmptyState icon="book" description="No handovers recorded yet." />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
           {handovers.map((h) => (
-            <div key={h.id} style={{ background: "#fff", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
+            <Card key={h.id}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: theme.spacing["3"],
+                  borderBottom: `1px solid ${theme.surface.border}`,
+                  paddingBottom: theme.spacing["2"],
+                  flexWrap: "wrap",
+                  gap: theme.spacing["2"],
+                }}
+              >
                 <div>
-                  <span style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>{h.handoverNo}</span>
-                  <span style={{ marginLeft: "1rem", fontSize: "0.8rem", color: "#64748b" }}>
-                    {h.shiftName ? `${h.shiftName} · ` : ""}{h.departmentName || "—"} · {new Date(h.createdAt).toLocaleString()}
+                  <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary, fontSize: theme.fontSize.base }}>
+                    {h.handoverNo}
+                  </span>
+                  <span style={{ marginLeft: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                    {h.shiftName ? `${h.shiftName} · ` : ""}
+                    {h.departmentName || "—"} · {new Date(h.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <span style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", borderRadius: "4px", background: h.status === "acknowledged" ? "#dcfce7" : "#fef9c3", color: h.status === "acknowledged" ? "#166534" : "#854d0e", fontWeight: 700 }}>
-                  {h.status.toUpperCase()}
-                </span>
+                <StatusBadge variant={h.status === "acknowledged" ? "approved" : "running"} label={h.status} />
               </div>
 
-              <div style={{ fontSize: "0.85rem", marginBottom: "0.75rem" }}>
+              <div style={{ fontSize: theme.fontSize.base, marginBottom: theme.spacing["3"] }}>
                 <strong>Outgoing:</strong> {h.outgoingStaffName || "—"}
                 {h.acknowledgedByName && (
-                  <span style={{ marginLeft: "1.5rem", color: "#16a34a" }}>
+                  <span style={{ marginLeft: "1.5rem", color: theme.action.success }}>
                     <strong>Acknowledged by:</strong> {h.acknowledgedByName}
                   </span>
                 )}
               </div>
 
-              <div style={{ background: "#f8fafc", padding: "0.75rem", borderRadius: "6px", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
+              <div
+                style={{
+                  background: theme.surface.subtle,
+                  padding: theme.spacing["3"],
+                  borderRadius: theme.radius.md,
+                  fontSize: theme.fontSize.base,
+                  marginBottom: theme.spacing["2"],
+                }}
+              >
                 <strong>Current Condition:</strong> {h.currentCondition || "—"}
               </div>
 
-              {(h.medications || h.pendingInvestigations || h.pendingOrders || h.importantObservations || h.tasks || h.incidents || h.instructions) && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.8rem", marginBottom: "0.5rem" }}>
+              {(h.medications ||
+                h.pendingInvestigations ||
+                h.pendingOrders ||
+                h.importantObservations ||
+                h.tasks ||
+                h.incidents ||
+                h.instructions) && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: theme.spacing["2"],
+                    fontSize: theme.fontSize.base,
+                    marginBottom: theme.spacing["2"],
+                  }}
+                >
                   {h.medications && <Detail label="Medications" value={h.medications} />}
                   {h.pendingInvestigations && <Detail label="Pending Investigations" value={h.pendingInvestigations} />}
                   {h.pendingOrders && <Detail label="Pending Orders" value={h.pendingOrders} />}
@@ -206,12 +270,12 @@ export default function HandoverPage() {
 
               {h.status !== "acknowledged" && (
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <button onClick={() => acknowledge(h)} style={primaryBtn}>
+                  <Button size="sm" style={{ background: theme.action.success }} onClick={() => acknowledge(h)}>
                     Acknowledge Handover
-                  </button>
+                  </Button>
                 </div>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -226,15 +290,3 @@ function Detail({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-function FormField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "0.3rem" }}>{label}</label>
-      {children}
-    </div>
-  );
-}
-
-const input: CSSProperties = { width: "100%", padding: "0.6rem", borderRadius: "6px", border: "1px solid #cbd5e1", boxSizing: "border-box" };
-const primaryBtn: CSSProperties = { padding: "0.5rem 1rem", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem" };

@@ -1,4 +1,5 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
+import { theme, Button, FormField, Input } from "@hims/ui";
 import { ApiError, getBaseUrl, setBaseUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
@@ -38,95 +39,90 @@ export default function LoginPage() {
   return (
     <div style={outer}>
       <form onSubmit={handleSubmit} style={card}>
-        <h2 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 800, color: "#0f172a" }}>Divine Hands Hospital</h2>
-        <p style={{ margin: 0, fontSize: "0.85rem", color: "#64748b" }}>Sign in to continue</p>
+        <h2 style={{ margin: 0, fontSize: theme.fontSize.xl, fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+          Divine Hands Hospital
+        </h2>
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Sign in to continue</p>
 
-        <label style={label}>
-          Username
-          <input
+        <FormField label="Username">
+          <Input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoFocus
             required
-            style={input}
             placeholder="username"
           />
-        </label>
+        </FormField>
 
-        <label style={label}>
-          Password
-          <input
+        <FormField label="Password">
+          <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={input}
             placeholder="password"
           />
-        </label>
+        </FormField>
 
         {mfaRequired && (
-          <label style={label}>
-            Authenticator code
-            <input
+          <FormField label="Authenticator code">
+            <Input
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value)}
               required
               inputMode="numeric"
               maxLength={6}
-              style={input}
               placeholder="6-digit code"
             />
-          </label>
+          </FormField>
         )}
 
-        <label style={label}>
-          Device name
-          <input value={deviceName} onChange={(e) => setDeviceName(e.target.value)} style={input} />
-        </label>
+        <FormField label="Device name">
+          <Input value={deviceName} onChange={(e) => setDeviceName(e.target.value)} />
+        </FormField>
 
         <button type="button" onClick={() => setShowConnection((s) => !s)} style={linkBtn}>
           Connection settings
         </button>
 
         {showConnection && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            <label style={label}>
-              Server address
-              <input
+          <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"] }}>
+            <FormField label="Server address">
+              <Input
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
-                style={input}
                 placeholder="http://127.0.0.1:8080"
               />
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                setBaseUrl(serverUrl);
-                setUrlSaved(true);
-                window.setTimeout(() => setUrlSaved(false), 2500);
-              }}
-              style={secondaryBtn}
-            >
-              Save address
-            </button>
-            {urlSaved && <p style={{ margin: 0, fontSize: "0.75rem", color: "#15803d" }}>Saved.</p>}
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#64748b" }}>
+            </FormField>
+            <div>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setBaseUrl(serverUrl);
+                  setUrlSaved(true);
+                  window.setTimeout(() => setUrlSaved(false), 2500);
+                }}
+              >
+                Save address
+              </Button>
+            </div>
+            {urlSaved && <p style={{ margin: 0, fontSize: theme.fontSize.sm, color: theme.action.success }}>Saved.</p>}
+            <p style={{ margin: 0, fontSize: theme.fontSize.sm, color: theme.text.muted }}>
               Set this to the main PC&apos;s network address (e.g. http://192.168.1.10:8080).
             </p>
           </div>
         )}
 
         {error && (
-          <p role="alert" style={{ margin: 0, fontSize: "0.8rem", color: "#b91c1c" }}>
+          <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
             {error}
           </p>
         )}
 
-        <button type="submit" disabled={busy} style={button}>
+        <Button type="submit" loading={busy}>
           {busy ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </div>
   );
@@ -137,65 +133,26 @@ const outer: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   height: "100vh",
-  background: "#f1f5f9",
-  fontFamily: "system-ui, sans-serif",
+  background: theme.surface.canvas,
 };
 
 const card: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.75rem",
+  gap: theme.spacing["3"],
   width: "360px",
-  padding: "1.5rem",
-  background: "#fff",
-  borderRadius: "10px",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.1)",
-};
-
-const label: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.3rem",
-  fontSize: "0.8rem",
-  fontWeight: 600,
-  color: "#334155",
-};
-
-const input: CSSProperties = {
-  padding: "0.6rem",
-  borderRadius: "6px",
-  border: "1px solid #cbd5e1",
-  fontSize: "0.9rem",
-};
-
-const button: CSSProperties = {
-  padding: "0.65rem",
-  borderRadius: "6px",
-  border: "none",
-  background: "#0f172a",
-  color: "#fff",
-  fontWeight: 700,
-  fontSize: "0.9rem",
-  cursor: "pointer",
-};
-
-const secondaryBtn: CSSProperties = {
-  padding: "0.5rem",
-  borderRadius: "6px",
-  border: "1px solid #cbd5e1",
-  background: "#f8fafc",
-  color: "#334155",
-  fontWeight: 600,
-  fontSize: "0.85rem",
-  cursor: "pointer",
+  padding: theme.spacing["6"],
+  background: theme.surface.card,
+  borderRadius: theme.radius.lg,
+  boxShadow: theme.shadow.popover,
 };
 
 const linkBtn: CSSProperties = {
   background: "none",
   border: "none",
-  color: "#0284c7",
-  fontSize: "0.8rem",
-  fontWeight: 600,
+  color: theme.action.primary,
+  fontSize: theme.fontSize.base,
+  fontWeight: theme.fontWeight.semibold,
   cursor: "pointer",
   textAlign: "left",
   padding: 0,
