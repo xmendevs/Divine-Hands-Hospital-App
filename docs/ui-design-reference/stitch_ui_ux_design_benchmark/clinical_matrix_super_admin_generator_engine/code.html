@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Super Admin: Monthly Generator Engine - HealthConnect</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#6b6e70",
+                        "surface-dim": "#cbdbf5",
+                        "background": "#f8f9ff",
+                        "surface-container-low": "#eff4ff",
+                        "tertiary-fixed": "#e0e3e5",
+                        "primary": "#004ac6",
+                        "secondary": "#565e74",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-bright": "#f8f9ff",
+                        "on-background": "#0b1c30",
+                        "on-primary-container": "#eeefff",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#0053db",
+                        "surface-variant": "#d3e4fe",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#eaf1ff",
+                        "inverse-surface": "#213145",
+                        "surface-container-highest": "#d3e4fe",
+                        "on-tertiary-container": "#eff1f3",
+                        "secondary-fixed": "#dae2fd",
+                        "surface": "#f8f9ff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-surface": "#0b1c30",
+                        "error": "#ba1a1a",
+                        "surface-container": "#e5eeff",
+                        "on-surface-variant": "#434655",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#dbe1ff",
+                        "primary-container": "#2563eb",
+                        "on-secondary-fixed": "#131b2e",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "outline-variant": "#c3c6d7",
+                        "tertiary": "#525657",
+                        "on-primary-fixed": "#00174b",
+                        "secondary-container": "#dae2fd",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container-high": "#dce9ff",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline": "#737686",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-secondary-container": "#5c647a",
+                        "inverse-primary": "#b4c5ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "1.5rem",
+                        "stack-sm": "0.5rem",
+                        "grid-gutter": "1rem",
+                        "container-padding": "2rem",
+                        "sidebar-width": "240px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "nav-item": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg-mobile": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "nav-item": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9ff; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        
+        /* Custom scrollbar for data density */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<!-- SideNavBar -->
+<nav class="w-sidebar-width h-screen fixed left-0 top-0 bg-inverse-surface dark:bg-inverse-surface flex flex-col h-full py-stack-md z-50">
+<!-- Brand/Header -->
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined fill text-[20px]">local_hospital</span>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-inverse-on-surface leading-tight text-[20px]">HealthConnect</h1>
+<p class="text-surface-variant font-body-sm text-[11px] opacity-80 flex items-center gap-1"><span class="material-symbols-outlined text-[12px] text-error">verified_user</span> System Admin</p>
+</div>
+</div>
+<!-- CTA -->
+<!-- Main Nav Tabs -->
+<ul class="flex-1 px-3 space-y-1 overflow-y-auto"><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined text-[20px]">clinical_notes</span>Clinical</a></li><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined text-[20px]">medication</span>Pharmacy</a></li><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined text-[20px]">payments</span>Finance</a></li><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-primary-fixed-dim border-l-4 border-primary bg-on-secondary-fixed-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined fill text-[20px]">admin_panel_settings</span>Global Operations</a></li><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined text-[20px]">inventory_2</span>Inventory</a></li><li class=""><a class="flex items-center gap-3 px-3 py-2.5 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined text-[20px]">settings_system_daydream</span>System Settings</a></li><li class="pt-4"><button class="w-full bg-primary-container text-on-primary-container hover:bg-on-primary-fixed-variant transition-colors duration-200 py-2.5 px-4 rounded font-nav-item text-nav-item flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">add</span>New Entry</button></li></ul>
+<!-- Footer Nav -->
+<div class="px-3 mt-auto pt-4 border-t border-on-secondary-fixed-variant border-opacity-30">
+<ul class="space-y-1">
+<li class="">
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out rounded" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                        Support
+                    </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out rounded" href="#">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+                        Log Out
+                    </a>
+</li>
+</ul>
+<!-- Profile Avatar (Mobile fallback/Bottom visual anchor) -->
+<div class="mt-4 px-3 flex items-center gap-3">
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover border-2 border-primary" data-alt="Professional headshot of a mature female hospital administrator, wearing a crisp white blouse and subtle glasses, soft neutral background, bright even lighting, high resolution, clinical setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdeqdPEgKbfOfbZfzkskKVYBJHqExc-fIpVWoRnMJp5mgaj0WERNmUusEaoczKialAOFuonhXkhBClGwLryk9wAwbgGob8htjE0rMpB3xJ1sMrRjvHMCmlZRtM8JiDD50PVQ2rjmpUSNcqRRelHvRdve5gMwyyghjMwYsDPz7L7cPT-bmBRPgtHm5q0YBZBo1uUH0uVI2KGmiHHiy67Hbz2I7YB6sYZ0LCH0LOgD84UX_Aqh91_QJxOA"/>
+<div class="flex-1 min-w-0">
+<p class="text-surface-bright font-nav-item text-nav-item truncate">Super Admin User</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-sidebar-width flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant docked full-width top-0 sticky z-40 flex justify-between items-center h-16 px-container-padding">
+<!-- Left: Title & Search (Search logic 'on_left' applied contextually) -->
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[24px]">shield</span>
+<h2 class="font-headline-md text-headline-md text-primary dark:text-primary">Global Control Center</h2>
+</div>
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-lowest border border-outline-variant rounded font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64" placeholder="Search system logs, rules..." type="text"/>
+</div>
+<div class="hidden xl:flex items-center gap-2 px-3 py-1 bg-[#dcfce7] text-[#166534] rounded-full border border-[#bbf7d0]">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+</span>
+<span class="font-label-bold text-[10px] uppercase">All Systems Optimal</span>
+</div>
+</div>
+<!-- Right: Actions & Profile -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 border-r border-outline-variant pr-4">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full transition-colors scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">settings_suggest</span>
+</button>
+</div>
+<div class="flex items-center gap-3">
+<button class="font-nav-item text-body-sm text-on-surface-variant hover:text-primary transition-colors">Export System Data</button>
+<button class="bg-inverse-surface text-surface-bright px-4 py-1.5 rounded font-nav-item text-body-sm hover:bg-on-secondary-fixed transition-colors shadow-sm flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">lock_open</span>Unlock Restrictions</button>
+</div>
+<img alt="Administrator Profile" class="w-9 h-9 rounded-full object-cover border-2 border-primary ml-2" data-alt="Close-up professional headshot of an administrator in a healthcare setting, bright high-key lighting, modern office background slightly blurred, wearing professional attire, confident expression, high quality clinical aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDF1INbi64YvK0F7CgvUIxgxdYxEBh5RJA2HDa9Bz5COCAlyw7Td4veDNlm-iaK58ZhGgQkFxsoccH_gb6whQTcObvMizC_yWjO5b-EA7RrnYO6HGJlnZAk7mZaTXiertqQ_EatcS7OcZA_fS1hdazoN1qMoMQsPppfN4aaoi0hbfbfw6Yc4b_twf5DI8Bt6XleT08ZsXuh88SJL6GjQV_J9gig-Q6swiXdREuwWzABWZQCTT1aiG37SQ"/>
+</div>
+</header>
+<!-- Page Canvas -->
+<main class="flex-1 p-container-padding overflow-y-auto">
+<!-- Page Header -->
+<div class="mb-8 flex justify-between items-start">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-2 flex items-center gap-2">Monthly Generator Engine <span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[12px] font-label-bold uppercase">Super Admin Mode</span></h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Configure global automated scheduling logic and mandatory staffing requirements. Overrides local ward preferences.</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-error/10 text-error px-4 py-2 rounded font-nav-item text-body-sm hover:bg-error/20 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+                            System Stress Test
+                        </button>
+</div>
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-grid-gutter">
+<!-- Left/Center Column (Settings Cards) -->
+<div class="xl:col-span-2 space-y-grid-gutter">
+<!-- Card: Minimum Staffing Requirements -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-6">
+<div class="flex items-center gap-2 mb-4 border-b border-outline-variant pb-3">
+<span class="material-symbols-outlined text-primary">groups</span>
+<h3 class="font-headline-md text-[16px] text-on-surface">Global Minimum Staffing Requirements</h3>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-5">Set absolute baseline clinical staff needed per shift type across all wards.</p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Day Shift -->
+<div class="bg-surface-container-low p-4 rounded border border-outline-variant/50 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-[#eab308]"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-[#eab308] text-[18px]">light_mode</span>
+<span class="font-label-bold text-label-bold text-on-surface uppercase">Day Shift</span>
+</div>
+<div class="space-y-3">
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">RN (Registered Nurses)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="12"/>
+</div>
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">Senior Matrons</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="2"/>
+</div>
+</div>
+</div>
+<!-- Afternoon Shift -->
+<div class="bg-surface-container-low p-4 rounded border border-outline-variant/50 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-[#f97316]"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-[#f97316] text-[18px]">wb_twilight</span>
+<span class="font-label-bold text-label-bold text-on-surface uppercase">Afternoon Shift</span>
+</div>
+<div class="space-y-3">
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">RN (Registered Nurses)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="10"/>
+</div>
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">Senior Matrons</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="2"/>
+</div>
+</div>
+</div>
+<!-- Night Shift -->
+<div class="bg-surface-container-low p-4 rounded border border-outline-variant/50 relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-primary text-[18px]">dark_mode</span>
+<span class="font-label-bold text-label-bold text-on-surface uppercase">Night Shift</span>
+</div>
+<div class="space-y-3">
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">RN (Registered Nurses)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="8"/>
+</div>
+<div>
+<label class="block font-body-sm text-[12px] text-on-surface-variant mb-1">Senior Matrons</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-1.5 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="1"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Layout row for Filters and Logic -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-grid-gutter">
+<!-- Card: Staff Availability & Filters -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-6">
+<div class="flex items-center gap-2 mb-4 border-b border-outline-variant pb-3">
+<span class="material-symbols-outlined text-primary">filter_alt</span>
+<h3 class="font-headline-md text-[16px] text-on-surface">Global Constraints</h3>
+</div>
+<div class="space-y-4">
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center mt-0.5">
+<input checked="" class="peer h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div>
+<p class="font-nav-item text-body-sm text-on-surface">Strict Leave Exclusion</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Prevents ANY override of approved PTO globally.</p>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center mt-0.5">
+<input checked="" class="peer h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div>
+<p class="font-nav-item text-body-sm text-on-surface">Mandatory Seniority Mix</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Ensures at least one senior role per high-acuity ward.</p>
+</div>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center mt-0.5">
+<input checked="" class="peer h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div>
+<p class="font-nav-item text-body-sm text-on-surface">Strict Compliance Cap (40h)</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Hard cap at 40 hrs to comply with union regulations.</p>
+</div>
+</label>
+</div>
+</div>
+<!-- Card: Algorithm Logic -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-6">
+<div class="flex items-center justify-between mb-4 border-b border-outline-variant pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="font-headline-md text-[16px] text-on-surface">Algorithm Logic</h3>
+</div>
+<label class="flex items-center cursor-pointer">
+<div class="relative">
+<input class="sr-only" type="checkbox"/>
+<div class="block bg-surface-container-high w-10 h-6 rounded-full"></div>
+<div class="dot absolute left-1 top-1 bg-primary w-4 h-4 rounded-full transition"></div>
+</div>
+<div class="ml-2 font-nav-item text-[12px] text-primary">Global Logic Override</div>
+</label>
+</div>
+<div class="mb-4">
+<label class="block font-nav-item text-body-sm text-on-surface mb-2">Primary Generation Strategy</label>
+<div class="relative">
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded px-3 py-2 font-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary appearance-none pr-10">
+<option value="balanced">Balanced Distribution (Default)</option>
+<option value="seniority">Seniority Weighted</option>
+<option value="fatigue">Fatigue Minimization</option>
+<option value="cost">Cost Optimization (Strict)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[20px]">arrow_drop_down</span>
+</div>
+</div>
+<div class="bg-surface-container-low rounded p-3 border border-outline-variant/30 flex gap-3">
+<span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">info</span>
+<p class="font-body-sm text-[12px] text-on-surface-variant leading-relaxed">
+<strong>Balanced Distribution:</strong> Attempts to evenly distribute weekend and night shifts across all available staff members regardless of tenure level. Best for general wards.
+                                </p>
+</div>
+</div>
+</div>
+<!-- Audit Trail -->
+<div class="xl:col-span-2">
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-6">
+<div class="flex items-center gap-2 mb-4 border-b border-outline-variant pb-3">
+<span class="material-symbols-outlined text-primary">manage_history</span>
+<h3 class="font-headline-md text-[16px] text-on-surface">System Audit Trail</h3>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-[12px]">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-nav-item text-on-surface">Global Logic Override Enabled</span>
+<span class="text-on-surface-variant">by System Admin (ID: 8829)</span>
+</div>
+<span class="text-on-surface-variant font-label-bold">Today, 10:14 AM</span>
+</div>
+<div class="flex justify-between items-center text-[12px]">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-nav-item text-on-surface">Day Shift Minimum increased to 12</span>
+<span class="text-on-surface-variant">by Ward Manager B</span>
+</div>
+<span class="text-on-surface-variant font-label-bold">Yesterday, 16:45 PM</span>
+</div>
+<div class="flex justify-between items-center text-[12px]">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-nav-item text-on-surface">Emergency Coverage Rule triggered</span>
+<span class="text-on-surface-variant">System Automated</span>
+</div>
+<span class="text-on-surface-variant font-label-bold">Oct 12, 02:30 AM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Logs & Actions) -->
+<div class="space-y-grid-gutter">
+<!-- Conflict Resolution Log -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant flex flex-col h-[400px]">
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low rounded-t-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">history</span>
+<h3 class="font-headline-md text-[14px] text-on-surface">Global Conflict Resolution</h3>
+</div>
+<button class="text-primary hover:text-primary-container font-nav-item text-[12px]">View All Logs</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4">
+<!-- Log Item 1 -->
+<div class="border-l-2 border-[#eab308] pl-3">
+<p class="font-label-bold text-[10px] text-on-surface-variant uppercase tracking-wider mb-1">Today, 09:41 AM</p>
+<p class="font-nav-item text-body-sm text-on-surface">Warning: Understaffed Night Shift</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Ward B is projecting 1 RN short for next Tuesday night due to overlapping PTO.</p>
+</div>
+<!-- Log Item 2 -->
+<div class="border-l-2 border-primary pl-3">
+<p class="font-label-bold text-[10px] text-on-surface-variant uppercase tracking-wider mb-1">Yesterday, 14:22 PM</p>
+<p class="font-nav-item text-body-sm text-on-surface">Engine Run Complete (Admin Auth)</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Successfully generated draft roster for ICU. 0 hard conflicts detected.</p>
+</div>
+<!-- Log Item 3 -->
+<div class="border-l-2 border-error pl-3">
+<p class="font-label-bold text-[10px] text-on-surface-variant uppercase tracking-wider mb-1">Oct 12, 08:15 AM</p>
+<p class="font-nav-item text-body-sm text-on-surface">Rule Violation Prevented (Global Override)</p>
+<p class="font-body-sm text-[11px] text-on-surface-variant">Prevented scheduling J. Doe for &gt;40 hrs. Reallocated weekend shift to S. Smith.</p>
+</div>
+</div>
+</div>
+<!-- Generate Action Area -->
+<div class="bg-inverse-surface rounded-lg border border-outline p-6 text-surface-bright relative overflow-hidden shadow-lg">
+<!-- Subtle decorative background element -->
+<div class="absolute -right-10 -top-10 w-32 h-32 bg-primary opacity-20 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center gap-2">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#86efac] opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-[#4ade80]"></span>
+</span>
+<span class="font-label-bold text-[11px] uppercase tracking-wider text-surface-container-low">Ready for Execution</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant">admin_panel_settings</span>
+</div>
+<h3 class="font-headline-md text-headline-md mb-2">Execute Global Roster Build</h3>
+<p class="font-body-sm text-[12px] opacity-80 mb-6 line-clamp-2">Initiates processing for all wards using global constraints. Estimated time: 45s.</p>
+<button class="w-full bg-primary text-on-primary font-headline-md text-body-sm py-3 px-4 rounded shadow-md hover:bg-on-primary-fixed-variant transition-colors flex items-center justify-center gap-2 border border-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+                            Execute Build
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

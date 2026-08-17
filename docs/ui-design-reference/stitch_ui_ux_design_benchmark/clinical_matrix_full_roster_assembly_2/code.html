@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Roster Page - Super Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#dce9ff",
+                        "on-tertiary-container": "#eff1f3",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-background": "#0b1c30",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface-variant": "#434655",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "inverse-surface": "#08101E", /* Deeper blue for Super Admin */
+                        "surface-bright": "#f8f9ff",
+                        "surface": "#F8FAFC",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#5c647a",
+                        "on-primary-container": "#eeefff",
+                        "primary": "#002b75", /* More authoritative primary */
+                        "tertiary-container": "#6b6e70",
+                        "surface-tint": "#0053db",
+                        "secondary-container": "#dae2fd",
+                        "surface-container-highest": "#d3e4fe",
+                        "outline": "#737686",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "background": "#F8FAFC",
+                        "tertiary": "#525657",
+                        "outline-variant": "#E2E8F0",
+                        "on-secondary-fixed": "#131b2e",
+                        "surface-variant": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "on-surface": "#0b1c30",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#e0e3e5",
+                        "inverse-on-surface": "#eaf1ff",
+                        "secondary-fixed": "#dae2fd",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-container-low": "#eff4ff",
+                        "inverse-primary": "#b4c5ff",
+                        "surface-container": "#e5eeff",
+                        "secondary": "#565e74",
+                        "primary-container": "#1d4ed8",
+                        "primary-fixed": "#dbe1ff",
+                        "on-error-container": "#93000a",
+                        "gold": "#D4AF37", /* Gold accent */
+                        "gold-light": "#FDF8E7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "240px",
+                        "container-padding": "2rem",
+                        "stack-sm": "0.5rem",
+                        "grid-gutter": "1rem",
+                        "stack-md": "1.5rem"
+                    },
+                    "fontFamily": {
+                        "display-lg-mobile": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "nav-item": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-bold": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "nav-item": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for matrix */
+        .matrix-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        .matrix-scroll::-webkit-scrollbar-track {
+            background: #F1F5F9; 
+            border-radius: 4px;
+        }
+        .matrix-scroll::-webkit-scrollbar-thumb {
+            background: #CBD5E1; 
+            border-radius: 4px;
+        }
+        .matrix-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8; 
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden flex">
+<!-- Sidebar Navigation -->
+<nav class="w-sidebar-width h-screen flex-shrink-0 bg-inverse-surface text-inverse-on-surface flex flex-col py-stack-md overflow-y-auto"><div class="px-6 mb-8">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-gold" style="font-size: 24px;">admin_panel_settings</span>
+<h1 class="font-display-lg text-[20px] font-bold text-inverse-on-surface">HealthConnect</h1>
+</div>
+<p class="font-body-sm text-body-sm text-gold opacity-90 font-medium">Super Admin Console</p>
+<p class="font-body-sm text-[11px] text-surface-variant opacity-70 mt-1">Global Oversight</p>
+</div>
+<div class="px-4 flex-1">
+<div class="mb-4">
+<div class="px-3 mb-2 font-label-bold text-label-bold text-surface-variant opacity-60 uppercase tracking-wider">All Modules Access</div>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">clinical_notes</span>
+<span class="font-nav-item text-nav-item">Clinical</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">medication</span>
+<span class="font-nav-item text-nav-item">Pharmacy</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">payments</span>
+<span class="font-nav-item text-nav-item">Finance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-gold bg-[#14233D] border-l-4 border-gold rounded-r-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">groups</span>
+<span class="font-nav-item text-nav-item font-semibold">Staff Operations</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">inventory_2</span>
+<span class="font-nav-item text-nav-item">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">settings</span>
+<span class="font-nav-item text-nav-item">Global Settings</span>
+</a>
+</div>
+<button class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-md font-nav-item text-nav-item hover:bg-primary-container transition-colors shadow-sm mt-4 border border-blue-400/30">
+<span class="material-symbols-outlined" style="font-size: 20px;">add</span>
+        New Entry
+    </button>
+</div>
+<div class="mt-auto px-4 pt-4 border-t border-on-secondary-fixed-variant">
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">help</span>
+<span class="font-nav-item text-nav-item">Support</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-surface-variant hover:bg-on-secondary-fixed-variant hover:text-surface-bright rounded-md transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" style="font-size: 20px;">logout</span>
+<span class="font-nav-item text-nav-item">Log Out</span>
+</a>
+</div></nav>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-background">
+<!-- Top Bar with Super Admin Indicators -->
+<div class="w-full bg-white border-b border-outline-variant px-container-padding py-2 flex justify-between items-center text-xs font-medium text-on-surface-variant">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<span>System Health: Optimal</span>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined" style="font-size: 14px;">policy</span>
+<span>Global Audit Logging Active</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-gold" style="font-size: 14px;">verified_user</span>
+<span>Super Admin Session ID: SA-99482</span>
+</div>
+</div>
+<!-- Header Section -->
+<header class="px-container-padding pt-6 pb-4 flex-shrink-0">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-1 flex items-center gap-2">
+    Full Roster Assembly &amp; Governance
+    <span class="bg-gold-light text-yellow-800 text-xs px-2 py-0.5 rounded border border-yellow-200 font-label-bold flex items-center gap-1"><span class="material-symbols-outlined" style="font-size: 12px;">visibility</span> Total Oversight</span>
+</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Automated monthly scheduling with full daily shift matrices and administrative override capabilities.</p>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-sm text-body-sm text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-full">Status: Live (Overrides Enabled)</span>
+<button class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-md font-nav-item text-nav-item hover:bg-red-100 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 16px;">gavel</span>
+                        Force Override
+                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-md font-nav-item text-nav-item hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 16px;">settings_suggest</span>
+                        Global Re-Optimize
+                    </button>
+</div>
+</div>
+<!-- Tab Navigation -->
+<div class="border-b border-outline-variant flex gap-8">
+<button class="pb-3 border-b-2 border-primary text-primary font-nav-item text-nav-item font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">grid_view</span> Daily Schedule Matrix
+                </button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary font-nav-item text-nav-item transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">precision_manufacturing</span> Monthly Engine Config
+                </button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary font-nav-item text-nav-item transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">fact_check</span> Approvals &amp; Compliance Logs
+                </button>
+</div>
+</header>
+<!-- Matrix Content Area -->
+<div class="flex-1 overflow-hidden px-container-padding pb-8 flex gap-4">
+<div class="bg-surface border border-outline-variant rounded-lg h-full flex flex-col shadow-sm flex-1 overflow-hidden">
+<!-- Matrix Header Controls -->
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest rounded-t-lg flex-shrink-0">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Daily Matrix: September 2026</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1 mt-1 text-primary">
+<span class="material-symbols-outlined" style="font-size: 14px;">edit_note</span>
+                            Editing Mode Active. You have rights to bypass standard rules.
+                        </p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex bg-gray-100 rounded p-1">
+<button class="px-3 py-1 text-sm bg-white shadow-sm rounded font-medium text-on-surface">All Staff</button>
+<button class="px-3 py-1 text-sm text-on-surface-variant hover:text-on-surface">Exceptions</button>
+</div>
+<select class="border border-outline-variant rounded-md px-3 py-1.5 font-body-sm text-body-sm bg-surface text-on-surface focus:ring-primary focus:border-primary">
+<option>September 2026</option>
+<option>October 2026</option>
+</select>
+</div>
+</div>
+<!-- Scrollable Matrix Grid -->
+<div class="flex-1 overflow-x-auto overflow-y-auto matrix-scroll">
+<table class="w-full text-left border-collapse min-w-[1200px]">
+<thead class="sticky top-0 bg-[#F1F5F9] z-10">
+<tr>
+<th class="p-3 font-label-bold text-label-bold text-on-surface sticky left-0 bg-[#F1F5F9] z-20 border-b border-outline-variant min-w-[150px]">Staff Member</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface sticky left-[150px] bg-[#F1F5F9] z-20 border-b border-outline-variant min-w-[180px]">Role</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 1</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 2</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 3</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 4</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 5</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 6</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 7</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 8</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface text-center border-b border-outline-variant min-w-[100px]">Day 9</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant bg-surface">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-3 font-body-sm text-body-sm text-primary font-medium sticky left-0 bg-surface border-r border-outline-variant z-10">Elizabeth Cole</td>
+<td class="p-3 font-body-sm text-body-sm text-on-surface-variant sticky left-[150px] bg-surface border-r border-outline-variant z-10">Senior Matron</td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-3 font-body-sm text-body-sm text-primary font-medium sticky left-0 bg-surface border-r border-outline-variant z-10">Janet Bello</td>
+<td class="p-3 font-body-sm text-body-sm text-on-surface-variant sticky left-[150px] bg-surface border-r border-outline-variant z-10">Staff Nurse</td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center">
+<div class="relative group inline-block">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 font-label-bold text-[11px] cursor-pointer"><span class="material-symbols-outlined" style="font-size: 12px;">warning</span> Day (Over)</span>
+</div>
+</td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-3 font-body-sm text-body-sm text-primary font-medium sticky left-0 bg-surface border-r border-outline-variant z-10">Dr. Akare</td>
+<td class="p-3 font-body-sm text-body-sm text-on-surface-variant sticky left-[150px] bg-surface border-r border-outline-variant z-10">General Practitioner</td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="p-3 font-body-sm text-body-sm text-primary font-medium sticky left-0 bg-surface border-r border-outline-variant z-10">Chidi Okafor</td>
+<td class="p-3 font-body-sm text-body-sm text-on-surface-variant sticky left-[150px] bg-surface border-r border-outline-variant z-10">Lead Pharmacist</td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-orange-300"><span class="material-symbols-outlined" style="font-size: 12px;">wb_sunny</span> Aft</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-blue-300"><span class="material-symbols-outlined" style="font-size: 12px;">bedtime</span> Night</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-gray-300"><span class="material-symbols-outlined" style="font-size: 12px;">beach_access</span> Off</span></td>
+<td class="p-3 text-center"><span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 font-label-bold text-[11px] cursor-pointer hover:ring-2 hover:ring-yellow-300"><span class="material-symbols-outlined" style="font-size: 12px;">light_mode</span> Day</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Administrative Overrides Panel -->
+<div class="w-80 bg-white border border-outline-variant rounded-lg flex flex-col shadow-sm flex-shrink-0">
+<div class="p-4 border-b border-outline-variant bg-slate-50 rounded-t-lg">
+<h3 class="font-headline-md text-sm font-semibold flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-red-600" style="font-size: 18px;">admin_panel_settings</span>
+            Administrative Overrides
+        </h3>
+<p class="text-xs text-on-surface-variant mt-1">Bypass standard constraints</p>
+</div>
+<div class="p-4 flex-1 overflow-y-auto space-y-4">
+<!-- Override Control 1 -->
+<div class="bg-red-50/50 border border-red-100 p-3 rounded-md">
+<div class="flex justify-between items-start mb-2">
+<span class="text-sm font-medium text-slate-800">Union Rules Check</span>
+<button class="relative inline-flex h-5 w-9 items-center rounded-full bg-red-500">
+<span class="inline-block h-3 w-3 transform rounded-full bg-white transition translate-x-5"></span>
+</button>
+</div>
+<p class="text-xs text-slate-600">Currently bypassing max-hours constraints.</p>
+</div>
+<!-- Override Control 2 -->
+<div class="border border-outline-variant p-3 rounded-md">
+<div class="flex justify-between items-start mb-2">
+<span class="text-sm font-medium text-slate-800">Minimum Rest Period</span>
+<button class="relative inline-flex h-5 w-9 items-center rounded-full bg-slate-300">
+<span class="inline-block h-3 w-3 transform rounded-full bg-white transition translate-x-1"></span>
+</button>
+</div>
+<p class="text-xs text-slate-600">Enforcing 11-hour rest between shifts.</p>
+</div>
+<!-- Selected Cell Context -->
+<div class="mt-6 pt-4 border-t border-outline-variant">
+<h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Selected Shift Edit</h4>
+<div class="bg-slate-50 p-3 rounded border border-slate-200">
+<p class="text-sm font-medium mb-1">Janet Bello</p>
+<p class="text-xs text-slate-600 mb-3">Day 2 • Staff Nurse</p>
+<label class="text-xs font-medium text-slate-700 block mb-1">Force Assignment</label>
+<select class="w-full text-sm border-slate-300 rounded focus:ring-primary focus:border-primary">
+<option>Day Shift</option>
+<option>Afternoon Shift</option>
+<option>Night Shift</option>
+<option>Off</option>
+</select>
+<div class="mt-3 text-xs text-red-600 bg-red-50 p-2 rounded flex gap-1">
+<span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+                    Assigning this shift violates minimum rest periods.
+                </div>
+<button class="w-full mt-3 bg-slate-800 hover:bg-slate-900 text-white text-sm py-1.5 rounded transition-colors">
+                    Apply &amp; Ignore Warning
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

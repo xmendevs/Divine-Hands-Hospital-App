@@ -1,0 +1,392 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Individual Staff Profile - Clinical Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#eff4ff",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#5c647a",
+                        "on-error-container": "#93000a",
+                        "secondary": "#565e74",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed": "#131b2e",
+                        "background": "#f8f9ff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "primary-fixed": "#dbe1ff",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#b4c5ff",
+                        "primary-container": "#2563eb",
+                        "inverse-on-surface": "#eaf1ff",
+                        "surface-container": "#e5eeff",
+                        "surface-container-highest": "#d3e4fe",
+                        "outline": "#737686",
+                        "on-tertiary-container": "#eff1f3",
+                        "on-background": "#0b1c30",
+                        "surface-bright": "#f8f9ff",
+                        "secondary-container": "#dae2fd",
+                        "on-primary-container": "#eeefff",
+                        "surface-container-high": "#dce9ff",
+                        "surface-tint": "#0053db",
+                        "on-primary-fixed": "#00174b",
+                        "on-tertiary-fixed": "#191c1e",
+                        "surface": "#f8f9ff",
+                        "tertiary-fixed": "#e0e3e5",
+                        "tertiary": "#525657",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#0b1c30",
+                        "surface-dim": "#cbdbf5",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#6b6e70",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "inverse-surface": "#213145",
+                        "surface-variant": "#d3e4fe",
+                        "secondary-fixed": "#dae2fd",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "primary": "#004ac6",
+                        "on-surface-variant": "#434655"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "240px",
+                        "stack-sm": "0.5rem",
+                        "stack-md": "1.5rem",
+                        "container-padding": "2rem",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "nav-item": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "display-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "nav-item": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["20px", { "lineHeight": "28px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased overflow-x-hidden flex min-h-screen">
+<!-- SideNavBar -->
+<nav class="w-sidebar-width h-screen fixed left-0 top-0 bg-inverse-surface dark:bg-inverse-surface flex flex-col py-stack-md z-50">
+<div class="px-6 mb-8">
+<h1 class="font-display-lg text-display-lg text-inverse-on-surface mb-1">HealthConnect</h1>
+<p class="text-surface-variant font-body-sm">City General Hospital</p>
+</div>
+
+<div class="flex-1 overflow-y-auto px-3 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="clinical_notes">clinical_notes</span>
+                Clinical
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="medication">medication</span>
+                Pharmacy
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+                Finance
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-primary-fixed-dim border-l-4 border-primary bg-on-secondary-fixed-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+                Staff Operations
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+                Inventory
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+<div class="px-1 mt-4 mb-2">
+<button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-nav-item flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-colors duration-200">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                New Entry
+            </button>
+</div></div>
+<div class="mt-auto px-3 pt-4 border-t border-on-secondary-fixed-variant">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Log Out
+            </a>
+</div>
+</nav>
+<!-- Main Wrapper -->
+<div class="ml-sidebar-width flex-1 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant flex justify-between items-center h-16 px-container-padding docked full-width top-0 sticky z-40 flat no shadows">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md text-primary dark:text-primary">Clinical Dashboard</h2>
+</div>
+<div class="flex-1 max-w-md mx-8 hidden md:block">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 20px;">search</span>
+<input class="w-full pl-10 pr-4 py-2 rounded-lg bg-surface-container-low border-none text-body-md focus:ring-1 focus:ring-primary outline-none text-on-surface" placeholder="Search staff, patients..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary hover:bg-surface-container-low p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary hover:bg-surface-container-low p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="apps">apps</span>
+</button>
+<div class="h-8 border-l border-outline-variant mx-2"></div>
+<button class="text-primary font-nav-item hover:bg-surface-container-low px-3 py-1.5 rounded-md transition-colors border border-outline-variant">Export Data</button>
+<button class="bg-primary text-on-primary font-nav-item px-4 py-1.5 rounded-md hover:bg-primary-container transition-colors shadow-sm">Add Patient</button>
+<img alt="Administrator Profile" class="w-8 h-8 rounded-full ml-2 border border-outline-variant object-cover" data-alt="A small circular profile picture of an older male hospital administrator wearing a suit, clear lighting, professional corporate setting, modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBP4Hnq0-Ob3HokIRALtDR9WNXTDkn84wTGtf0L81EoWU8tFJeml-OS8TErAJi7xblFe8PqdJsv6Zt3UVWIz2UlKQi25YPSPGg-5ejiZevxka_bQvK3G5dNanhCGafAL1wXz9_NQHRNqtm2QE4PkSpb5_IzLrtjyW8JzUtBdJnC_DDqwUVRiLO1x95EZERBOAdL-jmKAPLbk3UzxDY8d1mnWcm423Ck82z_IsNOIuusrFcf_TrnIzU8wg">
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 p-container-padding pb-20">
+<!-- Breadcrumbs / Back -->
+<div class="mb-6 flex items-center gap-2 text-on-surface-variant font-body-sm">
+<a class="hover:text-primary transition-colors" href="#">Staff &amp; Operations</a>
+<span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Roster</a>
+<span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span>
+<span class="text-on-surface font-medium">Sarah Jenkins</span>
+</div>
+<!-- Profile Header Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+<div class="flex items-center gap-6">
+<div class="relative">
+<img class="w-24 h-24 rounded-full object-cover border-4 border-surface-container-low shadow-sm" data-alt="A professional headshot of a middle-aged female nurse in a clinical setting, wearing blue scrubs, looking friendly but professional, clean bright hospital background, high resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvCL37AE_sJ3QvxU82D0spIKMaZV-Hh7eGZmCI_vHF3_njxqVGad1n1xnRD6bL2zBJRk20Sk0gmJ7VaQiubJ6Lj6AX_KSCd3ydzi52fAYD7v20Lbk32_VU5kDeET2J6VSZkf8x1RI2DHK1F5t_MrP3TQpWz6VFlwFoiLlJyGoAfdwRDUzF2f2xMsEQBggB7QT43ZuADqYtJGgp3mPLIlcZRqa1IJo5V3ERw23LxErY8WKphfw2RtFf0w">
+<div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-surface-container-lowest" title="Active"></div>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-1">Sarah Jenkins</h1>
+<p class="text-primary font-headline-md text-headline-md mb-2">Senior Matron</p>
+<div class="flex items-center gap-4 text-on-surface-variant font-body-sm">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined" style="font-size: 16px;">mail</span>
+                                s.jenkins@citygeneral.org
+                            </span>
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined" style="font-size: 16px;">call</span>
+                                +44 7700 900 123
+                            </span>
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined" style="font-size: 16px;">badge</span>
+                                ID: MAT-8842
+                            </span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-lowest text-error border border-error px-4 py-2 rounded-md font-nav-item hover:bg-error-container hover:text-on-error-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">block</span>
+                        Deactivate
+                    </button>
+<button class="bg-primary text-on-primary px-5 py-2 rounded-md font-nav-item hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">edit</span>
+                        Edit Profile
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Column 1: Personal & Professional Info -->
+<div class="lg:col-span-1 flex flex-col gap-6">
+<!-- Professional Details Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">work</span>
+                            Professional Details
+                        </h3>
+<div class="space-y-4">
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Department</label>
+<p class="text-on-surface font-body-md">Emergency (A&amp;E)</p>
+</div>
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Contracted Hours</label>
+<p class="text-on-surface font-body-md">40 hrs / week</p>
+</div>
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Join Date</label>
+<p class="text-on-surface font-body-md">12 Mar 2018</p>
+</div>
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Line Manager</label>
+<p class="text-primary font-body-md cursor-pointer hover:underline flex items-center gap-1">
+                                    Dr. Robert Sterling
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">open_in_new</span>
+</p>
+</div>
+</div>
+</div>
+<!-- Personal Information Card -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">person</span>
+                            Personal Information
+                        </h3>
+<div class="space-y-4">
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Date of Birth</label>
+<p class="text-on-surface font-body-md">24 Aug 1982</p>
+</div>
+<div>
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1">Home Address</label>
+<p class="text-on-surface font-body-md">142 Riverview Apartments,<br>Thameside, London,<br>SE1 4XX</p>
+</div>
+<div class="pt-2 border-t border-outline-variant">
+<label class="text-on-surface-variant font-label-bold text-label-bold uppercase block mb-1 mt-2">Emergency Contact</label>
+<p class="text-on-surface font-body-md font-medium">David Jenkins (Husband)</p>
+<p class="text-on-surface-variant font-body-sm mt-1">+44 7700 900 456</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Column 2 & 3: Schedule & Activity -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<!-- Current Schedule Preview -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex-1">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_month</span>
+                                Upcoming Schedule (Next 7 Days)
+                            </h3>
+<button class="text-primary font-nav-item text-nav-item hover:bg-surface-container-low px-3 py-1.5 rounded transition-colors flex items-center gap-1">
+                                View Full Roster
+                                <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+</button>
+</div>
+<div class="overflow-x-auto rounded-lg border border-outline-variant">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="p-3 font-label-bold text-label-bold text-on-surface-variant uppercase w-1/4">Date</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface-variant uppercase w-1/4">Shift</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface-variant uppercase w-1/4">Ward</th>
+<th class="p-3 font-label-bold text-label-bold text-on-surface-variant uppercase w-1/4">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="p-3 font-medium">Mon, 14 Sep</td>
+<td class="p-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF3E0] text-[#E65100] text-xs font-medium border border-[#FFE0B2]">
+<span class="material-symbols-outlined" style="font-size: 14px;">sunny</span>
+                                                Day (07:00 - 19:00)
+                                            </span>
+</td>
+<td class="p-3">A&amp;E Main</td>
+<td class="p-3 text-on-surface-variant">Confirmed</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="p-3 font-medium">Tue, 15 Sep</td>
+<td class="p-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E3F2FD] text-[#1565C0] text-xs font-medium border border-[#BBDEFB]">
+<span class="material-symbols-outlined" style="font-size: 14px;">wb_twilight</span>
+                                                Aft (13:00 - 01:00)
+                                            </span>
+</td>
+<td class="p-3">A&amp;E Triage</td>
+<td class="p-3 text-on-surface-variant">Confirmed</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors bg-surface-container-low/30">
+<td class="p-3 font-medium text-on-surface-variant">Wed, 16 Sep</td>
+<td class="p-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F5F5F5] text-[#616161] text-xs font-medium border border-[#E0E0E0]">
+<span class="material-symbols-outlined" style="font-size: 14px;">nature_people</span>
+                                                Off
+                                            </span>
+</td>
+<td class="p-3 text-on-surface-variant">-</td>
+<td class="p-3 text-on-surface-variant">-</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="p-3 font-medium">Thu, 17 Sep</td>
+<td class="p-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE7F6] text-[#4527A0] text-xs font-medium border border-[#D1C4E9]">
+<span class="material-symbols-outlined" style="font-size: 14px;">bedtime</span>
+                                                Night (19:00 - 07:00)
+                                            </span>
+</td>
+<td class="p-3">A&amp;E Resus</td>
+<td class="p-3 text-on-surface-variant">Confirmed</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="p-3 font-medium">Fri, 18 Sep</td>
+<td class="p-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EDE7F6] text-[#4527A0] text-xs font-medium border border-[#D1C4E9]">
+<span class="material-symbols-outlined" style="font-size: 14px;">bedtime</span>
+                                                Night (19:00 - 07:00)
+                                            </span>
+</td>
+<td class="p-3">A&amp;E Resus</td>
+<td class="p-3 text-on-surface-variant">Confirmed</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Mini Stats Summary -->
+<div class="mt-6 grid grid-cols-3 gap-4 border-t border-outline-variant pt-6">
+<div class="text-center">
+<span class="block text-on-surface-variant font-label-bold text-label-bold uppercase mb-1">Hours this week</span>
+<span class="font-display-lg text-display-lg text-on-surface">48</span>
+<span class="text-error font-body-sm block mt-1">+8 Overtime</span>
+</div>
+<div class="text-center border-l border-outline-variant">
+<span class="block text-on-surface-variant font-label-bold text-label-bold uppercase mb-1">Annual Leave</span>
+<span class="font-display-lg text-display-lg text-on-surface">12</span>
+<span class="text-on-surface-variant font-body-sm block mt-1">Days Remaining</span>
+</div>
+<div class="text-center border-l border-outline-variant">
+<span class="block text-on-surface-variant font-label-bold text-label-bold uppercase mb-1">Sickness</span>
+<span class="font-display-lg text-display-lg text-on-surface">0</span>
+<span class="text-on-surface-variant font-body-sm block mt-1">Days YTD</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+
+</body></html>

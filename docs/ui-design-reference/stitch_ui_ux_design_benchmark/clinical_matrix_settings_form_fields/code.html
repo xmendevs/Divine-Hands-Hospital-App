@@ -1,0 +1,269 @@
+<!DOCTYPE html><html class="h-full bg-background dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Settings - Clinical Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f8f9ff",
+                      "tertiary-container": "#6b6e70",
+                      "primary": "#004ac6",
+                      "tertiary-fixed-dim": "#c4c7c9",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#444749",
+                      "secondary-fixed": "#dae2fd",
+                      "secondary": "#565e74",
+                      "surface-container-high": "#dce9ff",
+                      "on-surface-variant": "#434655",
+                      "on-tertiary-fixed": "#191c1e",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#0b1c30",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-container-highest": "#d3e4fe",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-variant": "#d3e4fe",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "primary-fixed": "#dbe1ff",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "outline": "#737686",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#eeefff",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "surface-bright": "#f8f9ff",
+                      "inverse-surface": "#213145",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed": "#e0e3e5",
+                      "surface-container": "#e5eeff",
+                      "tertiary": "#525657",
+                      "on-tertiary-container": "#eff1f3",
+                      "inverse-on-surface": "#eaf1ff",
+                      "on-background": "#0b1c30",
+                      "on-primary-fixed": "#00174b",
+                      "primary-container": "#2563eb",
+                      "error": "#ba1a1a",
+                      "surface-container-low": "#eff4ff",
+                      "on-secondary-fixed": "#131b2e",
+                      "on-secondary-container": "#5c647a",
+                      "surface-dim": "#cbdbf5",
+                      "surface": "#f8f9ff",
+                      "secondary-container": "#dae2fd",
+                      "surface-tint": "#0053db",
+                      "outline-variant": "#c3c6d7",
+                      "on-tertiary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-md": "1.5rem",
+                      "grid-gutter": "1rem",
+                      "sidebar-width": "240px",
+                      "stack-sm": "0.5rem",
+                      "container-padding": "2rem"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-bold": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "nav-item": [
+                              "Inter"
+                      ],
+                      "display-lg-mobile": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "nav-item": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-lg-mobile": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background h-full font-body-md overflow-hidden flex antialiased">
+<!-- SideNavBar -->
+<nav class="w-sidebar-width h-screen fixed left-0 top-0 bg-inverse-surface dark:bg-inverse-surface border-r border-outline-variant/20 hidden md:flex flex-col h-full py-stack-md z-50">
+<!-- Brand Header -->
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">medical_services</span>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-inverse-on-surface">HealthConnect</h1>
+<p class="font-body-sm text-body-sm text-surface-variant/70">City General Hospital</p>
+</div>
+</div>
+</div>
+<!-- Main Nav -->
+<div class="flex-1 px-3 space-y-1 overflow-y-auto"><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">clinical_notes</span>Clinical</a><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">medication</span>Pharmacy</a><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">payments</span>Finance</a><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">groups</span>Staff Operations</a><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">inventory_2</span>Inventory</a><a class="flex items-center gap-3 px-3 py-2 rounded text-primary-fixed-dim border-l-4 border-primary bg-on-secondary-fixed-variant transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>Settings</a></div>
+<!-- Bottom Actions -->
+<div class="px-4 mt-auto space-y-4"><button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-2 px-4 rounded-lg font-nav-item text-nav-item hover:bg-primary-container transition-colors"><span class="material-symbols-outlined text-[18px]">add</span>New Entry</button><div class="pt-4 border-t border-outline-variant/20 space-y-1"><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">help</span>Support</a><a class="flex items-center gap-3 px-3 py-2 rounded text-surface-variant font-nav-item hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200 ease-in-out" href="#"><span class="material-symbols-outlined">logout</span>Log Out</a></div></div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-sidebar-width flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant docked full-width top-0 sticky z-40 flex justify-between items-center h-16 px-container-padding">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-on-surface hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="flex items-center bg-surface-container-low rounded-full px-4 py-1.5 border border-outline-variant/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm placeholder-on-surface-variant/50 w-64" placeholder="Search patients, staff..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden lg:flex items-center gap-4">
+<button class="text-on-surface-variant font-nav-item hover:text-primary hover:bg-surface-container-low px-3 py-1.5 rounded transition-colors">Export Data</button>
+<button class="bg-primary text-on-primary px-4 py-1.5 rounded-lg font-nav-item text-nav-item hover:bg-primary-container transition-colors shadow-sm">Add Patient</button>
+</div>
+<div class="flex items-center gap-2 border-l border-outline-variant pl-6">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full scale-95 active:scale-90 transition-transform relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-full scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">apps</span>
+</button>
+<button class="ml-2 w-8 h-8 rounded-full overflow-hidden border border-outline-variant focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all">
+<img alt="Administrator Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a hospital administrator in a well-lit office. The lighting is soft and natural, conveying competence and trust. The overall tone is corporate and modern, fitting a high-end clinical application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6AiJrgzMuwaTHp5CWGCn_EZl-wp2tYhfjQ5v2P4J4euEG25_jgQMcr3oZ-pGPG5OYhtysO47yn5eEhw018lbJvOEmWIUHCcCus_-vzPpIWulu2Gyrq1iakKufVikbeCXEjmqRzhUen0SXs9GRodnFAQysfPg73wrZWou9NeLOXb36dIvN0a-Ua4cttgRFAB9M_Nmi4LrTqtrITQi3PCzNQqfjTl4CrIcDno50zqmWu7kPyllKiiAFbg">
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 overflow-y-auto p-container-padding bg-surface-container-low/30">
+<div class="max-w-4xl mx-auto space-y-6">
+<!-- Page Header -->
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface">System Settings</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage application configurations and integrations.</p>
+</div>
+<!-- Settings Card -->
+<div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+<!-- Header -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #F1F5F9; padding-bottom: 16px;">
+<div>
+<h3 style="font-size: 18px; font-weight: 700; color: #0F172A; font-family: 'Inter', sans-serif; margin: 0;" class="">Backup &amp; Cloud Storage</h3>
+<p style="font-size: 13px; color: #64748B; margin-top: 4px; font-family: 'Inter', sans-serif;" class="">Configure secure data archiving protocols.</p>
+</div>
+<span style="background-color: #ECFDF5; color: #059669; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 4px;" class="">
+<span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                            Stable
+                        </span>
+</div>
+<!-- Form Body -->
+<div style="display: grid; gap: 20px;">
+<!-- Field: Storage Provider -->
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label style="font-size: 14px; color: #475569; font-weight: 500; font-family: 'Inter', sans-serif;" class="">Storage Provider</label>
+<div style="position: relative;">
+<select style="width: 100%; background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 8px 12px; font-size: 14px; color: #1E293B; appearance: none; outline: none;">
+<option>AWS HealthLake (HIPAA Compliant)</option>
+<option>Google Cloud Healthcare API</option>
+<option>Azure API for FHIR</option>
+</select>
+<span class="material-symbols-outlined" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #64748B; pointer-events: none;">expand_more</span>
+</div>
+</div>
+<!-- Field: Backup Frequency -->
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label style="font-size: 14px; color: #475569; font-weight: 500; font-family: 'Inter', sans-serif;" class="">Backup Frequency</label>
+<input style="width: 100%; background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 8px 12px; font-size: 14px; color: #1E293B; outline: none;" type="text" value="Every 4 Hours (Continuous)">
+</div>
+<!-- Field: Recovery Email -->
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label style="font-size: 14px; color: #475569; font-weight: 500; font-family: 'Inter', sans-serif;" class="">Recovery Email</label>
+<input style="width: 100%; background-color: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; padding: 8px 12px; font-size: 14px; color: #1E293B; outline: none;" type="email" value="admin.ops@citygeneral.org">
+<span style="font-size: 12px; color: #64748B; font-family: 'Inter', sans-serif; margin-top: 2px;" class="">Used for emergency access and alert notifications.</span>
+</div>
+</div>
+<!-- Footer -->
+<div style="margin-top: 32px; display: flex; justify-content: flex-end; border-top: 1px solid #F1F5F9; padding-top: 24px;">
+<button style="background-color: #004ac6; color: #FFFFFF; padding: 10px 20px; border-radius: 6px; font-weight: 500; font-size: 14px; font-family: 'Inter', sans-serif; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background-color 0.2s;" class="">
+<span class="material-symbols-outlined" style="font-size: 18px;">save</span>
+                            Save Changes
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+
+</body></html>

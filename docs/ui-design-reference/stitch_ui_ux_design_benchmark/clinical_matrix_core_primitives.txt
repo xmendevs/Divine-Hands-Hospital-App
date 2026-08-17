@@ -1,0 +1,157 @@
+import React, { CSSProperties } from 'react';
+
+/**
+ * 1. ShiftBadge Component
+ * Based on the pill-shaped status indicators in the reference image.
+ */
+
+export type ShiftVariant = 'Day' | 'Night' | 'Aft' | 'Off';
+
+interface ShiftBadgeProps {
+  variant: ShiftVariant;
+  label?: string;
+}
+
+const shiftStyles: Record<ShiftVariant, { backgroundColor: string; color: string; border: string; icon: string }> = {
+  Day: {
+    backgroundColor: '#FEF3C7',
+    color: '#B45309',
+    border: '1px solid #FDE68A',
+    icon: '☀️',
+  },
+  Night: {
+    backgroundColor: '#E0E7FF',
+    color: '#4338CA',
+    border: '1px solid #C7D2FE',
+    icon: '🌙',
+  },
+  Aft: {
+    backgroundColor: '#E0F2FE',
+    color: '#0369A1',
+    border: '1px solid #BAE6FD',
+    icon: '🌅',
+  },
+  Off: {
+    backgroundColor: '#F8FAFC',
+    color: '#64748B',
+    border: '1px solid #E2E8F0',
+    icon: '🌴',
+  },
+};
+
+export const ShiftBadge: React.FC<ShiftBadgeProps> = ({ variant, label }) => {
+  const theme = shiftStyles[variant];
+
+  const badgeStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+    padding: '4px 8px',
+    borderRadius: '9999px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'none', // Matches the 'Aft', 'Night' casing in reference
+    backgroundColor: theme.backgroundColor,
+    color: theme.color,
+    border: theme.border,
+    lineHeight: '1',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
+  };
+
+  return (
+    <div style={badgeStyle}>
+      <span>{theme.icon}</span>
+      <span>{label || variant}</span>
+    </div>
+  );
+};
+
+/**
+ * 2. Button Component
+ * Standard action buttons with Primary and Secondary variants.
+ */
+
+export type ButtonVariant = 'Primary' | 'Secondary';
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  icon?: React.ReactNode;
+}
+
+export const Button: React.FC<ButtonProps> = ({ 
+  variant = 'Primary', 
+  icon, 
+  children, 
+  style, 
+  disabled, 
+  ...props 
+}) => {
+  const isPrimary = variant === 'Primary';
+  
+  const baseButtonStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    padding: '8px 16px',
+    borderRadius: '6px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    transition: 'all 0.2s ease',
+    border: 'none',
+    outline: 'none',
+    backgroundColor: isPrimary ? '#2563EB' : '#334155',
+    color: '#FFFFFF',
+    ...style,
+  };
+
+  // Note: Hover states in pure inline styles typically require State management.
+  // For this component primitive, we'll use a wrapper or standard button props.
+  
+  return (
+    <button 
+      style={baseButtonStyle} 
+      disabled={disabled}
+      onMouseOver={(e) => {
+        if (!disabled) e.currentTarget.style.opacity = '0.9';
+      }}
+      onMouseOut={(e) => {
+        if (!disabled) e.currentTarget.style.opacity = '1';
+      }}
+      {...props}
+    >
+      {icon && <span style={{ display: 'flex' }}>{icon}</span>}
+      {children}
+    </button>
+  );
+};
+
+/**
+ * Component Preview / Documentation
+ */
+export const ComponentPrimitivesPreview = () => (
+  <div style={{ padding: '24px', backgroundColor: '#f8f9ff', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+    <section style={{ marginBottom: '40px' }}>
+      <h2 style={{ fontSize: '18px', color: '#1e293b', marginBottom: '16px' }}>Shift Badges</h2>
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <ShiftBadge variant="Day" />
+        <ShiftBadge variant="Night" />
+        <ShiftBadge variant="Aft" />
+        <ShiftBadge variant="Off" />
+      </div>
+    </section>
+
+    <section>
+      <h2 style={{ fontSize: '18px', color: '#1e293b', marginBottom: '16px' }}>Action Buttons</h2>
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+        <Button variant="Primary">Auto-Reschedule</Button>
+        <Button variant="Secondary" icon={<span>📝</span>}>Edit Roster Manually</Button>
+        <Button variant="Primary" disabled>Disabled Action</Button>
+      </div>
+    </section>
+  </div>
+);

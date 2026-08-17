@@ -1,0 +1,188 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Clinical Dashboard - Roster Planning</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#213145",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-container": "#e5eeff",
+                        "surface-tint": "#0053db",
+                        "inverse-on-surface": "#eaf1ff",
+                        "secondary": "#565e74",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "background": "#f8f9ff",
+                        "surface-dim": "#cbdbf5",
+                        "tertiary-fixed": "#e0e3e5",
+                        "surface-container-highest": "#d3e4fe",
+                        "tertiary": "#525657",
+                        "on-secondary-container": "#5c647a",
+                        "on-tertiary-container": "#eff1f3",
+                        "surface-variant": "#d3e4fe",
+                        "surface-container-high": "#dce9ff",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "primary": "#004ac6",
+                        "on-surface": "#0b1c30",
+                        "secondary-container": "#dae2fd",
+                        "tertiary-fixed-dim": "#c4c7c9",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#eeefff",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface": "#f8f9ff",
+                        "on-secondary-fixed": "#131b2e",
+                        "primary-container": "#2563eb",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#191c1e",
+                        "on-surface-variant": "#434655",
+                        "on-background": "#0b1c30",
+                        "surface-bright": "#f8f9ff",
+                        "tertiary-container": "#6b6e70",
+                        "primary-fixed": "#dbe1ff",
+                        "on-tertiary-fixed-variant": "#444749",
+                        "surface-container-low": "#eff4ff",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#dae2fd",
+                        "on-primary-fixed": "#00174b",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-md": "1.5rem",
+                        "container-padding": "2rem",
+                        "stack-sm": "0.5rem",
+                        "sidebar-width": "240px",
+                        "grid-gutter": "1rem"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "nav-item": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "display-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "display-lg-mobile": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "nav-item": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background min-h-screen flex font-body-md">
+<!-- TopAppBar -->
+<header class="bg-surface border-b border-outline-variant docked full-width top-0 sticky z-40 flex justify-between items-center h-16 px-container-padding ml-sidebar-width fixed w-[calc(100%-240px)] left-sidebar-width">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md text-primary">Clinical Dashboard</h1>
+</div>
+<div class="flex items-center gap-stack-md">
+<div class="flex items-center gap-stack-sm bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-outline" style="font-variation-settings: 'FILL' 0;">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm text-on-surface-variant w-32 placeholder-outline" placeholder="Search..." type="text">
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-2 rounded-lg font-nav-item hover:bg-primary transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">person_add</span>
+                Add Patient
+            </button>
+<button class="bg-surface text-on-surface border border-outline-variant px-4 py-2 rounded-lg font-nav-item hover:bg-surface-container-low transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                Export Data
+            </button>
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">apps</span>
+</button>
+</div>
+<img alt="Administrator Profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small circular profile picture of a healthcare administrator in a bright, modern office, smiling professionally. The image has a clean, high-key light mode aesthetic with soft whites and blues." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEVkBI08JHJEZLD3ZpUrsXs8Ow-r3RXZfvYlTm1sFBVpGZORDAzfyTaQ7dn5CY38LxIRJi14m5zlSJlNeX7pLZtOAy4s1UmrTm3z8HDyEkaksQ8ILNLjE8HZxZuDUXzlXoXr10uUwnc0tdeXBLbRfozL83l177jwnMb_YcAIe413aZItJK5wWI-2Znb2xYDh1mp9nt4umjJXyYVYxl2cAKGMpYY97u0Ihli2gg6mJPsIifVdrCDZfESg">
+</div>
+</header>
+<!-- SideNavBar -->
+<nav class="bg-inverse-surface w-sidebar-width h-screen fixed left-0 top-0 flex flex-col py-stack-md overflow-y-auto">
+<div class="px-container-padding mb-8">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary font-bold text-xl">H</div>
+<div>
+<h2 class="font-display-lg text-[20px] text-inverse-on-surface leading-tight">HealthConnect</h2>
+<p class="text-inverse-primary font-body-sm opacity-80">City General Hospital</p>
+</div>
+</div>
+
+</div>
+<div class="flex-1 px-4 space-y-6"><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">CLINICAL</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">clinical_notes</span>Patient Records</a></li></ul></div><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">PHARMACY</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">medication</span>Pharmacy</a></li></ul></div><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">FINANCE</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">payments</span>Finance</a></li></ul></div><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">STAFF &amp; OPERATIONS</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">groups</span>Teams</a></li><li class=""><a class="flex items-center gap-3 px-4 py-2 text-primary-fixed-dim border-l-4 border-primary bg-on-secondary-fixed-variant rounded-r-lg transition-colors duration-200 font-nav-item" href="#"><span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">calendar_month</span>Roster</a></li></ul></div><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">INVENTORY</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">inventory_2</span>Inventory</a></li></ul></div><div><h3 class="text-inverse-primary/60 text-[10px] uppercase font-bold tracking-wider mb-2 px-4">SYSTEM &amp; ADMIN</h3><ul class="space-y-1"><li class=""><a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#"><span class="material-symbols-outlined text-[20px]">settings</span>Settings</a></li></ul></div><div class="px-4 mt-6"><button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-nav-item flex items-center justify-center gap-2 hover:bg-primary transition-colors"><span class="material-symbols-outlined">add</span>New Entry</button></div></div>
+<div class="px-4 mt-auto pt-6 border-t border-on-secondary-fixed-variant/50">
+<ul class="space-y-1">
+<li class="">
+<a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                        Support
+                    </a>
+</li>
+<li class="">
+<a class="flex items-center gap-3 px-4 py-2 text-surface-variant font-nav-item rounded-lg hover:bg-on-secondary-fixed-variant hover:text-surface-bright transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+                        Log Out
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-sidebar-width mt-16 p-container-padding">
+<!-- Page Header -->
+<div class="flex justify-between items-start mb-8">
+<div>
+<h2 class="text-[24px] font-bold text-on-surface mb-1">Monthly Roster Planning &amp; Daily Shift Governance</h2>
+<p class="text-on-surface-variant text-body-md">Automated monthly scheduling based on clinical demand, skill mix constraints, and staff availability.</p>
+</div>
+<div class="flex items-center gap-4">
+<span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full text-body-sm font-medium border border-outline-variant">
+                    Status: Draft (Matron)
+                </span>
+<button class="bg-surface text-on-surface border border-outline-variant px-4 py-2 rounded-lg font-nav-item hover:bg-surface-container-low transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+                    Edit Roster Manually
+                </button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-nav-item hover:bg-primary-container transition-colors flex items-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">autorenew</span>
+                    Auto-Reschedule
+                </button>
+</div>
+</div>
+<!-- Dashboard Image -->
+<div class="w-full rounded-xl overflow-hidden shadow-sm border border-outline-variant bg-surface mb-8">
+<img alt="Dashboard View" class="w-full h-auto object-cover aspect-[2.27]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBh8LO5cy0pk0uPXlstpXrVV-xpdDq1aQiZD_Jkof8taPuAjd5qTOTbzCNQCFVsm-vRcNjX8IucCB4DGrg_iwK1-gNPdHqt_mSnTKRNQ_EvxHA7tjsUKIaQbDO-RVStytv2zSK_w9kuks7xW3rVWRTUAuyOQRm3yEMc6YxLEqs-iq3E604JD6ZoOlwwbKlFgZjhtrt9kVkCYnDnD-ePUtV_b3XkdwHjrrRn_IcAp4ibUj-UXXtew8gat-9y9JNcR_N7-6U">
+</div>
+</main>
+
+
+</body></html>

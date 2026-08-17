@@ -1,0 +1,392 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>HealthConnect - Global Security &amp; Permissions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#eff4ff",
+                    "inverse-surface": "#213145",
+                    "secondary": "#565e74",
+                    "tertiary-container": "#6b6e70",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#c4c7c9",
+                    "on-tertiary-container": "#eff1f3",
+                    "background": "#f8f9ff",
+                    "secondary-container": "#dae2fd",
+                    "primary": "#004ac6",
+                    "on-secondary-container": "#5c647a",
+                    "on-background": "#0b1c30",
+                    "tertiary": "#525657",
+                    "on-surface": "#0b1c30",
+                    "on-surface-variant": "#434655",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-fixed": "#e0e3e5",
+                    "on-tertiary-fixed": "#191c1e",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#0053db",
+                    "surface-dim": "#cbdbf5",
+                    "outline": "#737686",
+                    "on-primary-fixed": "#00174b",
+                    "on-tertiary": "#ffffff",
+                    "outline-variant": "#c3c6d7",
+                    "on-tertiary-fixed-variant": "#444749",
+                    "on-primary": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#dae2fd",
+                    "inverse-on-surface": "#eaf1ff",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "on-primary-container": "#eeefff",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-container-high": "#dce9ff",
+                    "primary-container": "#2563eb",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-variant": "#d3e4fe",
+                    "primary-fixed": "#dbe1ff",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface": "#f8f9ff",
+                    "surface-container": "#e5eeff",
+                    "surface-container-highest": "#d3e4fe"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-width": "240px",
+                    "stack-sm": "0.5rem",
+                    "grid-gutter": "1rem",
+                    "stack-md": "1.5rem",
+                    "container-padding": "2rem"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "nav-item": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "nav-item": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen w-sidebar-width fixed left-0 top-0 bg-inverse-surface dark:bg-inverse-surface border-r border-outline-variant py-stack-md z-40">
+<div class="px-6 mb-8">
+<h1 class="font-display-lg text-display-lg text-on-primary-fixed tracking-tight">HealthConnect</h1>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim mt-1">Administrative Suite</p>
+</div>
+<ul class="flex-1 px-4 space-y-1">
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-primary-container/20 hover:text-primary transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="clinical_notes">clinical_notes</span>
+                    Clinical
+                </a>
+</li>
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-primary-container/20 hover:text-primary transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="medical_services">medical_services</span>
+                    Pharmacy
+                </a>
+</li>
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-primary-container/20 hover:text-primary transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="payments">payments</span>
+                    Finance
+                </a>
+</li>
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-primary-container/20 hover:text-primary transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="groups">groups</span>
+                    Staff Operations
+                </a>
+</li>
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-on-surface-variant font-medium hover:bg-primary-container/20 hover:text-primary transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="inventory_2">inventory_2</span>
+                    Inventory
+                </a>
+</li>
+<li class="group">
+<a class="flex items-center px-3 py-2 rounded-lg text-primary font-bold border-l-4 border-primary bg-surface-container-high/10 hover:bg-primary-container/20 transition-colors cursor-pointer active:scale-95 duration-150 font-nav-item text-nav-item" href="#"><span class="material-symbols-outlined mr-3 text-[20px]" data-icon="assignment">assignment</span>Audit Logs</a>
+</li>
+</ul>
+<div class="px-6 mt-auto">
+<div class="flex items-center space-x-3 mb-6 bg-surface-container-high/5 p-3 rounded-xl border border-outline-variant/10">
+<img class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="Professional headshot of a senior hospital administrator, conveying authority and experience, against a clean blue healthcare background, sharp focus, corporate lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaKJbIs_LbR1C9Unjc6-Wy-68pmE-MPttjV2CQkwLzvzsCCcvJN-JeDQokaMT3PZoB7bPS5zK3UcIL0rFGLS5J_3RZWdeJK-rWD5wLk4LmGQlP1ZFLVPJApY9qGQalC8Sok3b-ErcuTLWMYbHMvAQqP20BcpUwEYY-MCzRZkQ2mKMZ8JCHB2svJ6kyKJVgO_CjFKwP9OzuN3uB2qY6qedIaJYYxP6eSLpJnmGeMAxdqO1OQTk_cXapuQ">
+<div>
+<p class="font-label-bold text-label-bold text-on-primary-fixed">Super Admin Profile</p>
+<p class="font-body-sm text-body-sm text-tertiary-fixed-dim">System Status: Active</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 md:ml-sidebar-width flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center h-16 px-container-padding bg-surface dark:bg-background border-b border-outline-variant sticky top-0 z-30">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full focus-within:ring-2 focus-within:ring-primary rounded-lg">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-surface-container-low border-0 text-body-md py-2 pl-10 pr-4 rounded-lg text-on-surface focus:ring-0 placeholder:text-on-surface-variant/70" placeholder="Search systems, users, or audit logs..." type="text">
+</div>
+</div>
+<div class="flex items-center space-x-4 ml-4">
+<button class="p-2 text-secondary hover:text-primary transition-all rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="monitor_heart">monitor_heart</span>
+</button>
+<button class="flex items-center px-3 py-1.5 text-primary font-bold bg-primary-container/20 rounded-full transition-all border border-primary/20"><span class="material-symbols-outlined mr-2" data-icon="security" data-weight="fill" style="font-variation-settings: 'FILL' 1;">security</span><span class="text-[12px] uppercase tracking-wider">System Shield Active</span></button>
+<button class="p-2 text-secondary hover:text-primary transition-all rounded-full hover:bg-surface-container relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<img alt="Super Admin Avatar" class="w-8 h-8 rounded-full border border-outline-variant object-cover ml-2 hidden md:block" data-alt="Professional headshot of a senior hospital administrator, conveying authority and experience, against a clean blue healthcare background, sharp focus, corporate lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGGrSQtjLht9MDXMR9alLrbbhzGfE794kq0fYW9xIJitQ5XXvaHwxwdbuDZDoDA6YzZXv3p4quAw4yT0USIaInhfOUhDK433RjznwOpA9z3YB_1ja0UTRszs7lg0De6t7PngkxN6uOZgl-VbSB3sag9qWQVBFhVjYqAxq8T0njhEp-dXJFtWiFaABVBgIZn7klndQUwpRvFyehr0_5gIZG8T4PDkaPFPWkDkZT1zo7VzPkpc1UYOjBhQ">
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 p-container-padding">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Global Security &amp; Permissions</h2>
+<p class="text-on-surface-variant font-body-md">Manage system-wide access, role definitions, and active user sessions.</p>
+</div>
+<div class="flex space-x-3">
+<button class="flex items-center px-4 py-2 bg-surface text-primary border border-outline-variant rounded-lg font-label-bold text-label-bold hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined mr-2 text-[18px]">history</span>
+                        Audit Logs
+                    </button>
+<button class="flex items-center px-4 py-2 bg-primary text-on-primary rounded-lg font-label-bold text-label-bold hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined mr-2 text-[18px]">add_moderator</span>
+                        Create Role
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+<!-- Security Posture Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface">System Posture</h3>
+<span class="flex items-center px-2 py-1 bg-surface-container-high text-primary rounded text-[11px] font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[14px] mr-1" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                Secure
+                            </span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-on-surface-variant text-[12px] font-medium mb-1">Active Sessions</p>
+<p class="font-display-lg text-display-lg text-on-surface">1,248</p>
+</div>
+<div>
+<p class="text-on-surface-variant text-[12px] font-medium mb-1">Failed Logins (24h)</p>
+<p class="font-display-lg text-display-lg text-error">23</p>
+<div class="flex items-center mt-1 text-error"><span class="material-symbols-outlined text-[14px] mr-1">trending_up</span><span class="text-[10px] font-bold">+12% vs yesterday</span></div></div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-outline-variant/30">
+<p class="text-[12px] text-on-surface-variant flex items-center">
+<span class="material-symbols-outlined text-[14px] mr-1 text-primary">update</span>
+                            Last security scan: 12 mins ago
+                        </p>
+</div>
+</div>
+<!-- Global Toggles -->
+<div class="lg:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Global Directives</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+<div class="flex items-start justify-between p-4 border border-outline-variant/50 rounded-lg hover:border-primary/50 transition-colors">
+<div class="pr-4">
+<h4 class="font-nav-item text-nav-item text-on-surface mb-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-2 text-primary">fingerprint</span>
+                                    Enforce MFA System-wide
+                                </h4>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">Require Multi-Factor Authentication for all roles upon next login.</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer mt-1">
+<input checked="" class="sr-only peer" type="checkbox" value="">
+<div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-start justify-between p-4 border border-outline-variant/50 rounded-lg hover:border-primary/50 transition-colors">
+<div class="pr-4">
+<h4 class="font-nav-item text-nav-item text-on-surface mb-1 flex items-center">
+<span class="material-symbols-outlined text-[18px] mr-2 text-error">vpn_lock</span>
+                                    Restrict External Access
+                                </h4>
+<p class="text-[12px] text-on-surface-variant leading-relaxed">Block all login attempts originating outside the internal hospital network (IP Allowlist).</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer mt-1">
+<input class="sr-only peer" type="checkbox" value="">
+<div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-start justify-between p-4 border border-outline-variant/50 rounded-lg hover:border-primary/50 transition-colors"><div class="pr-4"><h4 class="font-nav-item text-nav-item text-on-surface mb-1 flex items-center"><span class="material-symbols-outlined text-[18px] mr-2 text-primary">timer</span>Automatic Session Timeout</h4><p class="text-[12px] text-on-surface-variant leading-relaxed">Automatically log out users after 30 minutes of inactivity.</p></div><label class="relative inline-flex items-center cursor-pointer mt-1"><input checked="" class="sr-only peer" type="checkbox" value=""><div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div></label></div><div class="flex items-start justify-between p-4 border border-outline-variant/50 rounded-lg hover:border-primary/50 transition-colors"><div class="pr-4"><h4 class="font-nav-item text-nav-item text-on-surface mb-1 flex items-center"><span class="material-symbols-outlined text-[18px] mr-2 text-primary">list_alt</span>IP Whitelisting</h4><p class="text-[12px] text-on-surface-variant leading-relaxed">Restrict administrative access to specific verified IP ranges.</p></div><label class="relative inline-flex items-center cursor-pointer mt-1"><input class="sr-only peer" type="checkbox" value=""><div class="w-11 h-6 bg-surface-container peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div></label></div></div>
+</div>
+</div>
+<!-- Data Table: Active Users -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden">
+<div class="px-6 py-5 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-md text-headline-md text-on-surface">Active Sessions &amp; Trust Matrix</h3>
+<div class="flex items-center space-x-2">
+<span class="text-body-sm text-on-surface-variant mr-2">Filter by Role:</span>
+<select class="bg-surface border border-outline-variant text-body-sm rounded-md px-3 py-1.5 focus:ring-primary focus:border-primary text-on-surface">
+<option>All Roles</option>
+<option>Super Admin</option>
+<option>Admin</option>
+<option>Manager</option>
+<option>Clinician</option>
+</select>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F1F5F9] text-on-surface">
+<th class="py-3 px-6 font-label-bold text-label-bold border-b border-outline-variant">User Identifier</th>
+<th class="py-3 px-6 font-label-bold text-label-bold border-b border-outline-variant">Role Assignment</th>
+<th class="py-3 px-6 font-label-bold text-label-bold border-b border-outline-variant">Trust Level</th>
+<th class="py-3 px-6 font-label-bold text-label-bold border-b border-outline-variant">Last Login Location</th>
+<th class="py-3 px-6 font-label-bold text-label-bold border-b border-outline-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="text-xs">
+<tr class="border-b border-outline-variant/30 hover:bg-surface/50 transition-colors">
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold mr-3">
+                                            SA
+                                        </div>
+<div>
+<p class="font-medium text-on-surface">Dr. Sarah Jenkins</p>
+<p class="text-[11px] text-on-surface-variant">s.jenkins@healthconnect.local</p>
+</div>
+</div>
+</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-container text-on-error-container border border-error-container/50">
+                                        Super Admin
+                                    </span>
+</td>
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-16 h-2 bg-surface-container rounded-full mr-2 overflow-hidden">
+<div class="w-full h-full bg-primary"></div>
+</div>
+<span class="text-xs font-medium text-primary">High</span>
+</div>
+</td>
+<td class="py-3 px-6 text-on-surface-variant font-mono text-[12px]">
+                                    Internal Net (10.0.0.45)
+                                </td>
+<td class="py-3 px-6 text-right">
+<button class="text-error hover:text-error/80 hover:bg-error-container/20 p-1.5 rounded transition-colors" title="Revoke Access">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</td>
+</tr>
+<tr class="border-b border-outline-variant/30 hover:bg-surface/50 transition-colors">
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded-full bg-surface-variant text-primary flex items-center justify-center font-bold mr-3">
+                                            MR
+                                        </div>
+<div>
+<p class="font-medium text-on-surface">Mark Roberts</p>
+<p class="text-[11px] text-on-surface-variant">m.roberts@healthconnect.local</p>
+</div>
+</div>
+</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-container/20 text-primary border border-primary/20">
+                                        Admin
+                                    </span>
+</td>
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-16 h-2 bg-surface-container rounded-full mr-2 overflow-hidden">
+<div class="w-3/4 h-full bg-primary"></div>
+</div>
+<span class="text-xs font-medium text-primary">Elevated</span>
+</div>
+</td>
+<td class="py-3 px-6 text-on-surface-variant font-mono text-[12px]">
+                                    Internal Net (10.0.2.112)
+                                </td>
+<td class="py-3 px-6 text-right">
+<button class="text-error hover:text-error/80 hover:bg-error-container/20 p-1.5 rounded transition-colors" title="Revoke Access">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold mr-3">
+                                            EL
+                                        </div>
+<div>
+<p class="font-medium text-on-surface">Elena Liu</p>
+<p class="text-[11px] text-on-surface-variant">e.liu@healthconnect.local</p>
+</div>
+</div>
+</td>
+<td class="py-3 px-6">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-container text-on-surface-variant border border-outline-variant/50">
+                                        Clinician
+                                    </span>
+</td>
+<td class="py-3 px-6">
+<div class="flex items-center">
+<div class="w-16 h-2 bg-surface-container rounded-full mr-2 overflow-hidden">
+<div class="w-1/2 h-full bg-tertiary"></div>
+</div>
+<span class="text-xs font-medium text-tertiary">Standard</span>
+</div>
+</td>
+<td class="py-3 px-6 text-on-surface-variant font-mono text-[12px] flex items-center">
+<span class="w-2 h-2 rounded-full bg-error mr-2" title="External IP Detected"></span>
+                                    External (192.168.1.5)
+                                </td>
+<td class="py-3 px-6 text-right">
+<button class="text-error hover:text-error/80 hover:bg-error-container/20 p-1.5 rounded transition-colors" title="Revoke Access">
+<span class="material-symbols-outlined text-[18px]">block</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+
+
+</body></html>
