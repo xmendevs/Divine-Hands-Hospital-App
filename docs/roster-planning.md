@@ -74,21 +74,21 @@ and the plan version.
 
 ## Endpoints
 
-| Method | Path                                              | Permission      |
-| ------ | ------------------------------------------------- | --------------- |
-| POST   | `/api/v1/roster/plans`                            | `roster.plan`   |
-| GET    | `/api/v1/roster/plans`                            | `roster.view`   |
-| GET    | `/api/v1/roster/plans/{id}`                       | `roster.view`   |
-| POST   | `/api/v1/roster/plans/{id}/regenerate`            | `roster.plan`   |
-| POST   | `/api/v1/roster/plans/{id}/assignments`           | `roster.plan`   |
-| DELETE | `/api/v1/roster/plans/{id}/assignments/{assignmentId}` | `roster.plan` |
-| POST   | `/api/v1/roster/plans/{id}/submit`                | `roster.plan`   |
-| POST   | `/api/v1/roster/plans/{id}/approve`               | `roster.approve`|
-| POST   | `/api/v1/roster/plans/{id}/reject`                | `roster.approve`|
-| POST   | `/api/v1/roster/plans/{id}/amend`                 | `roster.plan`   |
-| POST   | `/api/v1/staff/unavailability`                    | `attendance.manage` |
-| GET    | `/api/v1/staff/unavailability`                    | `attendance.view`   |
-| DELETE | `/api/v1/staff/unavailability/{id}`               | `attendance.manage` |
+| Method | Path                                                   | Permission          |
+| ------ | ------------------------------------------------------ | ------------------- |
+| POST   | `/api/v1/roster/plans`                                 | `roster.plan`       |
+| GET    | `/api/v1/roster/plans`                                 | `roster.view`       |
+| GET    | `/api/v1/roster/plans/{id}`                            | `roster.view`       |
+| POST   | `/api/v1/roster/plans/{id}/regenerate`                 | `roster.plan`       |
+| POST   | `/api/v1/roster/plans/{id}/assignments`                | `roster.plan`       |
+| DELETE | `/api/v1/roster/plans/{id}/assignments/{assignmentId}` | `roster.plan`       |
+| POST   | `/api/v1/roster/plans/{id}/submit`                     | `roster.plan`       |
+| POST   | `/api/v1/roster/plans/{id}/approve`                    | `roster.approve`    |
+| POST   | `/api/v1/roster/plans/{id}/reject`                     | `roster.approve`    |
+| POST   | `/api/v1/roster/plans/{id}/amend`                      | `roster.plan`       |
+| POST   | `/api/v1/staff/unavailability`                         | `attendance.manage` |
+| GET    | `/api/v1/staff/unavailability`                         | `attendance.view`   |
+| DELETE | `/api/v1/staff/unavailability/{id}`                    | `attendance.manage` |
 
 Shift preferences are set via `PATCH /api/v1/staff/{id}` (`shiftPreferences`)
 and returned by `GET /api/v1/staff/{id}`.

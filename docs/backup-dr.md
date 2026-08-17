@@ -8,12 +8,12 @@ surface.
 
 ## Endpoints
 
-| Endpoint | Permission | Purpose | Audit |
-|----------|------------|---------|-------|
-| `GET /api/v1/backups/status` | `backups.view` | Super Admin backup dashboard: last local/cloud/verification runs, health, age, storage usage, failures in the last 24h, next scheduled runs | — (dashboard views are covered by `reports.viewed` when seen through `/reports/dashboard`) |
-| `GET /api/v1/backups/jobs` | `backups.view` | Recent job history (50 newest) | — |
-| `POST /api/v1/backups/run` | `backups.run` | Trigger a local or cloud backup synchronously | `backup.run` with target |
-| `POST /api/v1/backups/verify` | `backups.verify` | Restore the newest backup into an isolated scratch database and validate schema, data, migration version and checksums | `backup.verify` |
+| Endpoint                      | Permission       | Purpose                                                                                                                                     | Audit                                                                                      |
+| ----------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `GET /api/v1/backups/status`  | `backups.view`   | Super Admin backup dashboard: last local/cloud/verification runs, health, age, storage usage, failures in the last 24h, next scheduled runs | — (dashboard views are covered by `reports.viewed` when seen through `/reports/dashboard`) |
+| `GET /api/v1/backups/jobs`    | `backups.view`   | Recent job history (50 newest)                                                                                                              | —                                                                                          |
+| `POST /api/v1/backups/run`    | `backups.run`    | Trigger a local or cloud backup synchronously                                                                                               | `backup.run` with target                                                                   |
+| `POST /api/v1/backups/verify` | `backups.verify` | Restore the newest backup into an isolated scratch database and validate schema, data, migration version and checksums                      | `backup.verify`                                                                            |
 
 When the backup service is disabled (`BACKUP_ENABLED=false`), the four
 endpoints return `503 backup_not_configured`; the dashboard's `backupStatus`

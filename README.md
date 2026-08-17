@@ -68,10 +68,10 @@ scripts/verify.sh
 
 The React UI ships as a Windows desktop app. Two packaging paths coexist:
 
-| Path     | Command                 | Output                                          |
-| -------- | ----------------------- | ----------------------------------------------- |
-| Electron | `cd apps/desktop && pnpm dist` | `apps/desktop/release/*.exe` (NSIS installer) |
-| Tauri    | `cd apps/desktop && pnpm tauri build` | `src-tauri/target/release/bundle/nsis|msi`    |
+| Path     | Command                               | Output                                        |
+| -------- | ------------------------------------- | --------------------------------------------- |
+| Electron | `cd apps/desktop && pnpm dist`        | `apps/desktop/release/*.exe` (NSIS installer) |
+| Tauri    | `cd apps/desktop && pnpm tauri build` | `src-tauri/target/release/bundle/nsis         | msi` |
 
 ### Downloading the installer
 
@@ -87,9 +87,9 @@ hospitals can fetch the exact build from their own main PC instead of GitHub.
 
 There are two ways to package the app:
 
-| Edition | Command | Installer | What it does |
-| ------- | ------- | --------- | ------------ |
-| **Client** | `cd apps/desktop && pnpm dist` | `Divine Hands Hospital Setup <version>.exe` (~90 MB) | The desktop client. Connects to the server PC's address. |
+| Edition    | Command                               | Installer                                                    | What it does                                                                                                                                                                                                                                                                        |
+| ---------- | ------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Client** | `cd apps/desktop && pnpm dist`        | `Divine Hands Hospital Setup <version>.exe` (~90 MB)         | The desktop client. Connects to the server PC's address.                                                                                                                                                                                                                            |
 | **Server** | `cd apps/desktop && pnpm dist:server` | `Divine Hands Hospital Server Setup <version>.exe` (~365 MB) | Client **plus** a bundled portable database and Go API. On first launch it creates the database, applies migrations, seeds the super admin, and starts the server - **no terminal, no admin needed**. The server keeps running when the app closes so the other PCs stay connected. |
 
 The **Super Admin PC installs the Server edition**; every other PC installs the

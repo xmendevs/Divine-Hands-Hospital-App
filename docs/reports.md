@@ -6,11 +6,11 @@ always reflects current state.
 
 ## Permissions
 
-| Permission       | Holder            | Access                                                              |
-| ---------------- | ----------------- | ------------------------------------------------------------------- |
-| `reports.view`   | all operational roles | `GET /api/v1/reports/my` — role-scoped report                  |
-| `reports.admin`  | admin, super_admin | `GET /api/v1/reports/dashboard` — aggregate dashboard               |
-| `reports.export` | admin, super_admin | `GET /api/v1/reports/export` — CSV / XLSX / PDF exports (audited)   |
+| Permission       | Holder                | Access                                                            |
+| ---------------- | --------------------- | ----------------------------------------------------------------- |
+| `reports.view`   | all operational roles | `GET /api/v1/reports/my` — role-scoped report                     |
+| `reports.admin`  | admin, super_admin    | `GET /api/v1/reports/dashboard` — aggregate dashboard             |
+| `reports.export` | admin, super_admin    | `GET /api/v1/reports/export` — CSV / XLSX / PDF exports (audited) |
 
 `reports.view` first appeared in Phase 04 for clinical (patient) reports; this
 phase extends the same permission to role-scoped dashboards. Migration
@@ -39,16 +39,16 @@ phase extends the same permission to role-scoped dashboards. Migration
 
 `GET /api/v1/reports/my` dispatches on the caller's role:
 
-| Role(s)                      | Report         | Highlights                                                        |
-| ---------------------------- | -------------- | ----------------------------------------------------------------- |
-| doctor                       | DoctorReport   | Assigned patients, pending lab results, pending orders            |
-| nurse, matron                | NursingReport  | Active admissions, my handovers today, unacknowledged handovers, staff on duty today |
-| pharmacist                   | PharmacyReport | Dispensed today (+ value), low stock, stock on hand, expiring soon, adjustments (30d) |
-| lab_technician, lab_supervisor | LabReport    | Requests by status, pending verification, average turnaround      |
-| cashier, billing_officer, billing_supervisor | CashierReport | Collected/payments today, outstanding, refunded today, open shifts, shift variance |
-| storekeeper                  | InventoryReport| Low stock, expiring soon, stock on hand, today's count variance   |
-| receptionist                 | ReceptionReport| Registered/admitted/discharged/triaged today                      |
-| admin, super_admin           | Dashboard      | Same aggregate as the dashboard endpoint                          |
+| Role(s)                                      | Report          | Highlights                                                                            |
+| -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------- |
+| doctor                                       | DoctorReport    | Assigned patients, pending lab results, pending orders                                |
+| nurse, matron                                | NursingReport   | Active admissions, my handovers today, unacknowledged handovers, staff on duty today  |
+| pharmacist                                   | PharmacyReport  | Dispensed today (+ value), low stock, stock on hand, expiring soon, adjustments (30d) |
+| lab_technician, lab_supervisor               | LabReport       | Requests by status, pending verification, average turnaround                          |
+| cashier, billing_officer, billing_supervisor | CashierReport   | Collected/payments today, outstanding, refunded today, open shifts, shift variance    |
+| storekeeper                                  | InventoryReport | Low stock, expiring soon, stock on hand, today's count variance                       |
+| receptionist                                 | ReceptionReport | Registered/admitted/discharged/triaged today                                          |
+| admin, super_admin                           | Dashboard       | Same aggregate as the dashboard endpoint                                              |
 
 Roles without a matching report receive `403` (e.g. auditor). Dashboard views
 are audited (`reports.viewed`).

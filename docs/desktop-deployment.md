@@ -77,6 +77,7 @@ all three PCs.
 ## Step-by-step plan
 
 ### Phase 1 — Desktop client foundation
+
 - Add a configurable server address (runtime setting, default
   `http://127.0.0.1:8080`; set to the main PC's LAN IP on the other PCs).
 - Add a typed API client (from the generated OpenAPI types) and session
@@ -85,23 +86,27 @@ all three PCs.
 - Build an app shell/navigation and a first working screen (dashboard).
 
 ### Phase 2 — Main-PC server bundle
+
 - Cross-compile the Go API for Windows and register it as a Tauri **sidecar**.
 - Bundle portable PostgreSQL; launcher runs `initdb` on first run, applies
   migrations, seeds the super admin, then starts the API with `HOST=0.0.0.0`.
 - Run the bundle as a tray/background app so no terminal windows are needed.
 
 ### Phase 3 — Real-time + backup wiring
+
 - Add polling (or SSE) so each PC's changes appear on the others.
 - Configure `BACKUP_*` for cloud: either the Google Drive folder trick below
   or Backblaze B2 / Cloudflare R2 (both S3-compatible, no new code).
 
 ### Phase 4 — Installer & release pipeline
+
 - `tauri build` → Windows installer (NSIS/MSI) for the client, and an
   installer for the main-PC bundle.
 - GitHub Actions Windows runner to build and upload artifacts.
 - Optional: code-signing certificate, auto-updater.
 
 ### Phase 5 — Feature screens
+
 - Build UI for each domain (patients, clinical, pharmacy, lab, billing, staff,
   roster, notifications, reports) on top of the Phase 1 client.
 
@@ -123,13 +128,23 @@ Google Drive's sync client is not designed as a backup target; for a
 production hospital prefer a real object store. Step-by-step setup:
 [`docs/backup-google-drive.md`](backup-google-drive.md).
 
-**Option 2 — Backblaze B2 or Cloudflare R2.** Both are S3-compatible and work
+**Option 2 — Neon (chosen for production).** Neon is a managed serverless
+Postgres database. Instead of uploading encrypted files, the main PC restores
+a fresh dump of the hospital database into the Neon database on every cloud
+backup run (a point-in-time snapshot). The Super Admin pastes the Neon
+connection string in the app: **Settings → Backup & cloud storage → Neon
+Postgres** (with a Test connection button). In the Neon console, add
+`0.0.0.0/0` to **Settings → IP Allow** because the hospital's internet IP is
+not static. Local encrypted backups still keep per-run history.
+
+**Option 3 — Backblaze B2 or Cloudflare R2.** Both are S3-compatible and work
 with the existing backup code unchanged. Cheaper and more reliable than Drive
-sync. Recommended for production.
+sync; selectable in Settings alongside Neon.
 
 ## Decisions still open
 
-- Cloud backup target: Google Drive folder (start) vs B2/R2 (production).
+- [x] Cloud backup target: Neon (super admin enters the connection string in
+      Settings; S3-compatible storage kept as an alternative).
 - Whether to include the FastAPI analytics service (skip for first release).
 - Code-signing certificate and auto-updater (optional, later).
 

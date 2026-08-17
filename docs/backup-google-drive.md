@@ -72,7 +72,7 @@ A backup is only good if it can be restored. The system can prove this for you:
 - **Google Drive sync is a convenience, not a hardened backup target.** For a
   production hospital, prefer Backblaze B2 or Cloudflare R2 (both S3-compatible
   — set `BACKUP_S3_*` in the same `.env`, no code changes). You can run both:
-  keep the local Drive folder *and* an object store.
+  keep the local Drive folder _and_ an object store.
 - **`pg_dump` must be present** on the main PC. It ships with the PostgreSQL
   install. If backups fail with "pg_dump not found", install the PostgreSQL
   client tools.
@@ -83,10 +83,10 @@ A backup is only good if it can be restored. The system can prove this for you:
 
 ## Files kept
 
-| Tier | File | Retention (env) |
-|------|------|-----------------|
-| Daily | `backup_daily_YYYY-MM-DD.sql.gz.enc` | `BACKUP_RETENTION_DAILY` (7) |
-| Weekly (Sundays) | `backup_weekly_YYYY-MM-DD.sql.gz.enc` | `BACKUP_RETENTION_WEEKLY` (4) |
-| Monthly (1st) | `backup_monthly_YYYY-MM-DD.sql.gz.enc` | `BACKUP_RETENTION_MONTHLY` (3) |
+| Tier             | File                                   | Retention (env)                |
+| ---------------- | -------------------------------------- | ------------------------------ |
+| Daily            | `backup_daily_YYYY-MM-DD.sql.gz.enc`   | `BACKUP_RETENTION_DAILY` (7)   |
+| Weekly (Sundays) | `backup_weekly_YYYY-MM-DD.sql.gz.enc`  | `BACKUP_RETENTION_WEEKLY` (4)  |
+| Monthly (1st)    | `backup_monthly_YYYY-MM-DD.sql.gz.enc` | `BACKUP_RETENTION_MONTHLY` (3) |
 
 Old tiers are pruned automatically.

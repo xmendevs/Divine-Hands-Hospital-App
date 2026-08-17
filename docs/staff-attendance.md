@@ -7,7 +7,7 @@ attendance, leave, and nursing shift handover.
 
 - **staff** (extended) — the `staff` profile from Phase 02 now also records
   contact phone/email, `employment_status` (`active | on_leave | terminated |
-  suspended`), availability, skills and certifications (text arrays), and an
+suspended`), availability, skills and certifications (text arrays), and an
   optional hire date.
 - **staff_leave** — leave requests (`annual`, `sick`, etc.) with
   `pending → approved/rejected` status, decided by a manager.
@@ -69,25 +69,25 @@ Every mutation is audited: `staff.update`, `staff.leave_request`,
 
 ## Endpoints
 
-| Method | Path                                        | Permission               |
-| ------ | ------------------------------------------- | ------------------------ |
-| GET    | `/api/v1/staff`                             | `staff.view`             |
-| GET    | `/api/v1/staff/{id}`                        | `staff.view`             |
-| PATCH  | `/api/v1/staff/{id}`                        | `staff.edit`             |
-| POST   | `/api/v1/staff/leave`                       | `staff.leave_request`    |
-| GET    | `/api/v1/staff/leave`                       | `staff.leave_request`    |
-| POST   | `/api/v1/staff/leave/{id}/approve`          | `staff.leave_manage`     |
-| POST   | `/api/v1/staff/leave/{id}/reject`           | `staff.leave_manage`     |
-| POST   | `/api/v1/attendance/shifts`                 | `attendance.manage`      |
-| GET    | `/api/v1/attendance/shifts`                 | `attendance.view`        |
-| POST   | `/api/v1/attendance/clock-in`               | `attendance.clock`       |
-| POST   | `/api/v1/attendance/clock-out`              | `attendance.clock`       |
-| GET    | `/api/v1/attendance`                        | `attendance.view`        |
-| GET    | `/api/v1/attendance/report`                 | `attendance.view`        |
-| POST   | `/api/v1/attendance/rosters`                | `attendance.manage`      |
-| GET    | `/api/v1/attendance/rosters`                | `attendance.view`        |
-| DELETE | `/api/v1/attendance/rosters/{id}`           | `attendance.manage`      |
-| POST   | `/api/v1/handovers`                         | `handover.create`        |
-| GET    | `/api/v1/handovers`                         | `handover.view`          |
-| GET    | `/api/v1/handovers/{id}`                    | `handover.view`          |
-| POST   | `/api/v1/handovers/{id}/acknowledge`        | `handover.acknowledge`   |
+| Method | Path                                 | Permission             |
+| ------ | ------------------------------------ | ---------------------- |
+| GET    | `/api/v1/staff`                      | `staff.view`           |
+| GET    | `/api/v1/staff/{id}`                 | `staff.view`           |
+| PATCH  | `/api/v1/staff/{id}`                 | `staff.edit`           |
+| POST   | `/api/v1/staff/leave`                | `staff.leave_request`  |
+| GET    | `/api/v1/staff/leave`                | `staff.leave_request`  |
+| POST   | `/api/v1/staff/leave/{id}/approve`   | `staff.leave_manage`   |
+| POST   | `/api/v1/staff/leave/{id}/reject`    | `staff.leave_manage`   |
+| POST   | `/api/v1/attendance/shifts`          | `attendance.manage`    |
+| GET    | `/api/v1/attendance/shifts`          | `attendance.view`      |
+| POST   | `/api/v1/attendance/clock-in`        | `attendance.clock`     |
+| POST   | `/api/v1/attendance/clock-out`       | `attendance.clock`     |
+| GET    | `/api/v1/attendance`                 | `attendance.view`      |
+| GET    | `/api/v1/attendance/report`          | `attendance.view`      |
+| POST   | `/api/v1/attendance/rosters`         | `attendance.manage`    |
+| GET    | `/api/v1/attendance/rosters`         | `attendance.view`      |
+| DELETE | `/api/v1/attendance/rosters/{id}`    | `attendance.manage`    |
+| POST   | `/api/v1/handovers`                  | `handover.create`      |
+| GET    | `/api/v1/handovers`                  | `handover.view`        |
+| GET    | `/api/v1/handovers/{id}`             | `handover.view`        |
+| POST   | `/api/v1/handovers/{id}/acknowledge` | `handover.acknowledge` |

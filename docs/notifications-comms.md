@@ -63,11 +63,11 @@ the contract already carries the storage reference.
 
 Settings:
 
-| Key | Default | Purpose |
-| --- | ------- | ------- |
-| `comms.policy_notice` | built-in notice | Policy text shown to users |
-| `comms.retention_days` | `365` | Retention window for messages/notifications |
-| `comms.attachment_max_bytes` | `5242880` (5 MiB) | Attachment size cap |
+| Key                          | Default           | Purpose                                     |
+| ---------------------------- | ----------------- | ------------------------------------------- |
+| `comms.policy_notice`        | built-in notice   | Policy text shown to users                  |
+| `comms.retention_days`       | `365`             | Retention window for messages/notifications |
+| `comms.attachment_max_bytes` | `5242880` (5 MiB) | Attachment size cap                         |
 
 ## Permissions
 

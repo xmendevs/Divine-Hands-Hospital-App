@@ -65,19 +65,19 @@ draft ──issue──▶ issued ──payments──▶ partially_paid ──�
 
 ## Steps (endpoints under `/api/v1/billing`)
 
-| Step                       | Endpoint                                   | Notes                        |
-| -------------------------- | ------------------------------------------ | ---------------------------- |
-| Price lists                | `GET/POST /price-lists`, `GET/PATCH /price-lists/{id}` | `billing.manage` writes |
-| Services                   | `GET/POST /price-lists/{id}/items`, `PATCH /price-list-items/{id}` | price snapshot at invoice time |
-| Create invoice             | `POST /invoices`                           | `billing.create`; draft      |
-| Issue / void               | `POST /invoices/{id}/issue`, `/void`       | issue recomputes totals      |
-| Open shift                 | `POST /shifts`                             | one per cashier; `SFT000001` |
-| Receive payment            | `POST /invoices/{id}/payments`             | `billing.collect`; creates payment + receipt |
-| Receipts                   | `GET /receipts`, `GET /receipts/{id}`, `GET /receipts/{id}/html`, `GET /receipts/{id}/pdf`, `POST /receipts/{id}/share` | HTML is printable; PDF is downloadable |
-| Request refund             | `POST /payments/{id}/refunds`              | `billing.refund`; pending    |
-| Approve / reject           | `POST /refunds/{id}/approve`, `/reject`    | `billing.approve`; no self-approval |
-| Process refund             | `POST /refunds/{id}/process`               | needs open shift; reverses balance |
-| Reconcile                  | `POST /shifts/{id}/close`, `GET /shifts`, `GET /shifts/{id}` | expected vs declared cash |
+| Step             | Endpoint                                                                                                                | Notes                                        |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Price lists      | `GET/POST /price-lists`, `GET/PATCH /price-lists/{id}`                                                                  | `billing.manage` writes                      |
+| Services         | `GET/POST /price-lists/{id}/items`, `PATCH /price-list-items/{id}`                                                      | price snapshot at invoice time               |
+| Create invoice   | `POST /invoices`                                                                                                        | `billing.create`; draft                      |
+| Issue / void     | `POST /invoices/{id}/issue`, `/void`                                                                                    | issue recomputes totals                      |
+| Open shift       | `POST /shifts`                                                                                                          | one per cashier; `SFT000001`                 |
+| Receive payment  | `POST /invoices/{id}/payments`                                                                                          | `billing.collect`; creates payment + receipt |
+| Receipts         | `GET /receipts`, `GET /receipts/{id}`, `GET /receipts/{id}/html`, `GET /receipts/{id}/pdf`, `POST /receipts/{id}/share` | HTML is printable; PDF is downloadable       |
+| Request refund   | `POST /payments/{id}/refunds`                                                                                           | `billing.refund`; pending                    |
+| Approve / reject | `POST /refunds/{id}/approve`, `/reject`                                                                                 | `billing.approve`; no self-approval          |
+| Process refund   | `POST /refunds/{id}/process`                                                                                            | needs open shift; reverses balance           |
+| Reconcile        | `POST /shifts/{id}/close`, `GET /shifts`, `GET /shifts/{id}`                                                            | expected vs declared cash                    |
 
 Lists support `limit`/`offset` (and `status`, `patientId`, `invoiceId`,
 `shiftId`, `method` filters where relevant).

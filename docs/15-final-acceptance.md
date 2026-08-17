@@ -19,46 +19,46 @@ Hospital Information Management System (HIMS) consisting of three services:
 
 ## Files Changed (Summary Across All Phases)
 
-| Phase | Key Changes |
-|-------|-------------|
-| Phase 01 | Identity, RBAC, sessions, audit, patient master record |
-| Phase 02 | MFA, token rotation, session management |
-| Phase 03 | Clinical workflows & orders |
-| Phase 04 | Pharmacy/inventory, medicine inventory |
-| Phase 05 | General inventory, equipment & maintenance |
-| Phase 06 | Laboratory information system |
-| Phase 07 | Billing, cashier, payments & receipts |
-| Phase 08 | Staff, attendance, clock-in/out & handover |
-| Phase 09 | Automatic roster planning & approval |
-| Phase 10 | Notifications & governed internal communications |
-| Phase 11 | Reporting, dashboards & exports |
+| Phase    | Key Changes                                                       |
+| -------- | ----------------------------------------------------------------- |
+| Phase 01 | Identity, RBAC, sessions, audit, patient master record            |
+| Phase 02 | MFA, token rotation, session management                           |
+| Phase 03 | Clinical workflows & orders                                       |
+| Phase 04 | Pharmacy/inventory, medicine inventory                            |
+| Phase 05 | General inventory, equipment & maintenance                        |
+| Phase 06 | Laboratory information system                                     |
+| Phase 07 | Billing, cashier, payments & receipts                             |
+| Phase 08 | Staff, attendance, clock-in/out & handover                        |
+| Phase 09 | Automatic roster planning & approval                              |
+| Phase 10 | Notifications & governed internal communications                  |
+| Phase 11 | Reporting, dashboards & exports                                   |
 | Phase 12 | Backup & disaster recovery (local+cloud, retention, verification) |
-| Phase 13 | Security, performance, integration & release |
-| Phase 14 | Documentation, deployment & handover |
+| Phase 13 | Security, performance, integration & release                      |
+| Phase 14 | Documentation, deployment & handover                              |
 
 ## Migrations Added
 
-| Migration | Description |
-|-----------|-------------|
+| Migration             | Description                                                   |
+| --------------------- | ------------------------------------------------------------- |
 | `0001` through `0022` | Core domain (users, patients, appointments, admissions, etc.) |
-| `0023` | Notifications comms table |
-| `0024` | `backup_jobs` table (Phase 13) |
-| `0025` | Backup permissions (`backups.view/run/verify`) (Phase 13) |
+| `0023`                | Notifications comms table                                     |
+| `0024`                | `backup_jobs` table (Phase 13)                                |
+| `0025`                | Backup permissions (`backups.view/run/verify`) (Phase 13)     |
 
 ## API Endpoints Added (Summary)
 
-| Category | Endpoints |
-|----------|-----------|
-| Authentication | `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/auth/me`, `/api/v1/auth/password-reset/...*` |
-| RBAC & Authorization | `/api/v1/admin/users/...*`, `/api/v1/admin/roles/...*`, `/api/v1/admin/permissions`, `/api/v1/admin/audit-logs` |
-| Patient Management | `/api/v1/patients/...*`, `/api/v1/patients/{id}/clinical`, `/api/v1/patients/{id}/documents` |
-| Pharmacy | `/api/v1/pharmacy/medicines`, `/api/v1/pharmacy/dispensations`, `/api/v1/pharmacy/batches/...*` |
-| Laboratory | `/api/v1/lab/requests`, `/api/v1/lab/request-items`, `/api/v1/lab/critical-notifications` |
-| Billing & Payments | `/api/v1/invoices`, `/api/v1/payments`, `/api/v1/orders` |
-| Notifications | `/api/v1/notifications`, `/api/v1/communications/...*` |
+| Category             | Endpoints                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Authentication       | `/api/v1/auth/login`, `/api/v1/auth/logout`, `/api/v1/auth/me`, `/api/v1/auth/password-reset/...*`                                                                             |
+| RBAC & Authorization | `/api/v1/admin/users/...*`, `/api/v1/admin/roles/...*`, `/api/v1/admin/permissions`, `/api/v1/admin/audit-logs`                                                                |
+| Patient Management   | `/api/v1/patients/...*`, `/api/v1/patients/{id}/clinical`, `/api/v1/patients/{id}/documents`                                                                                   |
+| Pharmacy             | `/api/v1/pharmacy/medicines`, `/api/v1/pharmacy/dispensations`, `/api/v1/pharmacy/batches/...*`                                                                                |
+| Laboratory           | `/api/v1/lab/requests`, `/api/v1/lab/request-items`, `/api/v1/lab/critical-notifications`                                                                                      |
+| Billing & Payments   | `/api/v1/invoices`, `/api/v1/payments`, `/api/v1/orders`                                                                                                                       |
+| Notifications        | `/api/v1/notifications`, `/api/v1/communications/...*`                                                                                                                         |
 | Reports & Dashboards | `/api/v1/reports/dashboard`, `/api/v1/reports/my`, `/api/v1/reports/export`, `/api/v1/backups/status`, `/api/v1/backups/jobs`, `/api/v1/backups/run`, `/api/v1/backups/verify` |
-| Roster & Attendance | `/api/v1/attendance/...*`, `/api/v1/roster/plans/...*` |
-| Version & Health | `/api/v1/health`, `/api/v1/ready`, `/api/v1/version` |
+| Roster & Attendance  | `/api/v1/attendance/...*`, `/api/v1/roster/plans/...*`                                                                                                                         |
+| Version & Health     | `/api/v1/health`, `/api/v1/ready`, `/api/v1/version`                                                                                                                           |
 
 ## API Endpoints Added (Phase 13 Only)
 
@@ -69,12 +69,12 @@ Hospital Information Management System (HIMS) consisting of three services:
 
 ## Tests Added
 
-| Package | Tests |
-|---------|-------|
-| `internal/backup/` | Unit tests: encrypt roundtrip, tamper detection, key mismatch, container validation, SigV4 test vector, tier promotions, pruning, SplitSQL with strings/dollar-quotes/comments |
-| `internal/httpapi/` | Integration tests (build tag `integration`): local backup end-to-end, verify end-to-end, cloud uploads and pruning, failure alerts to admins, endpoints require configuration |
-| `internal/httpapi/` | Security tests: auth required, admin/auditor/super_admin permissions, SQL injection, XSS, rate limiting, secret scanning, privilege escalation, audit logging |
-| All packages | `go test ./...` passes; `go vet ./...` passes |
+| Package             | Tests                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `internal/backup/`  | Unit tests: encrypt roundtrip, tamper detection, key mismatch, container validation, SigV4 test vector, tier promotions, pruning, SplitSQL with strings/dollar-quotes/comments |
+| `internal/httpapi/` | Integration tests (build tag `integration`): local backup end-to-end, verify end-to-end, cloud uploads and pruning, failure alerts to admins, endpoints require configuration  |
+| `internal/httpapi/` | Security tests: auth required, admin/auditor/super_admin permissions, SQL injection, XSS, rate limiting, secret scanning, privilege escalation, audit logging                  |
+| All packages        | `go test ./...` passes; `go vet ./...` passes                                                                                                                                  |
 
 ## Known Limitations
 

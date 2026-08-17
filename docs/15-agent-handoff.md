@@ -159,51 +159,52 @@ POST /api/v1/backups/verify
 
 ### Core Variables (all services)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `APP_TIMEZONE` | `UTC` | Display timezone (storage enforced as UTC) |
-| `LOG_LEVEL` | `info` | Debug / info / warn / error |
-| `POSTGRES_HOST` | `127.0.0.1` | PostgreSQL address |
-| `POSTGRES_PORT` | `5432` | PostgreSQL port |
-| `REDIS_HOST` | `127.0.0.1` | Redis address |
-| `REDIS_PORT` | `6379` | Redis port |
+| Variable        | Default     | Description                                |
+| --------------- | ----------- | ------------------------------------------ |
+| `APP_TIMEZONE`  | `UTC`       | Display timezone (storage enforced as UTC) |
+| `LOG_LEVEL`     | `info`      | Debug / info / warn / error                |
+| `POSTGRES_HOST` | `127.0.0.1` | PostgreSQL address                         |
+| `POSTGRES_PORT` | `5432`      | PostgreSQL port                            |
+| `REDIS_HOST`    | `127.0.0.1` | Redis address                              |
+| `REDIS_PORT`    | `6379`      | Redis port                                 |
 
 ### Go Service Variables (`apps/go-api/.env`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgres://hims:change-me@127.0.0.1:5432/hims?sslmode=disable` | PostgreSQL connection |
-| `SECRET_KEY` | *required* | Session signing key (32-byte hex) |
-| `MFA_ENCRYPTION_KEY` | *required* | 32-byte hex for MFA token encryption |
-| `BACKUP_ENABLED` | `false` | Master backup switch |
-| `BACKUP_ENCRYPTION_KEY` | *required* | 32-byte hex AES key (store separately!) |
-| `BACKUP_LOCAL_DIR` | `./backups` | Local backup directory |
-| `BACKUP_S3_ENDPOINT` | — | MinIO/AWS endpoint |
-| `BACKUP_S3_REGION` | `us-east-1` | Signing region |
-| `BACKUP_S3_BUCKET` | — | Bucket name |
-| `BACKUP_S3_ACCESS_KEY` | — | Object store user |
-| `BACKUP_S3_SECRET_KEY` | — | Object store secret |
-| `BACKUP_S3_PATH_STYLE` | `false` | `true` for MinIO (path-style URLs) |
-| `BACKUP_PG_DUMP_PATH` | `pg_dump` | pg_dump binary path |
-| `BACKUP_MIGRATIONS_DIR` | `db/migrations` | Migrations dir for verification |
-| `BACKUP_CONFIG_FILES` | — | Comma-separated config paths to back up |
-| `BACKUP_RETENTION_DAILY` | `7` | Days of daily backups to keep |
-| `BACKUP_RETENTION_WEEKLY` | `4` | Weeks of weekly backups to keep |
-| `BACKUP_RETENTION_MONTHLY` | `3` | Months of monthly backups to keep |
-| `BACKUP_LOCAL_INTERVAL` | `24h` | How often to run local backup |
-| `BACKUP_CLOUD_INTERVAL` | `24h` | How often to run cloud backup |
-| `BACKUP_VERIFY_INTERVAL` | `24h` | How often to run verification |
+| Variable                        | Default                                                         | Description                                                            |
+| ------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`                  | `postgres://hims:change-me@127.0.0.1:5432/hims?sslmode=disable` | PostgreSQL connection                                                  |
+| `SECRET_KEY`                    | _required_                                                      | Session signing key (32-byte hex)                                      |
+| `MFA_ENCRYPTION_KEY`            | _required_                                                      | 32-byte hex for MFA token encryption                                   |
+| `BACKUP_ENABLED`                | `false`                                                         | Master backup switch                                                   |
+| `BACKUP_ENCRYPTION_KEY`         | _required_                                                      | 32-byte hex AES key (store separately!)                                |
+| `BACKUP_LOCAL_DIR`              | `./backups`                                                     | Local backup directory                                                 |
+| `BACKUP_S3_ENDPOINT`            | —                                                               | MinIO/AWS endpoint                                                     |
+| `BACKUP_S3_REGION`              | `us-east-1`                                                     | Signing region                                                         |
+| `BACKUP_S3_BUCKET`              | —                                                               | Bucket name                                                            |
+| `BACKUP_S3_ACCESS_KEY`          | —                                                               | Object store user                                                      |
+| `BACKUP_S3_SECRET_KEY`          | —                                                               | Object store secret                                                    |
+| `BACKUP_S3_PATH_STYLE`          | `false`                                                         | `true` for MinIO (path-style URLs)                                     |
+| `BACKUP_NEON_CONNECTION_STRING` | —                                                               | Neon Postgres destination (fallback; normally entered in app Settings) |
+| `BACKUP_PG_DUMP_PATH`           | `pg_dump`                                                       | pg_dump binary path                                                    |
+| `BACKUP_MIGRATIONS_DIR`         | `db/migrations`                                                 | Migrations dir for verification                                        |
+| `BACKUP_CONFIG_FILES`           | —                                                               | Comma-separated config paths to back up                                |
+| `BACKUP_RETENTION_DAILY`        | `7`                                                             | Days of daily backups to keep                                          |
+| `BACKUP_RETENTION_WEEKLY`       | `4`                                                             | Weeks of weekly backups to keep                                        |
+| `BACKUP_RETENTION_MONTHLY`      | `3`                                                             | Months of monthly backups to keep                                      |
+| `BACKUP_LOCAL_INTERVAL`         | `24h`                                                           | How often to run local backup                                          |
+| `BACKUP_CLOUD_INTERVAL`         | `24h`                                                           | How often to run cloud backup                                          |
+| `BACKUP_VERIFY_INTERVAL`        | `24h`                                                           | How often to run verification                                          |
 
 ### FastAPI Variables (`apps/fastapi/.env`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable                                        | Default | Description |
+| ----------------------------------------------- | ------- | ----------- |
 | (Same as Go core, plus analytics-specific vars) |
 
 ### Desktop Client Variables (`apps/desktop/.env`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable                                                   | Default | Description |
+| ---------------------------------------------------------- | ------- | ----------- |
 | (Tauri-specific vars; see `apps/desktop/ty` for full list) |
 
 ## API Documentation
@@ -223,18 +224,18 @@ pnpm generate  # runs openapi-typescript
 
 ### Key Endpoints (version 0.5.0)
 
-| Method | Path | Permission |
-|--------|------|------------|
-| GET | `/health` | public |
-| GET | `/ready` | public |
-| GET | `/api/v1/version` | public |
-| POST | `/api/v1/auth/login` | public |
-| GET | `/api/v1/auth/me` | session |
-| POST | `/api/v1/admin/users/...*` | `users.*` / `roles.assign` |
-| GET | `/api/v1/admin/audit-logs` | `audit.view` |
-| GET | `/api/v1/backups/status` | `backups.view` |
-| POST | `/api/v1/backups/run` | `backups.run` |
-| POST | `/api/v1/backups/verify` | `backups.verify` |
+| Method | Path                       | Permission                 |
+| ------ | -------------------------- | -------------------------- |
+| GET    | `/health`                  | public                     |
+| GET    | `/ready`                   | public                     |
+| GET    | `/api/v1/version`          | public                     |
+| POST   | `/api/v1/auth/login`       | public                     |
+| GET    | `/api/v1/auth/me`          | session                    |
+| POST   | `/api/v1/admin/users/...*` | `users.*` / `roles.assign` |
+| GET    | `/api/v1/admin/audit-logs` | `audit.view`               |
+| GET    | `/api/v1/backups/status`   | `backups.view`             |
+| POST   | `/api/v1/backups/run`      | `backups.run`              |
+| POST   | `/api/v1/backups/verify`   | `backups.verify`           |
 
 ## Security Model
 
@@ -247,12 +248,12 @@ pnpm generate  # runs openapi-typescript
 
 ### Authorization (RBAC)
 
-| Role | Permissions |
-|------|-------------|
-| `super_admin` | All permissions (implicit) |
-| `admin` | `users.*`, `roles.*`, `backups.*`, `audit.view`, `settings.*` |
+| Role                                    | Permissions                                                   |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `super_admin`                           | All permissions (implicit)                                    |
+| `admin`                                 | `users.*`, `roles.*`, `backups.*`, `audit.view`, `settings.*` |
 | `operational` (`nurse`, `doctor`, etc.) | Role-specific clinical permissions (see `docs/rbac-audit.md`) |
-| `auditor` | Read-only access to audit logs and selected reports |
+| `auditor`                               | Read-only access to audit logs and selected reports           |
 
 ### Privilege Escalation Prevention
 
@@ -380,16 +381,16 @@ pnpm generate  # runs openapi-typescript
 
 ### Common Issues
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Service won't start | Missing `DATABASE_URL` or wrong format | Set `TEST_DATABASE_URL` or production URL |
-| 503 Service Unavailable | Backup service not configured | `BACKUP_ENABLED=true` or remove `WithBackupManager` |
-| 401 Unauthorized | Missing or expired token | Re-authenticate; refresh MFA if enabled |
-| 403 Forbidden | Insufficient permissions | Check role assignments in DB |
-| Integration tests skip | `TEST_DATABASE_URL` not set | Export the variable before running |
-| pg_dump not found | Local backup cannot run | `apt-get install postgresql-client-16` |
-| MFA login fails | Time sync issue | Ensure server/client clocks are NTP-synchronized |
-| OpenAPI validation fails | Contract drift between Go and FastAPI | Run `pnpm generate` to regenerate |
+| Issue                    | Cause                                  | Fix                                                 |
+| ------------------------ | -------------------------------------- | --------------------------------------------------- |
+| Service won't start      | Missing `DATABASE_URL` or wrong format | Set `TEST_DATABASE_URL` or production URL           |
+| 503 Service Unavailable  | Backup service not configured          | `BACKUP_ENABLED=true` or remove `WithBackupManager` |
+| 401 Unauthorized         | Missing or expired token               | Re-authenticate; refresh MFA if enabled             |
+| 403 Forbidden            | Insufficient permissions               | Check role assignments in DB                        |
+| Integration tests skip   | `TEST_DATABASE_URL` not set            | Export the variable before running                  |
+| pg_dump not found        | Local backup cannot run                | `apt-get install postgresql-client-16`              |
+| MFA login fails          | Time sync issue                        | Ensure server/client clocks are NTP-synchronized    |
+| OpenAPI validation fails | Contract drift between Go and FastAPI  | Run `pnpm generate` to regenerate                   |
 
 ### Debug Commands
 
