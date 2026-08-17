@@ -6,3 +6,7 @@ target
 coverage
 pnpm-lock.yaml
 packages/api-contracts/src/generated
+apps/desktop/server-payload
+apps/desktop/release
+apps/desktop/release-server
+apps/desktop/release-tmp

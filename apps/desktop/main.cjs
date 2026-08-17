@@ -122,14 +122,27 @@ async function startPostgres(cfg) {
     logProgress("initdb: starting");
     const pwFile = state("pgpass.tmp");
     fs.writeFileSync(pwFile, cfg.pgPassword);
-    const init = spawnSync(initdb, ["-D", pgData, "-U", cfg.pgUser, "--auth=scram-sha-256", "--pwfile=" + pwFile, "--encoding=UTF8"], { encoding: "utf8", timeout: 180000 });
+    const init = spawnSync(
+      initdb,
+      [
+        "-D",
+        pgData,
+        "-U",
+        cfg.pgUser,
+        "--auth=scram-sha-256",
+        "--pwfile=" + pwFile,
+        "--encoding=UTF8",
+      ],
+      { encoding: "utf8", timeout: 180000 },
+    );
     try {
       fs.unlinkSync(pwFile);
     } catch {
       /* ignore */
     }
     if (init.error) throw new Error("initdb error: " + init.error.message);
-    if (init.status !== 0) throw new Error("initdb failed: " + (init.stderr || init.stdout || "unknown error"));
+    if (init.status !== 0)
+      throw new Error("initdb failed: " + (init.stderr || init.stdout || "unknown error"));
     logProgress("initdb: done");
   }
 
@@ -144,15 +157,23 @@ async function startPostgres(cfg) {
   // Launch pg_ctl detached with no stdio pipes: postgres.exe inherits pg_ctl's
   // handles, so a pipe-based spawnSync would never see EOF and would hang the
   // main process forever. We detect readiness via pg_isready below instead.
-  const pgCtlProc = spawn(pgCtl, ["-D", pgData, "-l", state("postgres.log"), "-o", "-p " + cfg.pgPort, "start"], {
-    detached: true,
-    stdio: "ignore",
-    windowsHide: true,
-  });
+  const pgCtlProc = spawn(
+    pgCtl,
+    ["-D", pgData, "-l", state("postgres.log"), "-o", "-p " + cfg.pgPort, "start"],
+    {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    },
+  );
   pgCtlProc.unref();
 
   const dbReady = await waitFor(
-    () => spawnSync(pgIsReady, ["-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser], { encoding: "utf8", timeout: 15000 }).status === 0,
+    () =>
+      spawnSync(pgIsReady, ["-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser], {
+        encoding: "utf8",
+        timeout: 15000,
+      }).status === 0,
     60000,
     1000,
   );
@@ -161,10 +182,36 @@ async function startPostgres(cfg) {
 
   // Create the `hims` database if missing. -w makes psql/createdb fail instead
   // of prompting for a password (a prompt would hang the GUI app forever).
-  const check = spawnSync(psql, ["-w", "-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser, "-d", "postgres", "-tAc", "SELECT 1 FROM pg_database WHERE datname='hims'"], { encoding: "utf8", env: pgEnv(cfg), timeout: 30000 });
-  logProgress("psql hims check status=" + check.status + (check.error ? " error=" + check.error.message : "") + " stdout=" + JSON.stringify(check.stdout || "").slice(0, 80));
+  const check = spawnSync(
+    psql,
+    [
+      "-w",
+      "-h",
+      "127.0.0.1",
+      "-p",
+      String(cfg.pgPort),
+      "-U",
+      cfg.pgUser,
+      "-d",
+      "postgres",
+      "-tAc",
+      "SELECT 1 FROM pg_database WHERE datname='hims'",
+    ],
+    { encoding: "utf8", env: pgEnv(cfg), timeout: 30000 },
+  );
+  logProgress(
+    "psql hims check status=" +
+      check.status +
+      (check.error ? " error=" + check.error.message : "") +
+      " stdout=" +
+      JSON.stringify(check.stdout || "").slice(0, 80),
+  );
   if (check.status !== 0 || !/1/.test(check.stdout || "")) {
-    const mk = spawnSync(createdb, ["-w", "-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser, "hims"], { encoding: "utf8", env: pgEnv(cfg), timeout: 30000 });
+    const mk = spawnSync(
+      createdb,
+      ["-w", "-h", "127.0.0.1", "-p", String(cfg.pgPort), "-U", cfg.pgUser, "hims"],
+      { encoding: "utf8", env: pgEnv(cfg), timeout: 30000 },
+    );
     if (mk.error) throw new Error("createdb error: " + mk.error.message);
     if (mk.status !== 0) throw new Error("createdb failed: " + (mk.stderr || "unknown error"));
     logProgress("created hims database");
@@ -185,9 +232,14 @@ function databaseURL(cfg) {
 function applyMigrationsAndSeed(cfg) {
   const env = { ...process.env, DATABASE_URL: databaseURL(cfg) };
   logProgress("migrate.exe: running");
-  const migrate = spawnSync(bin("migrate.exe"), ["-command", "up", "-dir", path.join(serverDir(), "migrations")], { encoding: "utf8", env, timeout: 180000 });
+  const migrate = spawnSync(
+    bin("migrate.exe"),
+    ["-command", "up", "-dir", path.join(serverDir(), "migrations")],
+    { encoding: "utf8", env, timeout: 180000 },
+  );
   if (migrate.error) throw new Error("migrate error: " + migrate.error.message);
-  if (migrate.status !== 0) throw new Error("migrations failed: " + (migrate.stderr || migrate.stdout || "unknown error"));
+  if (migrate.status !== 0)
+    throw new Error("migrations failed: " + (migrate.stderr || migrate.stdout || "unknown error"));
   logProgress("migrate.exe: done");
 
   logProgress("seed.exe: running");
@@ -201,7 +253,8 @@ function applyMigrationsAndSeed(cfg) {
     timeout: 60000,
   });
   if (seed.error) throw new Error("seed error: " + seed.error.message);
-  if (seed.status !== 0) throw new Error("seed failed: " + (seed.stderr || seed.stdout || "unknown error"));
+  if (seed.status !== 0)
+    throw new Error("seed failed: " + (seed.stderr || seed.stdout || "unknown error"));
   logProgress("seed.exe: done");
 }
 
@@ -228,7 +281,9 @@ function startGoApi(cfg) {
 
 async function apiHealthy() {
   try {
-    const res = await fetch(`http://127.0.0.1:${API_PORT}/health`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`http://127.0.0.1:${API_PORT}/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
     return res.ok;
   } catch {
     return false;
@@ -264,7 +319,11 @@ async function ensureServer() {
       superadminPassword: cfg.superadminPassword,
     };
   } catch (err) {
-    serverState = { isServer: true, running: false, error: err instanceof Error ? err.message : String(err) };
+    serverState = {
+      isServer: true,
+      running: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
     logProgress("ensureServer: FAILED - " + serverState.error);
     console.error("[server] startup failed:", serverState.error);
   }

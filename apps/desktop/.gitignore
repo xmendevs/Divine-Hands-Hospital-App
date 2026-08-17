@@ -12,7 +12,9 @@ dist
 dist-ssr
 release
 release-server
+release-tmp
 server-payload
+backups
 *.local
 
 # Electron build resources (icon) — the root .gitignore ignores build/

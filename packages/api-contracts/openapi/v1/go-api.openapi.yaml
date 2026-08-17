@@ -4334,7 +4334,17 @@ paths:
           description: Report kind to export.
           schema:
             type: string
-            enum: [patients, invoices, payments, dispensations, lab_requests, attendance, medicines, refunds]
+            enum:
+              [
+                patients,
+                invoices,
+                payments,
+                dispensations,
+                lab_requests,
+                attendance,
+                medicines,
+                refunds,
+              ]
         - name: format
           in: query
           required: false
@@ -5797,7 +5807,8 @@ components:
           items: { $ref: "#/components/schemas/ShiftPreference" }
     StaffLeave:
       type: object
-      required: [id, staffId, leaveType, startDate, endDate, status, requestedBy, createdAt, updatedAt]
+      required:
+        [id, staffId, leaveType, startDate, endDate, status, requestedBy, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         staffId: { type: string, format: uuid }
@@ -5826,7 +5837,8 @@ components:
         isNight: { type: boolean }
     AttendanceRecord:
       type: object
-      required: [id, staffId, shiftId, workDate, clockInAt, clockInMethod, isLate, isEarlyLeave, status]
+      required:
+        [id, staffId, shiftId, workDate, clockInAt, clockInMethod, isLate, isEarlyLeave, status]
       properties:
         id: { type: string, format: uuid }
         staffId: { type: string, format: uuid }
@@ -5950,7 +5962,8 @@ components:
         missing: { type: integer }
     RosterPlan:
       type: object
-      required: [id, planNo, name, departmentId, startDate, endDate, status, version, createdAt, updatedAt]
+      required:
+        [id, planNo, name, departmentId, startDate, endDate, status, version, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         planNo: { type: string }
