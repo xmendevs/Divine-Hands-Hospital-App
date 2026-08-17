@@ -145,7 +145,7 @@ func (s *Store) ListRosterPlans(ctx context.Context, p ListRosterPlansParams) ([
 	}
 	defer rows.Close()
 
-	var out []domain.RosterPlan
+	out := make([]domain.RosterPlan, 0)
 	for rows.Next() {
 		p, err := scanRosterPlan(rows)
 		if err != nil {
@@ -183,7 +183,7 @@ func (s *Store) loadRosterAssignments(ctx context.Context, planID string) ([]dom
 	}
 	defer rows.Close()
 
-	var out []domain.RosterAssignment
+	out := make([]domain.RosterAssignment, 0)
 	for rows.Next() {
 		a, err := scanRosterAssignment(rows)
 		if err != nil {
@@ -220,7 +220,7 @@ func computeUnmet(plan *domain.RosterPlan, assignments []domain.RosterAssignment
 	if err1 != nil || err2 != nil {
 		return nil
 	}
-	var out []domain.UnmetRequirement
+	out := make([]domain.UnmetRequirement, 0)
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		ds := d.Format("2006-01-02")
 		for _, req := range plan.ShiftRequirements {
@@ -445,7 +445,7 @@ func generateAssignments(plan *domain.RosterPlan, shifts map[string]rosterShift,
 		nextNight       int
 	}
 
-	var out []assignmentInput
+	out := make([]assignmentInput, 0)
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		ds := d.Format("2006-01-02")
 		for _, req := range reqs {

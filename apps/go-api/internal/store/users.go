@@ -131,7 +131,7 @@ func (s *Store) ListUsers(ctx context.Context) ([]UserRow, error) {
 	}
 	defer rows.Close()
 
-	var out []UserRow
+	out := make([]UserRow, 0)
 	for rows.Next() {
 		var (
 			r      UserRow
@@ -245,7 +245,7 @@ func (s *Store) GetUserRoles(ctx context.Context, userID string) ([]domain.Role,
 	}
 	defer rows.Close()
 
-	var out []domain.Role
+	out := make([]domain.Role, 0)
 	for rows.Next() {
 		var r domain.Role
 		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Description, &r.MFARequired, &r.IsSystem); err != nil {
@@ -270,7 +270,7 @@ func (s *Store) GetUserPermissions(ctx context.Context, userID string) ([]string
 	}
 	defer rows.Close()
 
-	var out []string
+	out := make([]string, 0)
 	for rows.Next() {
 		var code string
 		if err := rows.Scan(&code); err != nil {

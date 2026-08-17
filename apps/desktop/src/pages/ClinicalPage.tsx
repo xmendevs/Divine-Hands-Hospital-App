@@ -1,5 +1,20 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, EmptyState, FormField, Input, PageHeader, Select, StatusBadge, TabNav, Textarea, type StatusVariant } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  PageHeader,
+  Select,
+  StatusBadge,
+  TabNav,
+  Textarea,
+  useToast,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface PatientSummary {
@@ -73,6 +88,7 @@ export default function ClinicalPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   // Debounced patient search.
   useEffect(() => {
@@ -169,8 +185,11 @@ export default function ClinicalPage() {
       setDiagnosis("");
       setTreatmentPlan("");
       await loadNotes();
+      toast.success("Consultation note and vitals saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save consultation.");
+      const msg = err instanceof Error ? err.message : "Could not save consultation.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -234,8 +253,11 @@ export default function ClinicalPage() {
       setOrderDuration("");
       setOrderDescription("");
       await loadOrders();
+      toast.success("Order submitted.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the order.");
+      const msg = err instanceof Error ? err.message : "Could not create the order.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -249,8 +271,11 @@ export default function ClinicalPage() {
         body: JSON.stringify({ status }),
       });
       await loadOrders();
+      toast.success(`Order ${order.orderNo} moved to ${status.replace("_", " ")}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the order.");
+      const msg = err instanceof Error ? err.message : "Could not update the order.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -269,19 +294,39 @@ export default function ClinicalPage() {
   }
 
   const orderColumns = [
-    { key: "order", header: "Order No", render: (o: Order) => <strong style={{ color: theme.action.info }}>{o.orderNo}</strong> },
+    {
+      key: "order",
+      header: "Order No",
+      render: (o: Order) => <strong style={{ color: theme.action.info }}>{o.orderNo}</strong>,
+    },
     {
       key: "patient",
       header: "Patient",
-      render: (o: Order) => <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontFamily: "monospace" }}>{o.patientId}</span>,
+      render: (o: Order) => (
+        <span
+          style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontFamily: "monospace" }}
+        >
+          {o.patientId}
+        </span>
+      ),
     },
     {
       key: "type",
       header: "Type",
-      render: (o: Order) => <strong style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>{o.orderType.replace("_", " ").toUpperCase()}</strong>,
+      render: (o: Order) => (
+        <strong style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+          {o.orderType.replace("_", " ").toUpperCase()}
+        </strong>
+      ),
     },
     { key: "details", header: "Details", render: (o: Order) => orderInstructions(o) || "—" },
-    { key: "status", header: "Status", render: (o: Order) => <StatusBadge variant={orderStatusBadge(o.status)} label={o.status.replace("_", " ")} /> },
+    {
+      key: "status",
+      header: "Status",
+      render: (o: Order) => (
+        <StatusBadge variant={orderStatusBadge(o.status)} label={o.status.replace("_", " ")} />
+      ),
+    },
     {
       key: "action",
       header: "Action",
@@ -293,12 +338,22 @@ export default function ClinicalPage() {
             </Button>
           )}
           {o.status === "in_progress" && (
-            <Button size="sm" style={{ background: theme.action.success }} onClick={() => transitionOrder(o, "completed")}>
+            <Button
+              size="sm"
+              style={{ background: theme.action.success }}
+              onClick={() => transitionOrder(o, "completed")}
+            >
               Mark Completed
             </Button>
           )}
           {o.status === "completed" && (
-            <span style={{ fontSize: theme.fontSize.base, color: theme.action.success, fontWeight: theme.fontWeight.semibold }}>
+            <span
+              style={{
+                fontSize: theme.fontSize.base,
+                color: theme.action.success,
+                fontWeight: theme.fontWeight.semibold,
+              }}
+            >
               Fulfilled
             </span>
           )}
@@ -324,21 +379,47 @@ export default function ClinicalPage() {
       />
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
 
       {/* Patient picker (shared) */}
       <Card bodyStyle={{ padding: theme.spacing["4"] }}>
-        <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontWeight: theme.fontWeight.bold, marginBottom: theme.spacing["1"] }}>
+        <div
+          style={{
+            fontSize: theme.fontSize.sm,
+            color: theme.text.muted,
+            fontWeight: theme.fontWeight.bold,
+            marginBottom: theme.spacing["1"],
+          }}
+        >
           SELECT PATIENT
         </div>
         {selectedPatient ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: theme.spacing["2"], flexWrap: "wrap" }}>
-            <div style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: theme.spacing["2"],
+              flexWrap: "wrap",
+            }}
+          >
+            <div
+              style={{
+                fontSize: theme.fontSize.base,
+                fontWeight: theme.fontWeight.semibold,
+                color: theme.text.primary,
+              }}
+            >
               {selectedPatient.firstName} {selectedPatient.lastName}{" "}
-              <span style={{ color: theme.action.info, fontWeight: theme.fontWeight.bold }}>({selectedPatient.patientNo})</span>
+              <span style={{ color: theme.action.info, fontWeight: theme.fontWeight.bold }}>
+                ({selectedPatient.patientNo})
+              </span>
             </div>
             <Button size="sm" variant="ghost" onClick={() => setSelectedPatient(null)}>
               Change patient
@@ -384,8 +465,9 @@ export default function ClinicalPage() {
                       fontSize: theme.fontSize.base,
                     }}
                   >
-                    <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> — {p.firstName}{" "}
-                    {p.lastName} <span style={{ color: theme.text.muted }}>({p.gender})</span>
+                    <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> —{" "}
+                    {p.firstName} {p.lastName}{" "}
+                    <span style={{ color: theme.text.muted }}>({p.gender})</span>
                   </button>
                 ))}
               </div>
@@ -397,7 +479,10 @@ export default function ClinicalPage() {
       {/* Tab 1: Doctor Consultation Form */}
       {activeTab === "consultation" && (
         <Card title="Record Consultation & Patient Vitals">
-          <form onSubmit={handleSaveConsultation} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
+          <form
+            onSubmit={handleSaveConsultation}
+            style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}
+          >
             <div
               style={{
                 background: theme.surface.subtle,
@@ -406,13 +491,38 @@ export default function ClinicalPage() {
                 border: `1px solid ${theme.surface.borderStrong}`,
               }}
             >
-              <div style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.bold, color: theme.text.secondary, marginBottom: theme.spacing["2"] }}>
+              <div
+                style={{
+                  fontSize: theme.fontSize.base,
+                  fontWeight: theme.fontWeight.bold,
+                  color: theme.text.secondary,
+                  marginBottom: theme.spacing["2"],
+                }}
+              >
                 PATIENT VITALS
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["4"] }}>
-                <VitalInput label="BP (mmHg)" value={vitals.bp} onChange={(v) => setVitals({ ...vitals, bp: v })} />
-                <VitalInput label="Temp (°C)" value={vitals.temperature} onChange={(v) => setVitals({ ...vitals, temperature: v })} />
-                <VitalInput label="Pulse (bpm)" value={vitals.pulse} onChange={(v) => setVitals({ ...vitals, pulse: v })} />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: theme.spacing["4"],
+                }}
+              >
+                <VitalInput
+                  label="BP (mmHg)"
+                  value={vitals.bp}
+                  onChange={(v) => setVitals({ ...vitals, bp: v })}
+                />
+                <VitalInput
+                  label="Temp (°C)"
+                  value={vitals.temperature}
+                  onChange={(v) => setVitals({ ...vitals, temperature: v })}
+                />
+                <VitalInput
+                  label="Pulse (bpm)"
+                  value={vitals.pulse}
+                  onChange={(v) => setVitals({ ...vitals, pulse: v })}
+                />
               </div>
             </div>
 
@@ -425,7 +535,9 @@ export default function ClinicalPage() {
                 rows={3}
               />
             </FormField>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}
+            >
               <FormField label="Diagnosis">
                 <Textarea
                   value={diagnosis}
@@ -461,12 +573,24 @@ export default function ClinicalPage() {
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
               {notes.map((n) => (
-                <li key={n.id} style={{ padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`, borderBottom: `1px solid ${theme.surface.border}` }}>
+                <li
+                  key={n.id}
+                  style={{
+                    padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
+                    borderBottom: `1px solid ${theme.surface.border}`,
+                  }}
+                >
                   <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
                     <strong>{n.noteType.toUpperCase()}</strong> • v{n.version} • {n.authorRole} •{" "}
                     {new Date(n.createdAt).toLocaleString()}
                   </div>
-                  <div style={{ fontSize: theme.fontSize.base, color: theme.text.secondary, marginTop: theme.spacing["1"] }}>
+                  <div
+                    style={{
+                      fontSize: theme.fontSize.base,
+                      color: theme.text.secondary,
+                      marginTop: theme.spacing["1"],
+                    }}
+                  >
                     {n.note}
                   </div>
                   {n.diagnosis && (
@@ -491,8 +615,17 @@ export default function ClinicalPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
           {/* New order form */}
           <Card title="New Order" bodyStyle={{ padding: theme.spacing["4"] }}>
-            <form onSubmit={handleCreateOrder} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["4"] }}>
+            <form
+              onSubmit={handleCreateOrder}
+              style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: theme.spacing["4"],
+                }}
+              >
                 <FormField label="Order type">
                   <Select value={orderType} onChange={(e) => setOrderType(e.target.value)}>
                     {ORDER_TYPES.map((t) => (
@@ -512,10 +645,18 @@ export default function ClinicalPage() {
                       />
                     </FormField>
                     <FormField label="Dosage">
-                      <Input value={orderDosage} onChange={(e) => setOrderDosage(e.target.value)} placeholder="e.g. 1 tab q6h" />
+                      <Input
+                        value={orderDosage}
+                        onChange={(e) => setOrderDosage(e.target.value)}
+                        placeholder="e.g. 1 tab q6h"
+                      />
                     </FormField>
                     <FormField label="Frequency">
-                      <Input value={orderFrequency} onChange={(e) => setOrderFrequency(e.target.value)} placeholder="e.g. TDS" />
+                      <Input
+                        value={orderFrequency}
+                        onChange={(e) => setOrderFrequency(e.target.value)}
+                        placeholder="e.g. TDS"
+                      />
                     </FormField>
                     <FormField label="Duration (days)">
                       <Input
@@ -549,7 +690,15 @@ export default function ClinicalPage() {
           {/* Actionable orders */}
           <Card bodyStyle={{ padding: 0 }}>
             {loading ? (
-              <p style={{ padding: theme.spacing["4"], color: theme.text.muted, fontSize: theme.fontSize.base }}>Loading orders…</p>
+              <p
+                style={{
+                  padding: theme.spacing["4"],
+                  color: theme.text.muted,
+                  fontSize: theme.fontSize.base,
+                }}
+              >
+                Loading orders…
+              </p>
             ) : orders.length === 0 ? (
               <EmptyState icon="clipboard" description="No orders awaiting action." />
             ) : (
@@ -562,7 +711,15 @@ export default function ClinicalPage() {
   );
 }
 
-function VitalInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function VitalInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
   return (
     <div>
       <label style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>{label}</label>

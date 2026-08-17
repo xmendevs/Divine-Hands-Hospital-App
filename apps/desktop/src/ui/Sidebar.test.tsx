@@ -28,16 +28,27 @@ const groups: NavGroup[] = [
   {
     title: "Staff & Operations",
     items: [
+      { key: "staff", label: "Staff Management", icon: "users" },
+      { key: "attendance", label: "Attendance & Clock In/Out", icon: "clock" },
       { key: "roster", label: "Roster & Shifts", icon: "calendar" },
       { key: "handover", label: "Shift Handover Log", icon: "book" },
       { key: "communications", label: "Staff Communications", icon: "chat" },
+      { key: "reports", label: "Reports & Dashboard", icon: "file-text" },
     ],
   },
 ];
 
 describe("Sidebar", () => {
   it("renders all categories and nav labels", () => {
-    render(<Sidebar groups={groups} active="roster" onSelect={() => {}} onLogout={() => {}} username="superadmin" />);
+    render(
+      <Sidebar
+        groups={groups}
+        active="roster"
+        onSelect={() => {}}
+        onLogout={() => {}}
+        username="superadmin"
+      />,
+    );
     for (const label of [
       "Clinical",
       "Pharmacy & Inventory",
@@ -50,9 +61,12 @@ describe("Sidebar", () => {
       "Pharmacy Dispense",
       "Hospital Inventory & Assets",
       "Billing & Cashier",
+      "Staff Management",
+      "Attendance & Clock In/Out",
       "Roster & Shifts",
       "Shift Handover Log",
       "Staff Communications",
+      "Reports & Dashboard",
       "Settings",
       "Sign out",
     ]) {
@@ -62,7 +76,15 @@ describe("Sidebar", () => {
   });
 
   it("marks the active item with aria-current", () => {
-    render(<Sidebar groups={groups} active="roster" onSelect={() => {}} onLogout={() => {}} username="superadmin" />);
+    render(
+      <Sidebar
+        groups={groups}
+        active="roster"
+        onSelect={() => {}}
+        onLogout={() => {}}
+        username="superadmin"
+      />,
+    );
     const roster = screen.getByRole("button", { name: /Roster & Shifts/ });
     expect(roster.getAttribute("aria-current")).toBe("page");
     const patients = screen.getByRole("button", { name: /Patients Directory/ });

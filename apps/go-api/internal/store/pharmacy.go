@@ -115,7 +115,7 @@ func (s *Store) ListMedicines(ctx context.Context, limit, offset int) ([]domain.
 	}
 	defer rows.Close()
 
-	var out []domain.Medicine
+	out := make([]domain.Medicine, 0)
 	for rows.Next() {
 		m, err := scanMedicine(rows)
 		if err != nil {
@@ -193,7 +193,7 @@ func (s *Store) ListBatches(ctx context.Context, medicineID string) ([]domain.Ba
 	}
 	defer rows.Close()
 
-	var out []domain.Batch
+	out := make([]domain.Batch, 0)
 	for rows.Next() {
 		b, err := scanBatch(rows)
 		if err != nil {
@@ -448,7 +448,7 @@ func (s *Store) ListMovements(ctx context.Context, medicineID string, batchID *s
 	}
 	defer rows.Close()
 
-	var out []domain.StockMovement
+	out := make([]domain.StockMovement, 0)
 	for rows.Next() {
 		var m domain.StockMovement
 		if err := rows.Scan(&m.ID, &m.MedicineID, &m.BatchID, &m.MovementType, &m.Quantity,

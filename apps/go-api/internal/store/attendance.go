@@ -94,7 +94,7 @@ func (s *Store) ListStaffShifts(ctx context.Context) ([]domain.StaffShift, error
 	}
 	defer rows.Close()
 
-	var out []domain.StaffShift
+	out := make([]domain.StaffShift, 0)
 	for rows.Next() {
 		sh, err := scanStaffShift(rows)
 		if err != nil {
@@ -362,7 +362,7 @@ func (s *Store) ListAttendance(ctx context.Context, p ListAttendanceParams) ([]d
 	}
 	defer rows.Close()
 
-	var out []domain.AttendanceRecord
+	out := make([]domain.AttendanceRecord, 0)
 	for rows.Next() {
 		a, err := scanAttendance(rows)
 		if err != nil {
@@ -552,7 +552,7 @@ func (s *Store) ListRoster(ctx context.Context, p ListRosterParams) ([]domain.St
 	}
 	defer rows.Close()
 
-	var out []domain.StaffRoster
+	out := make([]domain.StaffRoster, 0)
 	for rows.Next() {
 		ro, err := scanStaffRoster(rows)
 		if err != nil {

@@ -366,7 +366,7 @@ func (s *Store) ListClinicalEntries(ctx context.Context, patientID string) ([]do
 	}
 	defer rows.Close()
 
-	var out []domain.ClinicalEntry
+	out := make([]domain.ClinicalEntry, 0)
 	for rows.Next() {
 		var e domain.ClinicalEntry
 		if err := rows.Scan(&e.ID, &e.PatientID, &e.Section, &e.Summary, &e.Details, &e.RecordedBy, &e.CreatedAt, &e.UpdatedAt); err != nil {
@@ -499,7 +499,7 @@ func (s *Store) DuplicateCandidates(ctx context.Context, identificationNumber, f
 }
 
 func scanSummaries(rows pgx.Rows) ([]domain.PatientSummary, error) {
-	var out []domain.PatientSummary
+	out := make([]domain.PatientSummary, 0)
 	for rows.Next() {
 		var s domain.PatientSummary
 		if err := rows.Scan(&s.ID, &s.PatientNo, &s.RegistrationType, &s.FirstName, &s.LastName, &s.Gender, &s.DateOfBirth, &s.Phone); err != nil {
@@ -621,7 +621,7 @@ func (s *Store) ListTimeline(ctx context.Context, patientID string, limit int) (
 	}
 	defer rows.Close()
 
-	var out []domain.TimelineEvent
+	out := make([]domain.TimelineEvent, 0)
 	for rows.Next() {
 		var e domain.TimelineEvent
 		if err := rows.Scan(&e.ID, &e.PatientID, &e.EventType, &e.Summary, &e.Data, &e.ActorUserID, &e.OccurredAt); err != nil {
@@ -656,7 +656,7 @@ func (s *Store) ListDocuments(ctx context.Context, patientID string) ([]domain.D
 	}
 	defer rows.Close()
 
-	var out []domain.Document
+	out := make([]domain.Document, 0)
 	for rows.Next() {
 		var d domain.Document
 		if err := rows.Scan(&d.ID, &d.PatientID, &d.DocumentType, &d.Title, &d.FileName,

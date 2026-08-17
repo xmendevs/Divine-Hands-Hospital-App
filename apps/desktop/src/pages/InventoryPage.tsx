@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, EmptyState, FormField, Input, Modal, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  StatusBadge,
+  TabNav,
+  useToast,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface Medicine {
@@ -87,6 +102,7 @@ export default function InventoryPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   // Add-item modal.
   const [showModal, setShowModal] = useState(false);
@@ -163,8 +179,11 @@ export default function InventoryPage() {
         body: JSON.stringify({ status, reason }),
       });
       await loadAll();
+      toast.success(`${a.name} marked ${status.replace("_", " ")}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update the asset status.");
+      const msg = err instanceof Error ? err.message : "Could not update the asset status.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -226,8 +245,11 @@ export default function InventoryPage() {
         location: "",
       });
       await loadAll();
+      toast.success(activeTab === "pharmacy" ? "Medicine added." : "Item added to inventory.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the item.");
+      const msg = err instanceof Error ? err.message : "Could not save the item.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -269,7 +291,11 @@ export default function InventoryPage() {
     activeTab === "pharmacy" ? "Drug SKU" : activeTab === "lab" ? "Consumable" : "Asset Tag";
 
   const medicineColumns = [
-    { key: "code", header: "Code", render: (m: Medicine) => <strong style={{ color: theme.action.info }}>{m.code}</strong> },
+    {
+      key: "code",
+      header: "Code",
+      render: (m: Medicine) => <strong style={{ color: theme.action.info }}>{m.code}</strong>,
+    },
     {
       key: "name",
       header: "Medication",
@@ -281,9 +307,17 @@ export default function InventoryPage() {
       ),
     },
     { key: "category", header: "Category", render: (m: Medicine) => m.category || "—" },
-    { key: "strength", header: "Strength / Form", render: (m: Medicine) => [m.strength, m.dosageForm].filter(Boolean).join(", ") || "—" },
+    {
+      key: "strength",
+      header: "Strength / Form",
+      render: (m: Medicine) => [m.strength, m.dosageForm].filter(Boolean).join(", ") || "—",
+    },
     { key: "reorder", header: "Reorder", render: (m: Medicine) => m.reorderLevel },
-    { key: "price", header: "Price (₦)", render: (m: Medicine) => <strong>{m.sellingPrice.toLocaleString()}</strong> },
+    {
+      key: "price",
+      header: "Price (₦)",
+      render: (m: Medicine) => <strong>{m.sellingPrice.toLocaleString()}</strong>,
+    },
     {
       key: "stock",
       header: "Stock",
@@ -299,38 +333,89 @@ export default function InventoryPage() {
   ];
 
   const consumableColumns = [
-    { key: "no", header: "Code", render: (a: Asset) => <strong style={{ color: theme.action.info }}>{a.assetNo}</strong> },
-    { key: "name", header: "Consumable", render: (a: Asset) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{a.name}</span> },
+    {
+      key: "no",
+      header: "Code",
+      render: (a: Asset) => <strong style={{ color: theme.action.info }}>{a.assetNo}</strong>,
+    },
+    {
+      key: "name",
+      header: "Consumable",
+      render: (a: Asset) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{a.name}</span>,
+    },
     { key: "category", header: "Category", render: (a: Asset) => a.categoryName },
-    { key: "serial", header: "Serial / Lot", render: (a: Asset) => <span style={{ fontFamily: "monospace" }}>{a.serialNumber || "—"}</span> },
+    {
+      key: "serial",
+      header: "Serial / Lot",
+      render: (a: Asset) => (
+        <span style={{ fontFamily: "monospace" }}>{a.serialNumber || "—"}</span>
+      ),
+    },
     { key: "qty", header: "Qty", render: (a: Asset) => <strong>{a.quantityOnHand}</strong> },
-    { key: "location", header: "Location", render: (a: Asset) => a.location || a.departmentName || "—" },
+    {
+      key: "location",
+      header: "Location",
+      render: (a: Asset) => a.location || a.departmentName || "—",
+    },
     {
       key: "status",
       header: "Status",
-      render: (a: Asset) => <StatusBadge variant={stockBadge(a.quantityOnHand, false)} label={a.quantityOnHand <= 5 ? "LOW STOCK" : "IN STOCK"} />,
+      render: (a: Asset) => (
+        <StatusBadge
+          variant={stockBadge(a.quantityOnHand, false)}
+          label={a.quantityOnHand <= 5 ? "LOW STOCK" : "IN STOCK"}
+        />
+      ),
     },
   ];
 
   const assetColumns = [
-    { key: "tag", header: "Asset Tag", render: (a: Asset) => <strong style={{ color: theme.action.info }}>{a.assetNo}</strong> },
-    { key: "name", header: "Equipment", render: (a: Asset) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{a.name}</span> },
+    {
+      key: "tag",
+      header: "Asset Tag",
+      render: (a: Asset) => <strong style={{ color: theme.action.info }}>{a.assetNo}</strong>,
+    },
+    {
+      key: "name",
+      header: "Equipment",
+      render: (a: Asset) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{a.name}</span>,
+    },
     { key: "category", header: "Category", render: (a: Asset) => a.categoryName },
-    { key: "serial", header: "Serial", render: (a: Asset) => <span style={{ fontFamily: "monospace" }}>{a.serialNumber || "—"}</span> },
-    { key: "dept", header: "Dept / Location", render: (a: Asset) => a.departmentName || a.location || "—" },
+    {
+      key: "serial",
+      header: "Serial",
+      render: (a: Asset) => (
+        <span style={{ fontFamily: "monospace" }}>{a.serialNumber || "—"}</span>
+      ),
+    },
+    {
+      key: "dept",
+      header: "Dept / Location",
+      render: (a: Asset) => a.departmentName || a.location || "—",
+    },
     {
       key: "status",
       header: "Status",
-      render: (a: Asset) => <StatusBadge variant={assetStatusBadge(a.status)} label={a.status.replace("_", " ")} />,
+      render: (a: Asset) => (
+        <StatusBadge variant={assetStatusBadge(a.status)} label={a.status.replace("_", " ")} />
+      ),
     },
-    { key: "value", header: "Valuation", render: (a: Asset) => <strong>{CURRENCY(a.cost)}</strong> },
+    {
+      key: "value",
+      header: "Valuation",
+      render: (a: Asset) => <strong>{CURRENCY(a.cost)}</strong>,
+    },
     {
       key: "actions",
       header: "Actions",
       render: (a: Asset) => (
         <div style={{ display: "flex", gap: theme.spacing["1"], flexWrap: "wrap" }}>
           {a.status !== "under_maintenance" && (
-            <Button size="sm" variant="outline" onClick={() => changeAssetStatus(a, "under_maintenance")}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => changeAssetStatus(a, "under_maintenance")}
+            >
               Mark Maintenance
             </Button>
           )}
@@ -359,26 +444,41 @@ export default function InventoryPage() {
           if (!cancelled) setBatches(d.batches);
         })
         .catch((err) => {
-          if (!cancelled) setLoadError(err instanceof Error ? err.message : "Could not load batches.");
+          if (!cancelled)
+            setLoadError(err instanceof Error ? err.message : "Could not load batches.");
         });
       return () => {
         cancelled = true;
       };
     }, [m.id]);
     if (loadError) {
-      return <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>{loadError}</p>;
+      return (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+          {loadError}
+        </p>
+      );
     }
     if (!batches) {
-      return <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading batches…</p>;
+      return (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading batches…
+        </p>
+      );
     }
     if (batches.length === 0) {
-      return <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>No batches received yet.</p>;
+      return (
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          No batches received yet.
+        </p>
+      );
     }
     return (
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: theme.fontSize.base }}>
           <thead>
-            <tr style={{ color: theme.text.muted, borderBottom: `1px solid ${theme.surface.border}` }}>
+            <tr
+              style={{ color: theme.text.muted, borderBottom: `1px solid ${theme.surface.border}` }}
+            >
               <th style={th}>Batch</th>
               <th style={th}>Expiry</th>
               <th style={th}>On Hand</th>
@@ -390,7 +490,15 @@ export default function InventoryPage() {
             {batches.map((b) => (
               <tr key={b.id} style={{ borderBottom: `1px solid ${theme.surface.border}` }}>
                 <td style={{ ...td, fontFamily: "monospace" }}>{b.batchNumber}</td>
-                <td style={{ ...td, color: b.expiryDate && b.expiryDate < new Date().toISOString().slice(0, 10) ? theme.text.danger : theme.text.secondary }}>
+                <td
+                  style={{
+                    ...td,
+                    color:
+                      b.expiryDate && b.expiryDate < new Date().toISOString().slice(0, 10)
+                        ? theme.text.danger
+                        : theme.text.secondary,
+                  }}
+                >
                   {b.expiryDate ?? "—"}
                 </td>
                 <td style={{ ...td, fontWeight: theme.fontWeight.semibold }}>{b.quantityOnHand}</td>
@@ -409,20 +517,63 @@ export default function InventoryPage() {
       <PageHeader
         title="Hospital Inventory & Assets"
         description="Centralized stock tracking, reorder thresholds, and asset management across clinical departments."
-        actions={<Button onClick={() => { setFormData((prev) => ({ ...prev, categoryId: activeTab === "lab" ? defaultCategoryId("quantity") : "" })); setShowModal(true); }}>+ Add {addLabel}</Button>}
+        actions={
+          <Button
+            onClick={() => {
+              setFormData((prev) => ({
+                ...prev,
+                categoryId: activeTab === "lab" ? defaultCategoryId("quantity") : "",
+              }));
+              setShowModal(true);
+            }}
+          >
+            + Add {addLabel}
+          </Button>
+        }
       />
 
       {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: theme.spacing["4"] }}>
-        <KpiCard label="Pharmacy Alerts" value={`${lowStockCount} SKUs Low`} accent={theme.action.danger} />
-        <KpiCard label="Lab Consumables" value={`${consumables.length} Items`} accent={theme.action.warning} />
-        <KpiCard label="Equipment Service" value={`${serviceDue} Unit Due`} accent={theme.action.info} />
-        <KpiCard label="Total Asset Value" value={CURRENCY(totalValue)} accent={theme.action.success} />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: theme.spacing["4"],
+        }}
+      >
+        <KpiCard
+          label="Pharmacy Alerts"
+          value={`${lowStockCount} SKUs Low`}
+          accent={theme.action.danger}
+        />
+        <KpiCard
+          label="Lab Consumables"
+          value={`${consumables.length} Items`}
+          accent={theme.action.warning}
+        />
+        <KpiCard
+          label="Equipment Service"
+          value={`${serviceDue} Unit Due`}
+          accent={theme.action.info}
+        />
+        <KpiCard
+          label="Total Asset Value"
+          value={CURRENCY(totalValue)}
+          accent={theme.action.success}
+        />
       </div>
 
       {/* Navigation Control Panel */}
       <Card bodyStyle={{ padding: theme.spacing["4"] }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: theme.spacing["4"], marginBottom: theme.spacing["4"] }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: theme.spacing["4"],
+            marginBottom: theme.spacing["4"],
+          }}
+        >
           <TabNav
             tabs={[
               { key: "pharmacy", label: `Pharmacy (${medicines.length})` },
@@ -456,13 +607,18 @@ export default function InventoryPage() {
       </Card>
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
 
       {loading && (
-        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading inventory data…</p>
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading inventory data…
+        </p>
       )}
 
       {/* Pharmacy table */}
@@ -488,7 +644,12 @@ export default function InventoryPage() {
           {filteredConsumables.length === 0 ? (
             <EmptyState icon="box" description="No lab consumables on file yet." />
           ) : (
-            <DataTable columns={consumableColumns} rows={filteredConsumables} rowKey={(a) => a.id} dense />
+            <DataTable
+              columns={consumableColumns}
+              rows={filteredConsumables}
+              rowKey={(a) => a.id}
+              dense
+            />
           )}
         </Card>
       )}
@@ -521,13 +682,24 @@ export default function InventoryPage() {
           </>
         }
       >
-        <form id="add-item-form" onSubmit={handleAddItem} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+        <form
+          id="add-item-form"
+          onSubmit={handleAddItem}
+          style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+        >
           <FormField label={activeTab === "pharmacy" ? "Generic name" : "Name"} required>
-            <Input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+            <Input
+              required
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
           </FormField>
 
           {activeTab === "pharmacy" ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}
+            >
               <FormField label="Category">
                 <Input
                   value={formData.categoryId}
@@ -536,10 +708,18 @@ export default function InventoryPage() {
                 />
               </FormField>
               <FormField label="Strength">
-                <Input value={formData.strength} onChange={(e) => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" />
+                <Input
+                  value={formData.strength}
+                  onChange={(e) => setFormData({ ...formData, strength: e.target.value })}
+                  placeholder="e.g. 500mg"
+                />
               </FormField>
               <FormField label="Dosage form">
-                <Input value={formData.dosageForm} onChange={(e) => setFormData({ ...formData, dosageForm: e.target.value })} placeholder="e.g. Tablet" />
+                <Input
+                  value={formData.dosageForm}
+                  onChange={(e) => setFormData({ ...formData, dosageForm: e.target.value })}
+                  placeholder="e.g. Tablet"
+                />
               </FormField>
               <FormField label="Reorder level">
                 <Input
@@ -582,9 +762,14 @@ export default function InventoryPage() {
                   ))}
                 </Select>
               </FormField>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}>
+              <div
+                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}
+              >
                 <FormField label="Serial / lot number">
-                  <Input value={formData.serialNumber} onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })} />
+                  <Input
+                    value={formData.serialNumber}
+                    onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  />
                 </FormField>
                 <FormField label="Quantity on hand">
                   <Input
@@ -595,10 +780,19 @@ export default function InventoryPage() {
                   />
                 </FormField>
                 <FormField label="Cost (₦)">
-                  <Input type="number" min={0} value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: e.target.value })} />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.cost}
+                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                  />
                 </FormField>
                 <FormField label="Location">
-                  <Input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="e.g. ICU" />
+                  <Input
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="e.g. ICU"
+                  />
                 </FormField>
               </div>
             </>
@@ -617,11 +811,32 @@ function KpiCard({ label, value, accent }: { label: string; value: string; accen
         borderLeft: `4px solid ${accent}`,
       }}
     >
-      <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontWeight: theme.fontWeight.bold }}>{label}</div>
-      <div style={{ fontSize: "1.5rem", fontWeight: theme.fontWeight.bold, color: theme.text.primary, marginTop: theme.spacing["1"] }}>{value}</div>
+      <div
+        style={{
+          fontSize: theme.fontSize.sm,
+          color: theme.text.muted,
+          fontWeight: theme.fontWeight.bold,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontSize: "1.5rem",
+          fontWeight: theme.fontWeight.bold,
+          color: theme.text.primary,
+          marginTop: theme.spacing["1"],
+        }}
+      >
+        {value}
+      </div>
     </Card>
   );
 }
 
-const th: CSSProperties = { padding: "0.5rem", textAlign: "left", fontWeight: theme.fontWeight.semibold };
+const th: CSSProperties = {
+  padding: "0.5rem",
+  textAlign: "left",
+  fontWeight: theme.fontWeight.semibold,
+};
 const td: CSSProperties = { padding: "0.5rem", color: theme.text.secondary, verticalAlign: "top" };

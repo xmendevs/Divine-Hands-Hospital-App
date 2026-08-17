@@ -1,5 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, EmptyState, FormField, Input, Modal, PageHeader, Select, StatusBadge } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  StatusBadge,
+  useToast,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface PatientSummary {
@@ -42,6 +55,7 @@ export default function PatientsPage() {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [saving, setSaving] = useState(false);
   const [reload, setReload] = useState(0);
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -100,8 +114,11 @@ export default function PatientsPage() {
         registrationType: "normal",
       });
       setReload((n) => n + 1);
+      toast.success("Patient registered.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not register patient.");
+      const msg = err instanceof Error ? err.message : "Could not register patient.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -124,7 +141,13 @@ export default function PatientsPage() {
   }
 
   const columns = [
-    { key: "no", header: "Patient No", render: (p: PatientSummary) => <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> },
+    {
+      key: "no",
+      header: "Patient No",
+      render: (p: PatientSummary) => (
+        <strong style={{ color: theme.action.info }}>{p.patientNo}</strong>
+      ),
+    },
     { key: "name", header: "Full Name", render: (p: PatientSummary) => fullName(p) },
     { key: "type", header: "Type", render: (p: PatientSummary) => regBadge(p.registrationType) },
     {
@@ -149,7 +172,14 @@ export default function PatientsPage() {
       <PageHeader
         title="Patients Directory"
         description="Search the patient register and open electronic medical records."
-        actions={<Button onClick={() => setShowModal(true)} icon={<span style={{ fontWeight: "bold" }}>+</span>}>Register Patient</Button>}
+        actions={
+          <Button
+            onClick={() => setShowModal(true)}
+            icon={<span style={{ fontWeight: "bold" }}>+</span>}
+          >
+            Register Patient
+          </Button>
+        }
       />
 
       <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
@@ -163,7 +193,10 @@ export default function PatientsPage() {
       </div>
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
@@ -196,7 +229,11 @@ export default function PatientsPage() {
           </>
         }
       >
-        <form id="register-patient-form" onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+        <form
+          id="register-patient-form"
+          onSubmit={handleRegister}
+          style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+        >
           <FormField label="First name" required>
             <Input
               required
@@ -275,7 +312,10 @@ export default function PatientsPage() {
               }}
             >
               {timeline.map((ev) => (
-                <li key={ev.id} style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+                <li
+                  key={ev.id}
+                  style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}
+                >
                   <strong>{ev.eventType}</strong> — {ev.summary}{" "}
                   <span style={{ color: theme.text.muted, fontSize: theme.fontSize.sm }}>
                     {new Date(ev.occurredAt).toLocaleString()}

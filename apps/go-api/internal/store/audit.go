@@ -45,7 +45,7 @@ func (s *Store) ListAuditLogs(ctx context.Context, limit, offset int) ([]domain.
 	}
 	defer rows.Close()
 
-	var out []domain.AuditLog
+	out := make([]domain.AuditLog, 0)
 	for rows.Next() {
 		var a domain.AuditLog
 		if err := rows.Scan(&a.ID, &a.ActorUserID, &a.Action, &a.ResourceType, &a.ResourceID,
@@ -67,7 +67,7 @@ func (s *Store) ListSettings(ctx context.Context) ([]domain.Setting, error) {
 	}
 	defer rows.Close()
 
-	var out []domain.Setting
+	out := make([]domain.Setting, 0)
 	for rows.Next() {
 		var st domain.Setting
 		if err := rows.Scan(&st.Key, &st.Value, &st.Description, &st.UpdatedBy, &st.UpdatedAt); err != nil {

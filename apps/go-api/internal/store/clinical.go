@@ -66,7 +66,7 @@ func (s *Store) ListNotes(ctx context.Context, patientID string) ([]domain.Clini
 	}
 	defer rows.Close()
 
-	var out []domain.ClinicalNote
+	out := make([]domain.ClinicalNote, 0)
 	for rows.Next() {
 		n, err := scanNote(rows)
 		if err != nil {
@@ -86,7 +86,7 @@ func (s *Store) ListNoteVersions(ctx context.Context, groupID string) ([]domain.
 	}
 	defer rows.Close()
 
-	var out []domain.ClinicalNote
+	out := make([]domain.ClinicalNote, 0)
 	for rows.Next() {
 		n, err := scanNote(rows)
 		if err != nil {
@@ -166,7 +166,7 @@ func (s *Store) ListObservations(ctx context.Context, patientID, category string
 	}
 	defer rows.Close()
 
-	var out []domain.Observation
+	out := make([]domain.Observation, 0)
 	for rows.Next() {
 		var o domain.Observation
 		if err := rows.Scan(&o.ID, &o.PatientID, &o.Category, &o.Measurements, &o.Notes, &o.RecordedBy, &o.RecordedAt); err != nil {
@@ -271,7 +271,7 @@ func (s *Store) ListPatientTasks(ctx context.Context, patientID string) ([]domai
 }
 
 func scanTasks(rows pgx.Rows) ([]domain.Task, error) {
-	var out []domain.Task
+	out := make([]domain.Task, 0)
 	for rows.Next() {
 		var t domain.Task
 		if err := rows.Scan(&t.ID, &t.PatientID, &t.DepartmentID, &t.OrderID, &t.Title, &t.Description,
@@ -316,7 +316,7 @@ func (s *Store) ListReports(ctx context.Context, patientID string) ([]domain.Cli
 	}
 	defer rows.Close()
 
-	var out []domain.ClinicalReport
+	out := make([]domain.ClinicalReport, 0)
 	for rows.Next() {
 		var r domain.ClinicalReport
 		if err := rows.Scan(&r.ID, &r.PatientID, &r.ReportType, &r.Title, &r.Content,
@@ -459,7 +459,7 @@ func (s *Store) ListMyQueue(ctx context.Context, assigneeUserID string) ([]Queue
 	}
 	defer rows.Close()
 
-	var out []QueueItem
+	out := make([]QueueItem, 0)
 	for rows.Next() {
 		var it QueueItem
 		if err := rows.Scan(&it.AssignmentID, &it.PatientID, &it.PatientNo, &it.FirstName, &it.LastName,

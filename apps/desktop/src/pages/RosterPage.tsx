@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, FormField, Input, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  FormField,
+  Input,
+  PageHeader,
+  Select,
+  StatusBadge,
+  TabNav,
+  useConfirm,
+  useToast,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface RosterAssignment {
@@ -71,6 +85,9 @@ export default function RosterPage() {
   const [planForm, setPlanForm] = useState(EMPTY_PLAN_FORM);
   const [saving, setSaving] = useState(false);
 
+  const toast = useToast();
+  const [confirm, confirmDialog] = useConfirm();
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     const [plansRes, shiftsRes, deptsRes] = await Promise.allSettled([
@@ -96,7 +113,7 @@ export default function RosterPage() {
       );
     }
     if (deptsRes.status === "fulfilled") {
-      setDepartments(deptsRes.value);
+      setDepartments(deptsRes.value ?? []);
     } else {
       errors.push(
         deptsRes.reason instanceof Error ? deptsRes.reason.message : "Could not load departments.",
@@ -110,27 +127,46 @@ export default function RosterPage() {
     void loadAll();
   }, [loadAll]);
 
-  async function planAction(plan: RosterPlan, fn: (id: string) => Promise<unknown>) {
+  async function planAction(
+    plan: RosterPlan,
+    fn: (id: string) => Promise<unknown>,
+    successMessage?: string,
+  ) {
     setBusyId(plan.id);
     setError("");
     try {
       await fn(plan.id);
       await loadAll();
+      if (successMessage) toast.success(successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Roster action failed.");
+      const msg = err instanceof Error ? err.message : "Roster action failed.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusyId(null);
     }
   }
 
   async function rejectPlan(plan: RosterPlan) {
+    const ok = await confirm({
+      title: `Reject roster ${plan.planNo}?`,
+      message:
+        "The plan will be returned to draft with a rejection note. Staff shifts will not be published.",
+      confirmLabel: "Reject",
+      danger: true,
+      icon: "warning",
+    });
+    if (!ok) return;
     const reason = window.prompt(`Reason for rejecting roster ${plan.planNo}?`)?.trim();
     if (!reason) return;
-    await planAction(plan, (id) =>
-      apiFetch<unknown>(`/roster/plans/${id}/reject`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      }),
+    await planAction(
+      plan,
+      (id) =>
+        apiFetch<unknown>(`/roster/plans/${id}/reject`, {
+          method: "POST",
+          body: JSON.stringify({ reason }),
+        }),
+      `Roster ${plan.planNo} rejected.`,
     );
   }
 
@@ -163,8 +199,11 @@ export default function RosterPage() {
       setPlanForm(EMPTY_PLAN_FORM);
       await loadAll();
       setActiveTab("plans");
+      toast.success("Roster plan generated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the roster plan.");
+      const msg = err instanceof Error ? err.message : "Could not create the roster plan.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -178,7 +217,11 @@ export default function RosterPage() {
   }
 
   const assignmentsColumns = [
-    { key: "staff", header: "Staff", render: (a: RosterAssignment) => <strong>{a.staffName || a.staffId}</strong> },
+    {
+      key: "staff",
+      header: "Staff",
+      render: (a: RosterAssignment) => <strong>{a.staffName || a.staffId}</strong>,
+    },
     { key: "no", header: "Employee No", render: (a: RosterAssignment) => a.employeeNo || "—" },
     { key: "date", header: "Work Date", render: (a: RosterAssignment) => a.workDate },
     {
@@ -207,7 +250,10 @@ export default function RosterPage() {
       />
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
@@ -238,10 +284,22 @@ export default function RosterPage() {
                 }}
               >
                 <div>
-                  <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary, fontSize: theme.fontSize.lg }}>
+                  <span
+                    style={{
+                      fontWeight: theme.fontWeight.bold,
+                      color: theme.text.primary,
+                      fontSize: theme.fontSize.lg,
+                    }}
+                  >
                     {p.name}
                   </span>
-                  <span style={{ marginLeft: theme.spacing["3"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                  <span
+                    style={{
+                      marginLeft: theme.spacing["3"],
+                      fontSize: theme.fontSize.base,
+                      color: theme.text.muted,
+                    }}
+                  >
                     {p.planNo} · v{p.version} · {p.departmentName || "—"}
                   </span>
                 </div>
@@ -259,7 +317,7 @@ export default function RosterPage() {
                     margin: `0 0 ${theme.spacing["3"]}`,
                     fontSize: theme.fontSize.base,
                     color: theme.action.warning,
-                    background: "#fffbeb",
+                    background: theme.surface.warning,
                     padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
                     borderRadius: theme.radius.md,
                   }}
@@ -274,19 +332,24 @@ export default function RosterPage() {
                 </p>
               ) : (
                 <div style={{ marginBottom: theme.spacing["3"] }}>
-                  <DataTable columns={assignmentsColumns} rows={p.assignments} rowKey={(a) => a.id} dense />
+                  <DataTable
+                    columns={assignmentsColumns}
+                    rows={p.assignments}
+                    rowKey={(a) => a.id}
+                    dense
+                  />
                 </div>
               )}
 
               {p.unmet.length > 0 && (
                 <div
                   style={{
-                    background: "#fef2f2",
-                    border: "1px solid #fca5a5",
+                    background: theme.surface.error,
+                    border: `1px solid ${theme.surface.errorBorder}`,
                     borderRadius: theme.radius.md,
                     padding: `${theme.spacing["2"]} ${theme.spacing["3"]}`,
                     fontSize: theme.fontSize.base,
-                    color: "#991b1b",
+                    color: theme.text.dangerStrong,
                     marginBottom: theme.spacing["3"],
                   }}
                 >
@@ -297,7 +360,14 @@ export default function RosterPage() {
                 </div>
               )}
 
-              <div style={{ display: "flex", gap: theme.spacing["2"], justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: theme.spacing["2"],
+                  justifyContent: "flex-end",
+                  flexWrap: "wrap",
+                }}
+              >
                 {p.status === "draft" && (
                   <>
                     <Button
@@ -305,8 +375,11 @@ export default function RosterPage() {
                       variant="outline"
                       loading={busyId === p.id}
                       onClick={() =>
-                        planAction(p, (id) =>
-                          apiFetch<unknown>(`/roster/plans/${id}/regenerate`, { method: "POST" }),
+                        planAction(
+                          p,
+                          (id) =>
+                            apiFetch<unknown>(`/roster/plans/${id}/regenerate`, { method: "POST" }),
+                          `Roster ${p.planNo} regenerated.`,
                         )
                       }
                     >
@@ -317,8 +390,11 @@ export default function RosterPage() {
                       loading={busyId === p.id}
                       style={{ background: theme.action.warning }}
                       onClick={() =>
-                        planAction(p, (id) =>
-                          apiFetch<unknown>(`/roster/plans/${id}/submit`, { method: "POST" }),
+                        planAction(
+                          p,
+                          (id) =>
+                            apiFetch<unknown>(`/roster/plans/${id}/submit`, { method: "POST" }),
+                          `Roster ${p.planNo} submitted for approval.`,
                         )
                       }
                     >
@@ -333,8 +409,11 @@ export default function RosterPage() {
                       loading={busyId === p.id}
                       style={{ background: theme.action.success }}
                       onClick={() =>
-                        planAction(p, (id) =>
-                          apiFetch<unknown>(`/roster/plans/${id}/approve`, { method: "POST" }),
+                        planAction(
+                          p,
+                          (id) =>
+                            apiFetch<unknown>(`/roster/plans/${id}/approve`, { method: "POST" }),
+                          `Roster ${p.planNo} approved and published.`,
                         )
                       }
                     >
@@ -356,8 +435,10 @@ export default function RosterPage() {
                     variant="outline"
                     loading={busyId === p.id}
                     onClick={() =>
-                      planAction(p, (id) =>
-                        apiFetch<unknown>(`/roster/plans/${id}/amend`, { method: "POST" }),
+                      planAction(
+                        p,
+                        (id) => apiFetch<unknown>(`/roster/plans/${id}/amend`, { method: "POST" }),
+                        `Roster ${p.planNo} amended — new draft created.`,
                       )
                     }
                   >
@@ -377,7 +458,10 @@ export default function RosterPage() {
 
       {!loading && activeTab === "generator" && (
         <Card style={{ maxWidth: 800 }}>
-          <form onSubmit={handleCreatePlan} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+          <form
+            onSubmit={handleCreatePlan}
+            style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+          >
             <h3 style={{ margin: 0, fontSize: theme.fontSize.lg, color: theme.text.primary }}>
               Automated Monthly Roster Generator
             </h3>
@@ -386,7 +470,9 @@ export default function RosterPage() {
               rotation, and coverage requirements.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}
+            >
               <FormField label="Plan name">
                 <Input
                   value={planForm.name}
@@ -435,7 +521,13 @@ export default function RosterPage() {
                   marginBottom: theme.spacing["2"],
                 }}
               >
-                <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+                <span
+                  style={{
+                    fontSize: theme.fontSize.base,
+                    fontWeight: theme.fontWeight.semibold,
+                    color: theme.text.secondary,
+                  }}
+                >
                   Shift requirements (staff needed per shift)
                 </span>
                 <Button
@@ -458,7 +550,14 @@ export default function RosterPage() {
                 </p>
               )}
               {planForm.requirements.map((r, idx) => (
-                <div key={idx} style={{ display: "flex", gap: theme.spacing["2"], marginBottom: theme.spacing["2"] }}>
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    gap: theme.spacing["2"],
+                    marginBottom: theme.spacing["2"],
+                  }}
+                >
                   <Select
                     value={r.shiftId}
                     onChange={(e) => setRequirement(idx, { shiftId: e.target.value })}
@@ -504,6 +603,8 @@ export default function RosterPage() {
           </form>
         </Card>
       )}
+
+      {confirmDialog}
     </div>
   );
 }

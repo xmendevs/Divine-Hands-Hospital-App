@@ -43,7 +43,7 @@ func (s *Store) ListStaff(ctx context.Context) ([]domain.Staff, error) {
 	}
 	defer rows.Close()
 
-	var out []domain.Staff
+	out := make([]domain.Staff, 0)
 	for rows.Next() {
 		st, err := scanStaff(rows)
 		if err != nil {
@@ -180,7 +180,7 @@ func (s *Store) ListLeave(ctx context.Context, p ListLeaveParams) ([]domain.Staf
 	}
 	defer rows.Close()
 
-	var out []domain.StaffLeave
+	out := make([]domain.StaffLeave, 0)
 	for rows.Next() {
 		lv, err := scanStaffLeave(rows)
 		if err != nil {
@@ -254,7 +254,7 @@ func (s *Store) ListUnavailability(ctx context.Context, p ListUnavailabilityPara
 	}
 	defer rows.Close()
 
-	var out []domain.StaffUnavailability
+	out := make([]domain.StaffUnavailability, 0)
 	for rows.Next() {
 		u, err := scanUnavailability(rows)
 		if err != nil {
@@ -315,7 +315,7 @@ func (s *Store) ListShiftPreferences(ctx context.Context, staffID string) ([]dom
 	}
 	defer rows.Close()
 
-	var out []domain.ShiftPreference
+	out := make([]domain.ShiftPreference, 0)
 	for rows.Next() {
 		var p domain.ShiftPreference
 		if err := rows.Scan(&p.ShiftID, &p.ShiftCode, &p.ShiftName, &p.Rank); err != nil {

@@ -10,6 +10,7 @@ import { Modal } from "./Modal";
 import { Icon } from "./Icon";
 import { ToastProvider, useToast } from "./Toast";
 import { Button } from "./Button";
+import { ConfirmDialog, useConfirm } from "./ConfirmDialog";
 
 describe("PageHeader", () => {
   it("renders title and description", () => {
@@ -21,7 +22,16 @@ describe("PageHeader", () => {
 
 describe("TabNav", () => {
   it("renders tabs and marks the active one", () => {
-    render(<TabNav tabs={[{ key: "a", label: "Alpha" }, { key: "b", label: "Beta" }]} active="b" onChange={() => {}} />);
+    render(
+      <TabNav
+        tabs={[
+          { key: "a", label: "Alpha" },
+          { key: "b", label: "Beta" },
+        ]}
+        active="b"
+        onChange={() => {}}
+      />,
+    );
     expect(screen.getByRole("tab", { name: "Alpha" }).getAttribute("aria-selected")).toBe("false");
     expect(screen.getByRole("tab", { name: "Beta" }).getAttribute("aria-selected")).toBe("true");
   });
@@ -38,14 +48,22 @@ describe("Modal", () => {
   it("renders nothing when closed and content when open", () => {
     const { rerender } = render(<Modal open={false} title="Edit" onClose={() => {}} />);
     expect(screen.queryByRole("dialog")).toBeNull();
-    rerender(<Modal open title="Edit" onClose={() => {}}>Body</Modal>);
+    rerender(
+      <Modal open title="Edit" onClose={() => {}}>
+        Body
+      </Modal>,
+    );
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByText("Body")).toBeTruthy();
   });
 
   it("calls onClose on Escape", () => {
     let closed = false;
-    render(<Modal open title="Edit" onClose={() => (closed = true)}>Body</Modal>);
+    render(
+      <Modal open title="Edit" onClose={() => (closed = true)}>
+        Body
+      </Modal>,
+    );
     fireEvent.keyDown(document, { key: "Escape" });
     expect(closed).toBe(true);
   });
@@ -64,8 +82,53 @@ describe("ToastProvider", () => {
       const toast = useToast();
       return <Button onClick={() => toast.success("Saved!")}>Go</Button>;
     }
-    render(<ToastProvider><Trigger /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <Trigger />
+      </ToastProvider>,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Go" }));
     expect(screen.getByText("Saved!")).toBeTruthy();
+  });
+});
+
+describe("ConfirmDialog", () => {
+  it("renders the message and confirm/cancel actions", () => {
+    render(
+      <ConfirmDialog
+        open
+        options={{ title: "Void invoice?", message: "This cannot be undone.", danger: true }}
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("This cannot be undone.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+  });
+
+  it("resolves the useConfirm promise on confirm", async () => {
+    let result: boolean | undefined;
+    function Trigger() {
+      const [confirm, dialog] = useConfirm();
+      return (
+        <>
+          <Button
+            onClick={() => {
+              void confirm({ title: "Go?", message: "Proceed?" }).then((ok) => (result = ok));
+            }}
+          >
+            Ask
+          </Button>
+          {dialog}
+        </>
+      );
+    }
+    render(<Trigger />);
+    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await Promise.resolve();
+    expect(result).toBe(true);
   });
 });

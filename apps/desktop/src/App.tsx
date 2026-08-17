@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { theme, Spinner } from "@hims/ui";
+import { theme, Spinner, ToastProvider } from "@hims/ui";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { Sidebar, type NavGroup } from "./ui/Sidebar";
 import LoginPage from "./pages/LoginPage";
@@ -13,6 +13,9 @@ import PatientsPage from "./pages/PatientsPage";
 import RosterPage from "./pages/RosterPage";
 import HandoverPage from "./pages/HandoverPage";
 import CommunicationsPage from "./pages/CommunicationsPage";
+import StaffPage from "./pages/StaffPage";
+import ReportsPage from "./pages/ReportsPage";
+import AttendancePage from "./pages/AttendancePage";
 
 const navGroups: NavGroup[] = [
   {
@@ -37,9 +40,12 @@ const navGroups: NavGroup[] = [
   {
     title: "Staff & Operations",
     items: [
+      { key: "staff", label: "Staff Management", icon: "users" },
+      { key: "attendance", label: "Attendance & Clock In/Out", icon: "clock" },
       { key: "roster", label: "Roster & Shifts", icon: "calendar" },
       { key: "handover", label: "Shift Handover Log", icon: "book" },
       { key: "communications", label: "Staff Communications", icon: "chat" },
+      { key: "reports", label: "Reports & Dashboard", icon: "file-text" },
     ],
   },
 ];
@@ -47,7 +53,9 @@ const navGroups: NavGroup[] = [
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <ToastProvider>
+        <AppShell />
+      </ToastProvider>
     </AuthProvider>
   );
 }
@@ -104,6 +112,9 @@ function AppShell() {
         {activeTab === "roster" && <RosterPage />}
         {activeTab === "handover" && <HandoverPage />}
         {activeTab === "communications" && <CommunicationsPage />}
+        {activeTab === "staff" && <StaffPage />}
+        {activeTab === "attendance" && <AttendancePage />}
+        {activeTab === "reports" && <ReportsPage />}
         {activeTab === "settings" && <SettingsPage />}
       </main>
     </div>

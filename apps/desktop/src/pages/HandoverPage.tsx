@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, EmptyState, FormField, Input, PageHeader, StatusBadge, Textarea } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  EmptyState,
+  FormField,
+  Input,
+  PageHeader,
+  StatusBadge,
+  Textarea,
+  useToast,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface Handover {
@@ -41,6 +52,7 @@ export default function HandoverPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -80,8 +92,11 @@ export default function HandoverPage() {
       });
       setForm(EMPTY_FORM);
       await loadAll();
+      toast.success("Handover submitted and signed.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the handover.");
+      const msg = err instanceof Error ? err.message : "Could not save the handover.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -92,8 +107,11 @@ export default function HandoverPage() {
     try {
       await apiFetch<unknown>(`/handovers/${h.id}/acknowledge`, { method: "POST" });
       await loadAll();
+      toast.success(`Handover ${h.handoverNo} acknowledged.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not acknowledge the handover.");
+      const msg = err instanceof Error ? err.message : "Could not acknowledge the handover.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -106,14 +124,24 @@ export default function HandoverPage() {
       />
 
       {error && (
-        <p role="alert" style={{ margin: `0 0 ${theme.spacing["4"]}`, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{
+            margin: `0 0 ${theme.spacing["4"]}`,
+            fontSize: theme.fontSize.base,
+            color: theme.text.danger,
+          }}
+        >
           {error}
         </p>
       )}
 
       {/* New Handover Form */}
       <Card title="Submit New Shift Handover" style={{ marginBottom: theme.spacing["8"] }}>
-        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["4"] }}
+        >
           <FormField label="Patient IDs (comma-separated, optional)">
             <Input
               type="text"
@@ -165,10 +193,18 @@ export default function HandoverPage() {
             />
           </FormField>
           <FormField label="Outstanding tasks">
-            <Input type="text" value={form.tasks} onChange={(e) => setForm({ ...form, tasks: e.target.value })} />
+            <Input
+              type="text"
+              value={form.tasks}
+              onChange={(e) => setForm({ ...form, tasks: e.target.value })}
+            />
           </FormField>
           <FormField label="Incidents">
-            <Input type="text" value={form.incidents} onChange={(e) => setForm({ ...form, incidents: e.target.value })} />
+            <Input
+              type="text"
+              value={form.incidents}
+              onChange={(e) => setForm({ ...form, incidents: e.target.value })}
+            />
           </FormField>
           <FormField label="Instructions for incoming shift">
             <Input
@@ -186,7 +222,14 @@ export default function HandoverPage() {
       </Card>
 
       {/* Handover Logs List */}
-      <h3 style={{ margin: `0 0 ${theme.spacing["4"]}`, fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+      <h3
+        style={{
+          margin: `0 0 ${theme.spacing["4"]}`,
+          fontSize: theme.fontSize.lg,
+          fontWeight: theme.fontWeight.bold,
+          color: theme.text.primary,
+        }}
+      >
         Recorded Shift Handovers
       </h3>
       {loading ? (
@@ -210,15 +253,30 @@ export default function HandoverPage() {
                 }}
               >
                 <div>
-                  <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary, fontSize: theme.fontSize.base }}>
+                  <span
+                    style={{
+                      fontWeight: theme.fontWeight.bold,
+                      color: theme.text.primary,
+                      fontSize: theme.fontSize.base,
+                    }}
+                  >
                     {h.handoverNo}
                   </span>
-                  <span style={{ marginLeft: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                  <span
+                    style={{
+                      marginLeft: theme.spacing["4"],
+                      fontSize: theme.fontSize.base,
+                      color: theme.text.muted,
+                    }}
+                  >
                     {h.shiftName ? `${h.shiftName} · ` : ""}
                     {h.departmentName || "—"} · {new Date(h.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <StatusBadge variant={h.status === "acknowledged" ? "approved" : "running"} label={h.status} />
+                <StatusBadge
+                  variant={h.status === "acknowledged" ? "approved" : "running"}
+                  label={h.status}
+                />
               </div>
 
               <div style={{ fontSize: theme.fontSize.base, marginBottom: theme.spacing["3"] }}>
@@ -259,9 +317,13 @@ export default function HandoverPage() {
                   }}
                 >
                   {h.medications && <Detail label="Medications" value={h.medications} />}
-                  {h.pendingInvestigations && <Detail label="Pending Investigations" value={h.pendingInvestigations} />}
+                  {h.pendingInvestigations && (
+                    <Detail label="Pending Investigations" value={h.pendingInvestigations} />
+                  )}
                   {h.pendingOrders && <Detail label="Pending Orders" value={h.pendingOrders} />}
-                  {h.importantObservations && <Detail label="Observations" value={h.importantObservations} />}
+                  {h.importantObservations && (
+                    <Detail label="Observations" value={h.importantObservations} />
+                  )}
                   {h.tasks && <Detail label="Tasks" value={h.tasks} />}
                   {h.incidents && <Detail label="Incidents" value={h.incidents} />}
                   {h.instructions && <Detail label="Instructions" value={h.instructions} />}
@@ -270,7 +332,11 @@ export default function HandoverPage() {
 
               {h.status !== "acknowledged" && (
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button size="sm" style={{ background: theme.action.success }} onClick={() => acknowledge(h)}>
+                  <Button
+                    size="sm"
+                    style={{ background: theme.action.success }}
+                    onClick={() => acknowledge(h)}
+                  >
                     Acknowledge Handover
                   </Button>
                 </div>

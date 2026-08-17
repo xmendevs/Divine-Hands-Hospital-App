@@ -79,7 +79,7 @@ func (s *Store) ListAdmissions(ctx context.Context, patientID string) ([]domain.
 	}
 	defer rows.Close()
 
-	var out []domain.Admission
+	out := make([]domain.Admission, 0)
 	for rows.Next() {
 		a, err := scanAdmission(rows)
 		if err != nil {

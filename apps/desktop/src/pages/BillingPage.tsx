@@ -1,5 +1,20 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, EmptyState, FormField, Input, Modal, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  StatusBadge,
+  TabNav,
+  useToast,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch, getBaseUrl } from "../api/client";
 
 interface InvoiceItem {
@@ -121,6 +136,7 @@ export default function BillingPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -248,8 +264,11 @@ export default function BillingPage() {
       });
       setOpeningCash("");
       await loadAll();
+      toast.success("Cashier shift opened.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open the shift.");
+      const msg = err instanceof Error ? err.message : "Could not open the shift.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -264,8 +283,11 @@ export default function BillingPage() {
       });
       setClosingCash("");
       await loadAll();
+      toast.success("Cashier shift closed.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not close the shift.");
+      const msg = err instanceof Error ? err.message : "Could not close the shift.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -314,8 +336,11 @@ export default function BillingPage() {
       setPolicyNumber("");
       setDiscountAmount("");
       await loadAll();
+      toast.success(`Invoice ${inv.invoiceNo} created.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the invoice.");
+      const msg = err instanceof Error ? err.message : "Could not create the invoice.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setCreating(false);
     }
@@ -326,8 +351,11 @@ export default function BillingPage() {
     try {
       await apiFetch<unknown>(`/billing/invoices/${inv.id}/issue`, { method: "POST" });
       await loadAll();
+      toast.success(`Invoice ${inv.invoiceNo} issued.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not issue the invoice.");
+      const msg = err instanceof Error ? err.message : "Could not issue the invoice.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -354,12 +382,14 @@ export default function BillingPage() {
       setPayReference("");
       setActiveReceipt(res.receipt);
       await loadAll();
+      toast.success(`Payment of ${currency(res.payment.amount)} recorded.`);
     } catch (err) {
-      setError(
+      const msg =
         err instanceof Error
           ? err.message
-          : "Could not record the payment (an open cashier shift is required).",
-      );
+          : "Could not record the payment (an open cashier shift is required).";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setPaying(false);
     }
@@ -374,21 +404,56 @@ export default function BillingPage() {
   );
 
   const paymentColumns = [
-    { key: "no", header: "Payment No", render: (p: Payment) => <strong style={{ color: theme.action.info }}>{p.paymentNo}</strong> },
+    {
+      key: "no",
+      header: "Payment No",
+      render: (p: Payment) => <strong style={{ color: theme.action.info }}>{p.paymentNo}</strong>,
+    },
     { key: "invoice", header: "Invoice", render: (p: Payment) => p.invoiceNo },
-    { key: "patient", header: "Patient", render: (p: Payment) => <span style={{ fontWeight: theme.fontWeight.semibold }}>{p.patientName || "—"}</span> },
+    {
+      key: "patient",
+      header: "Patient",
+      render: (p: Payment) => (
+        <span style={{ fontWeight: theme.fontWeight.semibold }}>{p.patientName || "—"}</span>
+      ),
+    },
     { key: "method", header: "Method", render: (p: Payment) => p.method.toUpperCase() },
     { key: "reference", header: "Reference", render: (p: Payment) => p.reference || "—" },
-    { key: "amount", header: "Amount", render: (p: Payment) => <strong style={{ color: theme.action.success }}>{currency(p.amount)}</strong> },
-    { key: "received", header: "Received At", render: (p: Payment) => new Date(p.receivedAt).toLocaleString() },
+    {
+      key: "amount",
+      header: "Amount",
+      render: (p: Payment) => (
+        <strong style={{ color: theme.action.success }}>{currency(p.amount)}</strong>
+      ),
+    },
+    {
+      key: "received",
+      header: "Received At",
+      render: (p: Payment) => new Date(p.receivedAt).toLocaleString(),
+    },
   ];
 
   const invoiceItemColumns = [
     { key: "name", header: "Item", render: (it: InvoiceItem) => it.name },
     { key: "category", header: "Category", render: (it: InvoiceItem) => it.category || "—" },
-    { key: "price", header: "Price", align: "right" as const, render: (it: InvoiceItem) => currency(it.unitPrice) },
-    { key: "qty", header: "Qty", align: "center" as const, render: (it: InvoiceItem) => it.quantity },
-    { key: "total", header: "Total", align: "right" as const, render: (it: InvoiceItem) => <strong>{currency(it.lineTotal)}</strong> },
+    {
+      key: "price",
+      header: "Price",
+      align: "right" as const,
+      render: (it: InvoiceItem) => currency(it.unitPrice),
+    },
+    {
+      key: "qty",
+      header: "Qty",
+      align: "center" as const,
+      render: (it: InvoiceItem) => it.quantity,
+    },
+    {
+      key: "total",
+      header: "Total",
+      align: "right" as const,
+      render: (it: InvoiceItem) => <strong>{currency(it.lineTotal)}</strong>,
+    },
   ];
 
   return (
@@ -420,7 +485,10 @@ export default function BillingPage() {
               {new Date(openShift.openedAt).toLocaleString()} with {currency(openShift.openingCash)}
               . Payments can be received.
             </div>
-            <form onSubmit={handleCloseShift} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+            <form
+              onSubmit={handleCloseShift}
+              style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}
+            >
               <Input
                 type="number"
                 min={0}
@@ -439,7 +507,10 @@ export default function BillingPage() {
             <div style={{ fontSize: theme.fontSize.base, color: theme.badge.running.text }}>
               No open cashier shift. Open one before receiving payments.
             </div>
-            <form onSubmit={handleOpenShift} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
+            <form
+              onSubmit={handleOpenShift}
+              style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}
+            >
               <Input
                 type="number"
                 min={0}
@@ -466,18 +537,30 @@ export default function BillingPage() {
       />
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
 
       {loading && (
-        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading billing data…</p>
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading billing data…
+        </p>
       )}
 
       {/* TAB 1: Invoices */}
       {!loading && activeTab === "invoices" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: theme.spacing["6"], alignItems: "start" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1.2fr",
+            gap: theme.spacing["6"],
+            alignItems: "start",
+          }}
+        >
           <Card bodyStyle={{ padding: theme.spacing["4"] }}>
             <Input
               type="text"
@@ -488,7 +571,9 @@ export default function BillingPage() {
             />
             <div style={{ overflowY: "auto", maxHeight: 500 }}>
               {filteredInvoices.length === 0 && (
-                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>No invoices match.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  No invoices match.
+                </p>
               )}
               {filteredInvoices.map((inv) => (
                 <div
@@ -499,26 +584,60 @@ export default function BillingPage() {
                     borderBottom: `1px solid ${theme.surface.border}`,
                     borderRadius: theme.radius.md,
                     cursor: "pointer",
-                    backgroundColor: selectedInvoice?.id === inv.id ? "#f0f9ff" : "transparent",
-                    borderLeft: selectedInvoice?.id === inv.id ? `4px solid ${theme.action.info}` : "4px solid transparent",
+                    backgroundColor:
+                      selectedInvoice?.id === inv.id ? theme.surface.subtle : "transparent",
+                    borderLeft:
+                      selectedInvoice?.id === inv.id
+                        ? `4px solid ${theme.action.info}`
+                        : "4px solid transparent",
                     marginBottom: "0.25rem",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: theme.fontWeight.bold, color: theme.action.info, fontSize: theme.fontSize.base }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: theme.fontWeight.bold,
+                        color: theme.action.info,
+                        fontSize: theme.fontSize.base,
+                      }}
+                    >
                       {inv.invoiceNo}
                     </span>
-                    <StatusBadge variant={invoiceStatusBadge(inv.status)} label={inv.status.replace("_", " ")} />
+                    <StatusBadge
+                      variant={invoiceStatusBadge(inv.status)}
+                      label={inv.status.replace("_", " ")}
+                    />
                   </div>
-                  <div style={{ fontWeight: theme.fontWeight.semibold, margin: "0.25rem 0", fontSize: theme.fontSize.base }}>
+                  <div
+                    style={{
+                      fontWeight: theme.fontWeight.semibold,
+                      margin: "0.25rem 0",
+                      fontSize: theme.fontSize.base,
+                    }}
+                  >
                     {inv.patientName || "Walk-in"}{" "}
                     <span style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
                       {inv.patientNo ? `(${inv.patientNo})` : ""}
                     </span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      color: theme.text.muted,
+                      fontSize: theme.fontSize.base,
+                    }}
+                  >
                     <span>{inv.billTo.toUpperCase()}</span>
-                    <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>{currency(inv.totalAmount)}</span>
+                    <span style={{ fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+                      {currency(inv.totalAmount)}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -527,21 +646,42 @@ export default function BillingPage() {
 
           {selectedInvoice && (
             <Card>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${theme.surface.border}`, paddingBottom: theme.spacing["4"], marginBottom: theme.spacing["4"], gap: theme.spacing["4"], flexWrap: "wrap" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  borderBottom: `1px solid ${theme.surface.border}`,
+                  paddingBottom: theme.spacing["4"],
+                  marginBottom: theme.spacing["4"],
+                  gap: theme.spacing["4"],
+                  flexWrap: "wrap",
+                }}
+              >
                 <div>
-                  <h3 style={{ margin: 0, fontSize: theme.fontSize.lg, color: theme.text.primary }}>INVOICE DETAILS</h3>
+                  <h3 style={{ margin: 0, fontSize: theme.fontSize.lg, color: theme.text.primary }}>
+                    INVOICE DETAILS
+                  </h3>
                   <span style={{ fontSize: theme.fontSize.base, color: theme.text.muted }}>
-                    Ref: {selectedInvoice.invoiceNo} | Date: {new Date(selectedInvoice.createdAt).toLocaleDateString()}
+                    Ref: {selectedInvoice.invoiceNo} | Date:{" "}
+                    {new Date(selectedInvoice.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center", flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: theme.spacing["2"],
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
                   {selectedInvoice.status === "draft" && (
                     <Button size="sm" onClick={() => issueInvoice(selectedInvoice)}>
                       Issue Invoice
                     </Button>
                   )}
                   {selectedInvoice.balanceDue > 0 &&
-                    (selectedInvoice.status === "issued" || selectedInvoice.status === "partially_paid") && (
+                    (selectedInvoice.status === "issued" ||
+                      selectedInvoice.status === "partially_paid") && (
                       <Button
                         size="sm"
                         style={{ background: theme.action.success }}
@@ -575,10 +715,23 @@ export default function BillingPage() {
               </div>
 
               <div style={{ marginBottom: "1.5rem" }}>
-                <DataTable columns={invoiceItemColumns} rows={selectedInvoice.items} rowKey={(it) => it.id} dense />
+                <DataTable
+                  columns={invoiceItemColumns}
+                  rows={selectedInvoice.items}
+                  rowKey={(it) => it.id}
+                  dense
+                />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.3rem", fontSize: theme.fontSize.base }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: "0.3rem",
+                  fontSize: theme.fontSize.base,
+                }}
+              >
                 <div>
                   Subtotal: <strong>{currency(selectedInvoice.subtotal)}</strong>
                 </div>
@@ -602,7 +755,8 @@ export default function BillingPage() {
                   style={{
                     fontSize: "1.05rem",
                     fontWeight: theme.fontWeight.bold,
-                    color: selectedInvoice.balanceDue > 0 ? theme.action.danger : theme.action.success,
+                    color:
+                      selectedInvoice.balanceDue > 0 ? theme.action.danger : theme.action.success,
                   }}
                 >
                   Balance Due: {currency(selectedInvoice.balanceDue)}
@@ -636,14 +790,29 @@ export default function BillingPage() {
         onClose={() => setShowCreate(false)}
         width={640}
       >
-        <form onSubmit={handleCreateInvoice} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+        <form
+          onSubmit={handleCreateInvoice}
+          style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+        >
           <FormField label="Patient">
             {selectedPatient ? (
               <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
-                <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>
-                  {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientNo})
+                <span
+                  style={{
+                    fontSize: theme.fontSize.base,
+                    fontWeight: theme.fontWeight.semibold,
+                    color: theme.text.primary,
+                  }}
+                >
+                  {selectedPatient.firstName} {selectedPatient.lastName} (
+                  {selectedPatient.patientNo})
                 </span>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedPatient(null)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedPatient(null)}
+                >
                   ×
                 </Button>
               </div>
@@ -691,7 +860,8 @@ export default function BillingPage() {
                           fontSize: theme.fontSize.base,
                         }}
                       >
-                        <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> — {p.firstName} {p.lastName}
+                        <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> —{" "}
+                        {p.firstName} {p.lastName}
                       </button>
                     ))}
                   </div>
@@ -700,9 +870,14 @@ export default function BillingPage() {
             )}
           </FormField>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["3"] }}>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["3"] }}
+          >
             <FormField label="Price list">
-              <Select value={selectedPriceList} onChange={(e) => setSelectedPriceList(e.target.value)}>
+              <Select
+                value={selectedPriceList}
+                onChange={(e) => setSelectedPriceList(e.target.value)}
+              >
                 {priceLists.map((pl) => (
                   <option key={pl.id} value={pl.id}>
                     {pl.name} ({pl.currency})
@@ -730,9 +905,15 @@ export default function BillingPage() {
           </div>
 
           {billTo !== "patient" && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: theme.spacing["3"] }}
+            >
               <FormField label="Payer name">
-                <Input value={payerName} onChange={(e) => setPayerName(e.target.value)} placeholder="e.g. Hygeia HMO" />
+                <Input
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
+                  placeholder="e.g. Hygeia HMO"
+                />
               </FormField>
               <FormField label="Policy number">
                 <Input value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} />
@@ -741,7 +922,13 @@ export default function BillingPage() {
           )}
 
           <div>
-            <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+            <span
+              style={{
+                fontSize: theme.fontSize.base,
+                fontWeight: theme.fontWeight.semibold,
+                color: theme.text.secondary,
+              }}
+            >
               Line items (from price list)
             </span>
             <div
@@ -754,7 +941,14 @@ export default function BillingPage() {
               }}
             >
               {priceListItems.length === 0 && (
-                <p style={{ padding: theme.spacing["3"], color: theme.text.muted, fontSize: theme.fontSize.base, margin: 0 }}>
+                <p
+                  style={{
+                    padding: theme.spacing["3"],
+                    color: theme.text.muted,
+                    fontSize: theme.fontSize.base,
+                    margin: 0,
+                  }}
+                >
                   No items in this price list.
                 </p>
               )}
@@ -784,13 +978,17 @@ export default function BillingPage() {
                   <span style={{ flex: 1 }}>
                     {it.name} <span style={{ color: theme.text.muted }}>({it.code})</span>
                   </span>
-                  <span style={{ fontWeight: theme.fontWeight.semibold }}>{currency(it.price)}</span>
+                  <span style={{ fontWeight: theme.fontWeight.semibold }}>
+                    {currency(it.price)}
+                  </span>
                   <Input
                     type="number"
                     min={1}
                     placeholder="Qty"
                     value={quantities[it.id] ?? ""}
-                    onChange={(e) => setQuantities((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                    onChange={(e) =>
+                      setQuantities((prev) => ({ ...prev, [it.id]: e.target.value }))
+                    }
                     style={{ width: "4rem" }}
                   />
                 </label>
@@ -816,7 +1014,10 @@ export default function BillingPage() {
         onClose={() => setShowPay(false)}
         width={420}
       >
-        <form onSubmit={handleReceivePayment} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
+        <form
+          onSubmit={handleReceivePayment}
+          style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+        >
           {!openShift && (
             <p
               style={{
@@ -858,7 +1059,12 @@ export default function BillingPage() {
             />
           </FormField>
           <div style={{ display: "flex", gap: theme.spacing["2"] }}>
-            <Button type="button" variant="ghost" style={{ flex: 1 }} onClick={() => setShowPay(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              style={{ flex: 1 }}
+              onClick={() => setShowPay(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" loading={paying} style={{ flex: 1 }}>
@@ -880,22 +1086,45 @@ export default function BillingPage() {
             <div
               style={{
                 textAlign: "center",
-                borderBottom: "2px dashed #cbd5e1",
+                borderBottom: `2px dashed ${theme.surface.borderStrong}`,
                 paddingBottom: theme.spacing["4"],
                 marginBottom: theme.spacing["4"],
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: "1.2rem",
+                  fontWeight: theme.fontWeight.bold,
+                  color: theme.text.primary,
+                }}
+              >
                 DIVINE HANDS HOSPITAL
               </h3>
-              <p style={{ margin: "0.2rem 0", fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+              <p
+                style={{ margin: "0.2rem 0", fontSize: theme.fontSize.sm, color: theme.text.muted }}
+              >
                 Official Payment Receipt
               </p>
-              <div style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.bold, color: theme.action.info, marginTop: "0.4rem" }}>
+              <div
+                style={{
+                  fontSize: theme.fontSize.base,
+                  fontWeight: theme.fontWeight.bold,
+                  color: theme.action.info,
+                  marginTop: "0.4rem",
+                }}
+              >
                 Receipt #: {activeReceipt.receiptNo}
               </div>
             </div>
-            <div style={{ fontSize: theme.fontSize.base, marginBottom: theme.spacing["4"], display: "grid", gap: "0.3rem" }}>
+            <div
+              style={{
+                fontSize: theme.fontSize.base,
+                marginBottom: theme.spacing["4"],
+                display: "grid",
+                gap: "0.3rem",
+              }}
+            >
               <div>
                 <strong>Patient:</strong> {activeReceipt.patientName || "—"}
               </div>

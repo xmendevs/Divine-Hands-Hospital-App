@@ -22,6 +22,10 @@ export const theme = {
     border: "#e2e8f0",
     borderStrong: "#cbd5e1",
     focus: "#2563eb",
+    warning: "#fffbeb",
+    warningBorder: "#fcd34d",
+    error: "#fef2f2",
+    errorBorder: "#fecaca",
   },
   text: {
     primary: "#0f172a",
@@ -29,6 +33,8 @@ export const theme = {
     muted: "#64748b",
     inverse: "#ffffff",
     danger: "#b91c1c",
+    dangerStrong: "#991b1b",
+    warning: "#92400e",
   },
   action: {
     primary: "#2563eb",

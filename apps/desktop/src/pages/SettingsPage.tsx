@@ -159,7 +159,7 @@ export default function SettingsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const settings = await apiFetch<SystemSetting[]>("/admin/settings");
+        const settings = (await apiFetch<SystemSetting[]>("/admin/settings")) ?? [];
         if (cancelled) return;
         const get = (key: string) => settings.find((s) => s.key === key)?.value;
         setBackupForm({
@@ -369,7 +369,8 @@ export default function SettingsPage() {
     }
   }
 
-  const healthColor = backupStatus?.health_status === "healthy" ? theme.action.success : theme.action.warning;
+  const healthColor =
+    backupStatus?.health_status === "healthy" ? theme.action.success : theme.action.warning;
   const lastLocal = backupStatus?.last_local;
   const lastCloud = backupStatus?.last_cloud;
 
@@ -380,11 +381,16 @@ export default function SettingsPage() {
       header: "Status",
       render: (j: BackupJob) => <StatusBadge variant={jobStatusBadge(j.status)} label={j.status} />,
     },
-    { key: "started", header: "Started", render: (j: BackupJob) => new Date(j.started_at).toLocaleString() },
+    {
+      key: "started",
+      header: "Started",
+      render: (j: BackupJob) => new Date(j.started_at).toLocaleString(),
+    },
     {
       key: "size",
       header: "Size",
-      render: (j: BackupJob) => (j.size_bytes ? `${(j.size_bytes / 1024 / 1024).toFixed(2)} MB` : "—"),
+      render: (j: BackupJob) =>
+        j.size_bytes ? `${(j.size_bytes / 1024 / 1024).toFixed(2)} MB` : "—",
     },
     { key: "error", header: "Error", render: (j: BackupJob) => j.error_message ?? "—" },
   ];
@@ -402,11 +408,11 @@ export default function SettingsPage() {
           style={{
             padding: theme.spacing["3"],
             borderRadius: theme.radius.md,
-            background: "#fef2f2",
+            background: theme.surface.error,
             color: theme.text.danger,
             fontSize: theme.fontSize.base,
             marginBottom: theme.spacing["4"],
-            border: "1px solid #fecaca",
+            border: `1px solid ${theme.surface.errorBorder}`,
           }}
         >
           You must change your password before continuing.
@@ -418,7 +424,15 @@ export default function SettingsPage() {
           title="Server Connection"
           hint="The address of the main PC running the backend. Other PCs set this to the main PC's network address (e.g. http://192.168.1.10:8080)."
         >
-          <form onSubmit={handleSaveUrl} style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center", maxWidth: 480 }}>
+          <form
+            onSubmit={handleSaveUrl}
+            style={{
+              display: "flex",
+              gap: theme.spacing["2"],
+              alignItems: "center",
+              maxWidth: 480,
+            }}
+          >
             <Input
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
@@ -428,7 +442,13 @@ export default function SettingsPage() {
             <Button type="submit">Save</Button>
           </form>
           {saved && (
-            <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.action.success, fontSize: theme.fontSize.base }}>
+            <p
+              style={{
+                margin: `${theme.spacing["2"]} 0 0`,
+                color: theme.action.success,
+                fontSize: theme.fontSize.base,
+              }}
+            >
               Saved. Reconnect to apply.
             </p>
           )}
@@ -442,11 +462,26 @@ export default function SettingsPage() {
             Download app update
           </Button>
           {dlError && (
-            <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.text.danger, fontSize: theme.fontSize.base }}>{dlError}</p>
+            <p
+              style={{
+                margin: `${theme.spacing["2"]} 0 0`,
+                color: theme.text.danger,
+                fontSize: theme.fontSize.base,
+              }}
+            >
+              {dlError}
+            </p>
           )}
           {dlError === "" && (
-            <p style={{ margin: `${theme.spacing["2"]} 0 0`, fontSize: theme.fontSize.sm, color: theme.text.muted }}>
-              Note: the server serves the installer only when APP_INSTALLER_PATH is set on the main PC.
+            <p
+              style={{
+                margin: `${theme.spacing["2"]} 0 0`,
+                fontSize: theme.fontSize.sm,
+                color: theme.text.muted,
+              }}
+            >
+              Note: the server serves the installer only when APP_INSTALLER_PATH is set on the main
+              PC.
             </p>
           )}
         </Card>
@@ -475,7 +510,8 @@ export default function SettingsPage() {
                 }}
               >
                 <div style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
-                  <strong>First sign-in:</strong> username <code style={codeStyle}>{serverInfo.superadminUsername}</code>
+                  <strong>First sign-in:</strong> username{" "}
+                  <code style={codeStyle}>{serverInfo.superadminUsername}</code>
                 </div>
                 <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
                   <span style={{ fontSize: theme.fontSize.base, color: theme.text.secondary }}>
@@ -490,7 +526,8 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p style={{ margin: 0, fontSize: theme.fontSize.sm, color: theme.action.warning }}>
-                  Change it after signing in (Settings → Change password). Keep this PC's screen and network secure.
+                  Change it after signing in (Settings → Change password). Keep this PC's screen and
+                  network secure.
                 </p>
               </div>
             )}
@@ -503,15 +540,21 @@ export default function SettingsPage() {
             hint={
               <>
                 Backups are encrypted before leaving this PC. Choose a cloud destination below —{" "}
-                <strong>Neon Postgres</strong> (a serverless cloud database) or any S3-compatible object store
-                (Amazon S3, Backblaze B2, Cloudflare R2, MinIO…) — so the hospital data is safe even if the
-                building is not. The encryption key is set on the server (BACKUP_ENCRYPTION_KEY) and is never
-                stored here.
+                <strong>Neon Postgres</strong> (a serverless cloud database) or any S3-compatible
+                object store (Amazon S3, Backblaze B2, Cloudflare R2, MinIO…) — so the hospital data
+                is safe even if the building is not. The encryption key is set on the server
+                (BACKUP_ENCRYPTION_KEY) and is never stored here.
               </>
             }
           >
             {statusError && (
-              <p style={{ margin: `0 0 ${theme.spacing["3"]}`, color: theme.text.danger, fontSize: theme.fontSize.base }}>
+              <p
+                style={{
+                  margin: `0 0 ${theme.spacing["3"]}`,
+                  color: theme.text.danger,
+                  fontSize: theme.fontSize.base,
+                }}
+              >
                 {statusError}
               </p>
             )}
@@ -564,12 +607,21 @@ export default function SettingsPage() {
             )}
 
             {!backupLoaded && (
-              <p style={{ margin: `0 0 ${theme.spacing["2"]}`, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+              <p
+                style={{
+                  margin: `0 0 ${theme.spacing["2"]}`,
+                  fontSize: theme.fontSize.base,
+                  color: theme.text.muted,
+                }}
+              >
                 Loading backup settings…
               </p>
             )}
 
-            <form onSubmit={handleSaveBackup} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+            <form
+              onSubmit={handleSaveBackup}
+              style={{ display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}
+            >
               <Checkbox
                 checked={backupForm.enabled}
                 onChange={(e) => setBackupForm((f) => ({ ...f, enabled: e.target.checked }))}
@@ -577,7 +629,13 @@ export default function SettingsPage() {
               />
 
               <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["1"] }}>
-                <span style={{ fontSize: theme.fontSize.sm, fontWeight: theme.fontWeight.bold, color: theme.text.secondary }}>
+                <span
+                  style={{
+                    fontSize: theme.fontSize.sm,
+                    fontWeight: theme.fontWeight.bold,
+                    color: theme.text.secondary,
+                  }}
+                >
                   Cloud backup destination
                 </span>
                 <label style={checkLabel}>
@@ -613,21 +671,28 @@ export default function SettingsPage() {
               {backupForm.cloud_destination === "neon" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"] }}>
                   <p style={hint}>
-                    Each cloud backup replaces the data in your Neon database with a fresh copy of the hospital
-                    database (a point-in-time snapshot). Create a free project at neon.tech, then paste its{" "}
-                    <strong>connection string</strong> (Neon console → Connect → Connection string, e.g.{" "}
-                    <code style={codeStyle}>postgresql://user:password@ep-…aws.neon.tech/dbname</code>).
+                    Each cloud backup replaces the data in your Neon database with a fresh copy of
+                    the hospital database (a point-in-time snapshot). Create a free project at
+                    neon.tech, then paste its <strong>connection string</strong> (Neon console →
+                    Connect → Connection string, e.g.{" "}
+                    <code style={codeStyle}>
+                      postgresql://user:password@ep-…aws.neon.tech/dbname
+                    </code>
+                    ).
                   </p>
                   <p style={hint}>
                     In the Neon console, open <strong>Settings → IP Allow</strong> and add{" "}
-                    <code style={codeStyle}>0.0.0.0/0</code>: the hospital&apos;s internet address changes, so it
-                    cannot be allowlisted by IP. Use a strong password and keep this PC on the hospital network only.
+                    <code style={codeStyle}>0.0.0.0/0</code>: the hospital&apos;s internet address
+                    changes, so it cannot be allowlisted by IP. Use a strong password and keep this
+                    PC on the hospital network only.
                   </p>
                   <FormField label="Neon connection string">
                     <Input
                       type="password"
                       value={backupForm.neon_connection_string}
-                      onChange={(e) => setBackupForm((f) => ({ ...f, neon_connection_string: e.target.value }))}
+                      onChange={(e) =>
+                        setBackupForm((f) => ({ ...f, neon_connection_string: e.target.value }))
+                      }
                       placeholder="postgresql://user:password@ep-…aws.neon.tech/dbname (blank keeps the stored one)"
                     />
                   </FormField>
@@ -656,35 +721,45 @@ export default function SettingsPage() {
                     <FormField label="Cloud endpoint">
                       <Input
                         value={backupForm.s3_endpoint}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_endpoint: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_endpoint: e.target.value }))
+                        }
                         placeholder="https://s3.amazonaws.com"
                       />
                     </FormField>
                     <FormField label="Region">
                       <Input
                         value={backupForm.s3_region}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_region: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_region: e.target.value }))
+                        }
                         placeholder="us-east-1"
                       />
                     </FormField>
                     <FormField label="Bucket">
                       <Input
                         value={backupForm.s3_bucket}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_bucket: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_bucket: e.target.value }))
+                        }
                         placeholder="hims-backups"
                       />
                     </FormField>
                     <FormField label="Prefix (optional)">
                       <Input
                         value={backupForm.s3_prefix}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_prefix: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_prefix: e.target.value }))
+                        }
                         placeholder="hospital/"
                       />
                     </FormField>
                     <FormField label="Access key">
                       <Input
                         value={backupForm.s3_access_key}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_access_key: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_access_key: e.target.value }))
+                        }
                         placeholder="AKIA…"
                       />
                     </FormField>
@@ -692,7 +767,9 @@ export default function SettingsPage() {
                       <Input
                         type="password"
                         value={backupForm.s3_secret_key}
-                        onChange={(e) => setBackupForm((f) => ({ ...f, s3_secret_key: e.target.value }))}
+                        onChange={(e) =>
+                          setBackupForm((f) => ({ ...f, s3_secret_key: e.target.value }))
+                        }
                         placeholder="leave blank to keep the current key"
                       />
                     </FormField>
@@ -700,7 +777,9 @@ export default function SettingsPage() {
 
                   <Checkbox
                     checked={backupForm.s3_path_style}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, s3_path_style: e.target.checked }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, s3_path_style: e.target.checked }))
+                    }
                     label="Use path-style URLs (required for MinIO and some self-hosted storage)"
                   />
                 </div>
@@ -710,39 +789,51 @@ export default function SettingsPage() {
                 <FormField label="Keep daily backups">
                   <Input
                     value={backupForm.retention_daily}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_daily: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, retention_daily: e.target.value }))
+                    }
                   />
                 </FormField>
                 <FormField label="Keep weekly backups">
                   <Input
                     value={backupForm.retention_weekly}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_weekly: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, retention_weekly: e.target.value }))
+                    }
                   />
                 </FormField>
                 <FormField label="Keep monthly backups">
                   <Input
                     value={backupForm.retention_monthly}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, retention_monthly: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, retention_monthly: e.target.value }))
+                    }
                   />
                 </FormField>
                 <FormField label="Local interval">
                   <Input
                     value={backupForm.local_interval}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, local_interval: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, local_interval: e.target.value }))
+                    }
                     placeholder="24h"
                   />
                 </FormField>
                 <FormField label="Cloud upload interval">
                   <Input
                     value={backupForm.cloud_interval}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, cloud_interval: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, cloud_interval: e.target.value }))
+                    }
                     placeholder="24h"
                   />
                 </FormField>
                 <FormField label="Verify interval">
                   <Input
                     value={backupForm.verify_interval}
-                    onChange={(e) => setBackupForm((f) => ({ ...f, verify_interval: e.target.value }))}
+                    onChange={(e) =>
+                      setBackupForm((f) => ({ ...f, verify_interval: e.target.value }))
+                    }
                     placeholder="24h"
                   />
                 </FormField>
@@ -780,17 +871,39 @@ export default function SettingsPage() {
         )}
 
         {isSuperAdmin && backupStatus && backupStatus.recent_jobs.length > 0 && (
-          <Card title="Backup Activity & Logs" hint="Recent backup jobs across local, cloud and verification targets.">
-            <DataTable columns={jobsColumns} rows={backupStatus.recent_jobs.slice(0, 8)} rowKey={(j) => j.id} dense />
+          <Card
+            title="Backup Activity & Logs"
+            hint="Recent backup jobs across local, cloud and verification targets."
+          >
+            <DataTable
+              columns={jobsColumns}
+              rows={backupStatus.recent_jobs.slice(0, 8)}
+              rowKey={(j) => j.id}
+              dense
+            />
           </Card>
         )}
 
         <Card title="User Account & Password">
-          <p style={{ margin: `0 0 ${theme.spacing["3"]}`, fontSize: theme.fontSize.base, color: theme.text.secondary }}>
+          <p
+            style={{
+              margin: `0 0 ${theme.spacing["3"]}`,
+              fontSize: theme.fontSize.base,
+              color: theme.text.secondary,
+            }}
+          >
             Signed in as <strong>{me?.username}</strong>
             {me?.roles?.length ? ` — ${me.roles.map((r) => r.name).join(", ")}` : ""}
           </p>
-          <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["2"], maxWidth: 480 }}>
+          <form
+            onSubmit={handleChangePassword}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: theme.spacing["2"],
+              maxWidth: 480,
+            }}
+          >
             <FormField label="Current password">
               <Input
                 type="password"
@@ -816,8 +929,28 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
-          {pwdError && <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.text.danger, fontSize: theme.fontSize.base }}>{pwdError}</p>}
-          {pwdOk && <p style={{ margin: `${theme.spacing["2"]} 0 0`, color: theme.action.success, fontSize: theme.fontSize.base }}>{pwdOk}</p>}
+          {pwdError && (
+            <p
+              style={{
+                margin: `${theme.spacing["2"]} 0 0`,
+                color: theme.text.danger,
+                fontSize: theme.fontSize.base,
+              }}
+            >
+              {pwdError}
+            </p>
+          )}
+          {pwdOk && (
+            <p
+              style={{
+                margin: `${theme.spacing["2"]} 0 0`,
+                color: theme.action.success,
+                fontSize: theme.fontSize.base,
+              }}
+            >
+              {pwdOk}
+            </p>
+          )}
         </Card>
 
         <div>

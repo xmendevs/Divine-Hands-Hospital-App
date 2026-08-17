@@ -380,7 +380,7 @@ func (s *Store) ListAnnouncements(ctx context.Context, userID string, limit, off
 }
 
 func (s *Store) collectMessages(ctx context.Context, rows pgx.Rows) ([]domain.Message, error) {
-	var msgs []domain.Message
+	msgs := make([]domain.Message, 0)
 	var ids []string
 	for rows.Next() {
 		m, err := scanMessage(rows)

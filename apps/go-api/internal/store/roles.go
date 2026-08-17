@@ -18,7 +18,7 @@ func (s *Store) ListRoles(ctx context.Context) ([]domain.Role, error) {
 	}
 	defer rows.Close()
 
-	var out []domain.Role
+	out := make([]domain.Role, 0)
 	for rows.Next() {
 		var r domain.Role
 		if err := rows.Scan(&r.ID, &r.Code, &r.Name, &r.Description, &r.MFARequired, &r.IsSystem); err != nil {
@@ -118,7 +118,7 @@ func (s *Store) ListPermissions(ctx context.Context) ([]domain.Permission, error
 	}
 	defer rows.Close()
 
-	var out []domain.Permission
+	out := make([]domain.Permission, 0)
 	for rows.Next() {
 		var p domain.Permission
 		if err := rows.Scan(&p.ID, &p.Code, &p.Name, &p.Description, &p.Module); err != nil {
@@ -136,7 +136,7 @@ func (s *Store) ListDepartments(ctx context.Context) ([]domain.Department, error
 	}
 	defer rows.Close()
 
-	var out []domain.Department
+	out := make([]domain.Department, 0)
 	for rows.Next() {
 		var d domain.Department
 		if err := rows.Scan(&d.ID, &d.Code, &d.Name); err != nil {

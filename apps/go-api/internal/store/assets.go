@@ -35,7 +35,7 @@ func (s *Store) ListAssetCategories(ctx context.Context) ([]domain.AssetCategory
 	}
 	defer rows.Close()
 
-	var out []domain.AssetCategory
+	out := make([]domain.AssetCategory, 0)
 	for rows.Next() {
 		var c domain.AssetCategory
 		if err := rows.Scan(&c.ID, &c.Code, &c.Name, &c.Tracking); err != nil {
@@ -217,7 +217,7 @@ func (s *Store) ListAssets(ctx context.Context, p ListAssetParams) ([]domain.Ass
 	}
 	defer rows.Close()
 
-	var out []domain.Asset
+	out := make([]domain.Asset, 0)
 	for rows.Next() {
 		a, err := scanAsset(rows)
 		if err != nil {
@@ -278,7 +278,7 @@ func (s *Store) ListAssetMovements(ctx context.Context, assetID string, limit, o
 	}
 	defer rows.Close()
 
-	var out []domain.AssetMovement
+	out := make([]domain.AssetMovement, 0)
 	for rows.Next() {
 		var m domain.AssetMovement
 		if err := rows.Scan(&m.ID, &m.AssetID, &m.MovementType, &m.Quantity, &m.QuantityBefore,
@@ -303,7 +303,7 @@ func (s *Store) ListAssetTransfers(ctx context.Context, assetID string, limit, o
 	}
 	defer rows.Close()
 
-	var out []domain.AssetTransfer
+	out := make([]domain.AssetTransfer, 0)
 	for rows.Next() {
 		var t domain.AssetTransfer
 		if err := rows.Scan(&t.ID, &t.AssetID, &t.Quantity, &t.FromDepartment, &t.ToDepartment,
@@ -327,7 +327,7 @@ func (s *Store) ListAssetStatusChanges(ctx context.Context, assetID string, limi
 	}
 	defer rows.Close()
 
-	var out []domain.AssetStatusChange
+	out := make([]domain.AssetStatusChange, 0)
 	for rows.Next() {
 		var sc domain.AssetStatusChange
 		if err := rows.Scan(&sc.ID, &sc.AssetID, &sc.FromStatus, &sc.ToStatus, &sc.Reason, &sc.ChangedBy, &sc.CreatedAt); err != nil {
@@ -610,7 +610,7 @@ func (s *Store) ListServiceProviders(ctx context.Context) ([]domain.ServiceProvi
 	}
 	defer rows.Close()
 
-	var out []domain.ServiceProvider
+	out := make([]domain.ServiceProvider, 0)
 	for rows.Next() {
 		var sp domain.ServiceProvider
 		if err := rows.Scan(&sp.ID, &sp.Name, &sp.ContactPhone, &sp.ContactEmail, &sp.Address, &sp.Notes, &sp.Active, &sp.CreatedAt); err != nil {
@@ -671,7 +671,7 @@ func (s *Store) ListMaintenanceSchedules(ctx context.Context, assetID string, du
 	}
 	defer rows.Close()
 
-	var out []domain.MaintenanceSchedule
+	out := make([]domain.MaintenanceSchedule, 0)
 	for rows.Next() {
 		var ms domain.MaintenanceSchedule
 		if err := rows.Scan(&ms.ID, &ms.AssetID, &ms.ServiceType, &ms.FrequencyDays, &ms.NextServiceDate, &ms.Active, &ms.CreatedBy, &ms.CreatedAt); err != nil {
@@ -775,7 +775,7 @@ func (s *Store) ListMaintenanceRecords(ctx context.Context, assetID string, limi
 	}
 	defer rows.Close()
 
-	var out []domain.MaintenanceRecord
+	out := make([]domain.MaintenanceRecord, 0)
 	for rows.Next() {
 		var mr domain.MaintenanceRecord
 		if err := rows.Scan(&mr.ID, &mr.AssetID, &mr.ScheduleID, &mr.ServiceProviderID, &mr.ServiceType, &mr.Description,

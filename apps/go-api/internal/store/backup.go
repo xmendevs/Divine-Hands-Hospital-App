@@ -47,7 +47,7 @@ func (s *Store) ListBackupJobs(ctx context.Context, limit int) ([]domain.BackupJ
 	}
 	defer rows.Close()
 
-	var jobs []domain.BackupJob
+	jobs := make([]domain.BackupJob, 0)
 	for rows.Next() {
 		var j domain.BackupJob
 		var details []byte

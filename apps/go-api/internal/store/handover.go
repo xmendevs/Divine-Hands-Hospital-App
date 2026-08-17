@@ -137,7 +137,7 @@ func (s *Store) ListHandovers(ctx context.Context, p ListHandoverParams) ([]doma
 	}
 	defer rows.Close()
 
-	var out []domain.HandoverNote
+	out := make([]domain.HandoverNote, 0)
 	for rows.Next() {
 		h, err := scanHandover(rows)
 		if err != nil {

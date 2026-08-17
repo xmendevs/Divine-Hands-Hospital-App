@@ -298,7 +298,7 @@ func (s *Store) ListDispensations(ctx context.Context, patientID string, limit, 
 	}
 	defer rows.Close()
 
-	var out []domain.Dispensation
+	out := make([]domain.Dispensation, 0)
 	for rows.Next() {
 		var d domain.Dispensation
 		if err := rows.Scan(&d.ID, &d.DispensationNo, &d.PrescriptionOrderID, &d.PatientID, &d.DispensedBy, &d.TotalAmount, &d.Notes, &d.CreatedAt); err != nil {
@@ -442,7 +442,7 @@ func (s *Store) ListAdjustments(ctx context.Context, status string, limit, offse
 	}
 	defer rows.Close()
 
-	var out []domain.StockAdjustment
+	out := make([]domain.StockAdjustment, 0)
 	for rows.Next() {
 		a, err := scanAdjustment(rows)
 		if err != nil {
@@ -479,7 +479,7 @@ func (s *Store) ListApprovals(ctx context.Context, status string, limit, offset 
 	}
 	defer rows.Close()
 
-	var out []domain.ApprovalRequest
+	out := make([]domain.ApprovalRequest, 0)
 	for rows.Next() {
 		a, err := scanApproval(rows)
 		if err != nil {
@@ -647,7 +647,7 @@ func (s *Store) ListStockCounts(ctx context.Context, batchID string) ([]domain.S
 	}
 	defer rows.Close()
 
-	var out []domain.StockCount
+	out := make([]domain.StockCount, 0)
 	for rows.Next() {
 		var c domain.StockCount
 		if err := rows.Scan(&c.ID, &c.MedicineID, &c.BatchID, &c.SystemQuantity, &c.CountedQuantity, &c.Variance, &c.CountedBy, &c.CreatedAt); err != nil {

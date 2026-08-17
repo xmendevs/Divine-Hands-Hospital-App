@@ -154,7 +154,7 @@ func (s *Store) ListActionableOrders(ctx context.Context, limit, offset int) ([]
 }
 
 func scanOrders(rows pgx.Rows) ([]domain.Order, error) {
-	var out []domain.Order
+	out := make([]domain.Order, 0)
 	for rows.Next() {
 		o, err := scanOrder(rows)
 		if err != nil {
@@ -253,7 +253,7 @@ func (s *Store) ListAdministrations(ctx context.Context, patientID string) ([]do
 	}
 	defer rows.Close()
 
-	var out []domain.MedicationAdministration
+	out := make([]domain.MedicationAdministration, 0)
 	for rows.Next() {
 		var a domain.MedicationAdministration
 		if err := rows.Scan(&a.ID, &a.OrderID, &a.PatientID, &a.Medication, &a.Dose, &a.Route,

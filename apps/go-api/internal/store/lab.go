@@ -138,7 +138,7 @@ func (s *Store) ListLabClients(ctx context.Context, search string, limit, offset
 	}
 	defer rows.Close()
 
-	var out []domain.LabClient
+	out := make([]domain.LabClient, 0)
 	for rows.Next() {
 		c, err := scanLabClient(rows)
 		if err != nil {
@@ -214,7 +214,7 @@ func (s *Store) ListLabTests(ctx context.Context) ([]domain.LabTest, error) {
 	}
 	defer rows.Close()
 
-	var out []domain.LabTest
+	out := make([]domain.LabTest, 0)
 	for rows.Next() {
 		t, err := scanLabTest(rows)
 		if err != nil {
@@ -454,7 +454,7 @@ func (s *Store) ListLabRequests(ctx context.Context, p ListLabRequestsParams) ([
 	}
 	defer rows.Close()
 
-	var out []domain.LabRequest
+	out := make([]domain.LabRequest, 0)
 	for rows.Next() {
 		req, err := scanLabRequest(rows)
 		if err != nil {
@@ -492,7 +492,7 @@ func (s *Store) listRequestItems(ctx context.Context, requestID string) ([]domai
 	}
 	defer rows.Close()
 
-	var out []domain.LabRequestItem
+	out := make([]domain.LabRequestItem, 0)
 	for rows.Next() {
 		it, err := scanLabItem(rows)
 		if err != nil {
@@ -659,7 +659,7 @@ func (s *Store) listRequestSpecimens(ctx context.Context, requestID string) ([]d
 	}
 	defer rows.Close()
 
-	var out []domain.LabSpecimen
+	out := make([]domain.LabSpecimen, 0)
 	for rows.Next() {
 		sp, err := scanLabSpecimen(rows)
 		if err != nil {
@@ -712,7 +712,7 @@ func (s *Store) CollectSpecimens(ctx context.Context, requestID string, items []
 		return nil, ErrInvalidLabTransition
 	}
 
-	var collected []domain.LabSpecimen
+	collected := make([]domain.LabSpecimen, 0)
 	for _, it := range items {
 		var itemID string
 		if err := tx.QueryRow(ctx, `SELECT id::text FROM lab_request_items WHERE id = $1::uuid AND request_id = $2::uuid`, it.ItemID, requestID).Scan(&itemID); err != nil {
@@ -901,7 +901,7 @@ func (s *Store) EnterResults(ctx context.Context, requestID string, entries []Re
 		return nil, ErrInvalidLabTransition
 	}
 
-	var notifications []domain.LabCriticalNotification
+	notifications := make([]domain.LabCriticalNotification, 0)
 	for _, e := range entries {
 		var itemID string
 		var verifiedAt *time.Time
@@ -1104,7 +1104,7 @@ func (s *Store) ListCriticalNotifications(ctx context.Context, status string, li
 	}
 	defer rows.Close()
 
-	var out []domain.LabCriticalNotification
+	out := make([]domain.LabCriticalNotification, 0)
 	for rows.Next() {
 		n, err := scanLabCritical(rows)
 		if err != nil {

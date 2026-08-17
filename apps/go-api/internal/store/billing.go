@@ -154,7 +154,7 @@ func (s *Store) ListPriceLists(ctx context.Context) ([]domain.PriceList, error) 
 	}
 	defer rows.Close()
 
-	var out []domain.PriceList
+	out := make([]domain.PriceList, 0)
 	for rows.Next() {
 		pl, err := scanPriceList(rows)
 		if err != nil {
@@ -237,7 +237,7 @@ func (s *Store) ListPriceListItems(ctx context.Context, priceListID string) ([]d
 	}
 	defer rows.Close()
 
-	var out []domain.PriceListItem
+	out := make([]domain.PriceListItem, 0)
 	for rows.Next() {
 		i, err := scanPriceListItem(rows)
 		if err != nil {
@@ -359,7 +359,7 @@ func (s *Store) CreateInvoice(ctx context.Context, p CreateInvoiceParams) (*doma
 	}
 
 	var subtotal, taxAmount float64
-	var snapshot []domain.PriceListItem
+	snapshot := make([]domain.PriceListItem, 0)
 	for _, in := range p.Items {
 		it, err := scanPriceListItem(tx.QueryRow(ctx, `
 			SELECT `+priceListItemCols+` FROM price_list_items
@@ -445,7 +445,7 @@ func (s *Store) listInvoiceItems(ctx context.Context, invoiceID string) ([]domai
 	}
 	defer rows.Close()
 
-	var out []domain.InvoiceItem
+	out := make([]domain.InvoiceItem, 0)
 	for rows.Next() {
 		it, err := scanInvoiceItem(rows)
 		if err != nil {
@@ -485,7 +485,7 @@ func (s *Store) ListInvoices(ctx context.Context, p ListInvoicesParams) ([]domai
 	}
 	defer rows.Close()
 
-	var out []domain.Invoice
+	out := make([]domain.Invoice, 0)
 	for rows.Next() {
 		inv, err := scanInvoice(rows)
 		if err != nil {
@@ -768,7 +768,7 @@ func (s *Store) ListPayments(ctx context.Context, p ListPaymentsParams) ([]domai
 	}
 	defer rows.Close()
 
-	var out []domain.Payment
+	out := make([]domain.Payment, 0)
 	for rows.Next() {
 		pay, err := scanPayment(rows)
 		if err != nil {
@@ -845,7 +845,7 @@ func (s *Store) ListReceipts(ctx context.Context, p ListReceiptsParams) ([]domai
 	}
 	defer rows.Close()
 
-	var out []domain.Receipt
+	out := make([]domain.Receipt, 0)
 	for rows.Next() {
 		rec, err := scanReceipt(rows)
 		if err != nil {
@@ -1007,7 +1007,7 @@ func (s *Store) ListRefundRequests(ctx context.Context, status string, limit, of
 	}
 	defer rows.Close()
 
-	var out []domain.RefundRequest
+	out := make([]domain.RefundRequest, 0)
 	for rows.Next() {
 		req, err := scanRefundRequest(rows)
 		if err != nil {
@@ -1361,7 +1361,7 @@ func (s *Store) ListShifts(ctx context.Context, p ListShiftsParams) ([]domain.Ca
 	}
 	defer rows.Close()
 
-	var out []domain.CashierShift
+	out := make([]domain.CashierShift, 0)
 	for rows.Next() {
 		sh, err := scanShift(rows)
 		if err != nil {

@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useState, type CSSProperties, type FormEvent } from "react";
-import { theme, Button, Card, DataTable, EmptyState, FormField, Input, PageHeader, Select, StatusBadge, TabNav, type StatusVariant } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  FormField,
+  Input,
+  PageHeader,
+  Select,
+  StatusBadge,
+  TabNav,
+  useToast,
+  type StatusVariant,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface LabTest {
@@ -61,7 +75,8 @@ const PRIORITIES = ["routine", "urgent", "stat"];
 function statusVariant(status: string): StatusVariant {
   if (status === "released" || status === "verified") return "approved";
   if (status === "result_entered" || status === "processing") return "active";
-  if (status === "received" || status === "specimen_collected" || status === "payment") return "running";
+  if (status === "received" || status === "specimen_collected" || status === "payment")
+    return "running";
   if (status === "cancelled") return "error";
   return "draft";
 }
@@ -82,6 +97,7 @@ export default function LabPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   // Result entry state.
   const [activeRequest, setActiveRequest] = useState<LabRequest | null>(null);
@@ -171,9 +187,14 @@ export default function LabPage() {
     try {
       await fn();
       await loadAll();
-      if (successMessage) setError(successMessage);
+      if (successMessage) {
+        setError(successMessage);
+        toast.success(successMessage);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed.");
+      const msg = err instanceof Error ? err.message : "Request failed.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -217,12 +238,14 @@ export default function LabPage() {
       }
       await apiFetch<unknown>(`/lab/requests/${r.id}/release`, { method: "POST" });
       await loadAll();
+      toast.success(`Request ${r.requestNo} verified and released.`);
     } catch (err) {
-      setError(
+      const msg =
         err instanceof Error
           ? err.message
-          : "Verification failed (note: you cannot verify results you entered yourself).",
-      );
+          : "Verification failed (note: you cannot verify results you entered yourself).";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -248,8 +271,11 @@ export default function LabPage() {
       });
       await loadAll();
       setActiveTab("queue");
+      toast.success(`Results saved for ${activeRequest.requestNo}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save results.");
+      const msg = err instanceof Error ? err.message : "Could not save results.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSavingResults(false);
     }
@@ -281,8 +307,11 @@ export default function LabPage() {
       setSelectedTests([]);
       setClinicalNotes("");
       await loadAll();
+      toast.success("Lab request created.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the lab request.");
+      const msg = err instanceof Error ? err.message : "Could not create the lab request.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -308,20 +337,46 @@ export default function LabPage() {
   ).length;
 
   const requestColumns = [
-    { key: "no", header: "Request No", render: (r: LabRequest) => <strong style={{ color: theme.action.info }}>{r.requestNo}</strong> },
+    {
+      key: "no",
+      header: "Request No",
+      render: (r: LabRequest) => (
+        <strong style={{ color: theme.action.info }}>{r.requestNo}</strong>
+      ),
+    },
     {
       key: "patient",
       header: "Patient / Client",
       render: (r: LabRequest) => (
         <div>
-          <div style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>{r.patientName || r.clientName || "—"}</div>
-          <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>Ordered by {r.orderedByName}</div>
+          <div style={{ fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>
+            {r.patientName || r.clientName || "—"}
+          </div>
+          <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+            Ordered by {r.orderedByName}
+          </div>
         </div>
       ),
     },
-    { key: "tests", header: "Tests", render: (r: LabRequest) => r.items.map((it) => it.testName).join(", ") },
-    { key: "priority", header: "Priority", render: (r: LabRequest) => <StatusBadge variant={priorityVariant(r.priority)} label={r.priority} /> },
-    { key: "status", header: "Status", render: (r: LabRequest) => <StatusBadge variant={statusVariant(r.status)} label={r.status.replace("_", " ")} /> },
+    {
+      key: "tests",
+      header: "Tests",
+      render: (r: LabRequest) => r.items.map((it) => it.testName).join(", "),
+    },
+    {
+      key: "priority",
+      header: "Priority",
+      render: (r: LabRequest) => (
+        <StatusBadge variant={priorityVariant(r.priority)} label={r.priority} />
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (r: LabRequest) => (
+        <StatusBadge variant={statusVariant(r.status)} label={r.status.replace("_", " ")} />
+      ),
+    },
     {
       key: "actions",
       header: "Actions",
@@ -338,22 +393,40 @@ export default function LabPage() {
             </Button>
           )}
           {r.status === "processing" && (
-            <Button size="sm" style={{ background: theme.action.warning }} onClick={() => openEntry(r)}>
+            <Button
+              size="sm"
+              style={{ background: theme.action.warning }}
+              onClick={() => openEntry(r)}
+            >
               Enter Results
             </Button>
           )}
           {r.status === "result_entered" && (
-            <Button size="sm" style={{ background: theme.action.success }} onClick={() => verifyAndRelease(r)}>
+            <Button
+              size="sm"
+              style={{ background: theme.action.success }}
+              onClick={() => verifyAndRelease(r)}
+            >
               Verify & Release
             </Button>
           )}
           {r.status === "verified" && (
-            <Button size="sm" style={{ background: theme.action.success }} onClick={() => releaseResults(r)}>
+            <Button
+              size="sm"
+              style={{ background: theme.action.success }}
+              onClick={() => releaseResults(r)}
+            >
               Release Results
             </Button>
           )}
           {(r.status === "released" || r.status === "cancelled") && (
-            <span style={{ fontSize: theme.fontSize.base, color: theme.text.muted, fontWeight: theme.fontWeight.semibold }}>
+            <span
+              style={{
+                fontSize: theme.fontSize.base,
+                color: theme.text.muted,
+                fontWeight: theme.fontWeight.semibold,
+              }}
+            >
               {r.status === "released" ? "Released" : "Cancelled"}
             </span>
           )}
@@ -364,17 +437,30 @@ export default function LabPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
-      <PageHeader title="Lab & Pathology" description="Laboratory work queue, result entry, and critical value notifications." />
+      <PageHeader
+        title="Lab & Pathology"
+        description="Laboratory work queue, result entry, and critical value notifications."
+      />
 
       {/* KPI Bar */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: theme.spacing["4"] }}>
+      <div
+        style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: theme.spacing["4"] }}
+      >
         <Kpi label="Pending Samples" value={pendingCount} color={theme.action.warning} />
         <Kpi label="In Analysis" value={inAnalysisCount} color={theme.action.primary} />
         <Kpi label="Critical / Stat" value={statCount} color={theme.action.danger} />
         <Kpi label="Verified / Released" value={verifiedCount} color={theme.action.success} />
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: theme.spacing["4"], flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: theme.spacing["4"],
+          flexWrap: "wrap",
+        }}
+      >
         <TabNav
           tabs={[
             { key: "queue", label: "Laboratory Work Queue" },
@@ -384,8 +470,17 @@ export default function LabPage() {
           onChange={(k) => setActiveTab(k as "queue" | "entry")}
         />
         {activeTab === "queue" && (
-          <div style={{ display: "flex", alignItems: "center", gap: theme.spacing["2"], fontSize: theme.fontSize.base }}>
-            <span style={{ color: theme.text.muted, fontWeight: theme.fontWeight.semibold }}>Status Filter:</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: theme.spacing["2"],
+              fontSize: theme.fontSize.base,
+            }}
+          >
+            <span style={{ color: theme.text.muted, fontWeight: theme.fontWeight.semibold }}>
+              Status Filter:
+            </span>
             <Select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -412,7 +507,10 @@ export default function LabPage() {
       </div>
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
@@ -421,14 +519,22 @@ export default function LabPage() {
       {critical.length > 0 && (
         <div
           style={{
-            background: "#fef2f2",
-            border: "1px solid #fca5a5",
+            background: theme.surface.error,
+            border: `1px solid ${theme.surface.errorBorder}`,
             borderRadius: theme.radius.lg,
             padding: theme.spacing["4"],
           }}
         >
-          <div style={{ fontSize: theme.fontSize.sm, color: "#991b1b", fontWeight: theme.fontWeight.bold, marginBottom: theme.spacing["2"] }}>
-            CRITICAL RESULTS — {critical.filter((c) => c.status === "pending").length} UNACKNOWLEDGED
+          <div
+            style={{
+              fontSize: theme.fontSize.sm,
+              color: theme.text.dangerStrong,
+              fontWeight: theme.fontWeight.bold,
+              marginBottom: theme.spacing["2"],
+            }}
+          >
+            CRITICAL RESULTS — {critical.filter((c) => c.status === "pending").length}{" "}
+            UNACKNOWLEDGED
           </div>
           {critical
             .filter((c) => c.status === "pending")
@@ -441,7 +547,7 @@ export default function LabPage() {
                   alignItems: "center",
                   gap: theme.spacing["4"],
                   fontSize: theme.fontSize.base,
-                  color: "#7f1d1d",
+                  color: theme.text.dangerStrong,
                   padding: "0.25rem 0",
                 }}
               >
@@ -457,7 +563,9 @@ export default function LabPage() {
       )}
 
       {loading && (
-        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading laboratory data…</p>
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading laboratory data…
+        </p>
       )}
 
       {/* Tab 1: Work Queue */}
@@ -465,22 +573,50 @@ export default function LabPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
           {/* New request form */}
           <Card title="New Lab Request" bodyStyle={{ padding: theme.spacing["4"] }}>
-            <form onSubmit={handleCreateRequest} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: theme.spacing["4"] }}>
+            <form
+              onSubmit={handleCreateRequest}
+              style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: theme.spacing["4"],
+                }}
+              >
                 <div>
                   <FormField label="Patient">
                     {selectedPatient ? (
-                      <div style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}>
-                        <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.primary }}>
-                          {selectedPatient.firstName} {selectedPatient.lastName} ({selectedPatient.patientNo})
+                      <div
+                        style={{ display: "flex", gap: theme.spacing["2"], alignItems: "center" }}
+                      >
+                        <span
+                          style={{
+                            fontSize: theme.fontSize.base,
+                            fontWeight: theme.fontWeight.semibold,
+                            color: theme.text.primary,
+                          }}
+                        >
+                          {selectedPatient.firstName} {selectedPatient.lastName} (
+                          {selectedPatient.patientNo})
                         </span>
-                        <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedPatient(null)}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedPatient(null)}
+                        >
                           ×
                         </Button>
                       </div>
                     ) : (
                       <div style={{ position: "relative" }}>
-                        <Input type="text" placeholder="Search patient..." value={patientSearch} onChange={(e) => setPatientSearch(e.target.value)} />
+                        <Input
+                          type="text"
+                          placeholder="Search patient..."
+                          value={patientSearch}
+                          onChange={(e) => setPatientSearch(e.target.value)}
+                        />
                         {patients.length > 0 && (
                           <div
                             style={{
@@ -517,7 +653,8 @@ export default function LabPage() {
                                   fontSize: theme.fontSize.base,
                                 }}
                               >
-                                <strong style={{ color: theme.action.info }}>{p.patientNo}</strong> — {p.firstName} {p.lastName}
+                                <strong style={{ color: theme.action.info }}>{p.patientNo}</strong>{" "}
+                                — {p.firstName} {p.lastName}
                               </button>
                             ))}
                           </div>
@@ -544,10 +681,23 @@ export default function LabPage() {
                 </FormField>
               </div>
               <div>
-                <span style={{ fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+                <span
+                  style={{
+                    fontSize: theme.fontSize.base,
+                    fontWeight: theme.fontWeight.semibold,
+                    color: theme.text.secondary,
+                  }}
+                >
                   Tests (select one or more)
                 </span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: theme.spacing["2"], marginTop: theme.spacing["1"] }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: theme.spacing["2"],
+                    marginTop: theme.spacing["1"],
+                  }}
+                >
                   {tests.map((t) => {
                     const selected = selectedTests.includes(t.id);
                     return (
@@ -591,7 +741,12 @@ export default function LabPage() {
             {filteredRequests.length === 0 ? (
               <EmptyState icon="flask" description="No lab requests match this filter." />
             ) : (
-              <DataTable columns={requestColumns} rows={filteredRequests} rowKey={(r) => r.id} dense />
+              <DataTable
+                columns={requestColumns}
+                rows={filteredRequests}
+                rowKey={(r) => r.id}
+                dense
+              />
             )}
           </Card>
         </div>
@@ -623,7 +778,10 @@ export default function LabPage() {
 
           {activeRequest ? (
             <Card>
-              <form onSubmit={handleSaveResults} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
+              <form
+                onSubmit={handleSaveResults}
+                style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}
+              >
                 <div
                   style={{
                     display: "flex",
@@ -637,25 +795,54 @@ export default function LabPage() {
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.bold, color: theme.text.primary }}>
+                    <div
+                      style={{
+                        fontSize: theme.fontSize.lg,
+                        fontWeight: theme.fontWeight.bold,
+                        color: theme.text.primary,
+                      }}
+                    >
                       {activeRequest.requestNo}
                     </div>
                     <div style={{ fontSize: theme.fontSize.base, color: theme.text.muted }}>
-                      Patient: <strong>{activeRequest.patientName || "—"}</strong> • Ordered by {activeRequest.orderedByName}
+                      Patient: <strong>{activeRequest.patientName || "—"}</strong> • Ordered by{" "}
+                      {activeRequest.orderedByName}
                     </div>
                     {activeRequest.clinicalNotes && (
-                      <div style={{ fontSize: theme.fontSize.base, color: theme.action.primary, marginTop: "0.2rem" }}>
+                      <div
+                        style={{
+                          fontSize: theme.fontSize.base,
+                          color: theme.action.primary,
+                          marginTop: "0.2rem",
+                        }}
+                      >
                         Notes: {activeRequest.clinicalNotes}
                       </div>
                     )}
                   </div>
-                  <StatusBadge variant={statusVariant(activeRequest.status)} label={activeRequest.status.replace("_", " ")} />
+                  <StatusBadge
+                    variant={statusVariant(activeRequest.status)}
+                    label={activeRequest.status.replace("_", " ")}
+                  />
                 </div>
 
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: theme.fontSize.base }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      textAlign: "left",
+                      fontSize: theme.fontSize.base,
+                    }}
+                  >
                     <thead>
-                      <tr style={{ background: theme.surface.subtle, borderBottom: `1px solid ${theme.surface.borderStrong}`, color: theme.text.secondary }}>
+                      <tr
+                        style={{
+                          background: theme.surface.subtle,
+                          borderBottom: `1px solid ${theme.surface.borderStrong}`,
+                          color: theme.text.secondary,
+                        }}
+                      >
                         <th style={th}>Test</th>
                         <th style={th}>Specimen</th>
                         <th style={th}>Result</th>
@@ -665,17 +852,36 @@ export default function LabPage() {
                     </thead>
                     <tbody>
                       {activeRequest.items.map((it) => (
-                        <tr key={it.id} style={{ borderBottom: `1px solid ${theme.surface.border}` }}>
-                          <td style={{ ...td, fontWeight: theme.fontWeight.semibold, color: theme.text.secondary }}>
+                        <tr
+                          key={it.id}
+                          style={{ borderBottom: `1px solid ${theme.surface.border}` }}
+                        >
+                          <td
+                            style={{
+                              ...td,
+                              fontWeight: theme.fontWeight.semibold,
+                              color: theme.text.secondary,
+                            }}
+                          >
                             {it.testName}
-                            <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontWeight: theme.fontWeight.normal }}>{it.testCode}</div>
+                            <div
+                              style={{
+                                fontSize: theme.fontSize.sm,
+                                color: theme.text.muted,
+                                fontWeight: theme.fontWeight.normal,
+                              }}
+                            >
+                              {it.testCode}
+                            </div>
                           </td>
                           <td style={{ ...td, color: theme.text.muted }}>{it.specimenType}</td>
                           <td style={td}>
                             <Input
                               type="text"
                               value={resultValues[it.id] ?? ""}
-                              onChange={(e) => setResultValues((prev) => ({ ...prev, [it.id]: e.target.value }))}
+                              onChange={(e) =>
+                                setResultValues((prev) => ({ ...prev, [it.id]: e.target.value }))
+                              }
                               placeholder="Enter result"
                             />
                           </td>
@@ -683,11 +889,20 @@ export default function LabPage() {
                             <input
                               type="checkbox"
                               checked={criticalFlags[it.id] ?? false}
-                              onChange={(e) => setCriticalFlags((prev) => ({ ...prev, [it.id]: e.target.checked }))}
+                              onChange={(e) =>
+                                setCriticalFlags((prev) => ({ ...prev, [it.id]: e.target.checked }))
+                              }
                               style={{ accentColor: theme.action.primary }}
                             />
                           </td>
-                          <td style={{ ...td, fontSize: theme.fontSize.base, color: it.resultVerifiedAt ? theme.action.success : theme.text.muted, fontWeight: theme.fontWeight.semibold }}>
+                          <td
+                            style={{
+                              ...td,
+                              fontSize: theme.fontSize.base,
+                              color: it.resultVerifiedAt ? theme.action.success : theme.text.muted,
+                              fontWeight: theme.fontWeight.semibold,
+                            }}
+                          >
                             {it.resultVerifiedAt ? "Yes" : "—"}
                           </td>
                         </tr>
@@ -696,7 +911,9 @@ export default function LabPage() {
                   </table>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing["3"] }}>
+                <div
+                  style={{ display: "flex", justifyContent: "flex-end", gap: theme.spacing["3"] }}
+                >
                   <Button type="button" variant="ghost" onClick={() => setActiveTab("queue")}>
                     Back to Queue
                   </Button>
@@ -720,11 +937,27 @@ export default function LabPage() {
 function Kpi({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <Card bodyStyle={{ padding: theme.spacing["4"] }}>
-      <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, fontWeight: theme.fontWeight.bold }}>{label}</div>
+      <div
+        style={{
+          fontSize: theme.fontSize.sm,
+          color: theme.text.muted,
+          fontWeight: theme.fontWeight.bold,
+        }}
+      >
+        {label}
+      </div>
       <div style={{ fontSize: "1.5rem", fontWeight: theme.fontWeight.bold, color }}>{value}</div>
     </Card>
   );
 }
 
-const th: CSSProperties = { padding: "0.6rem 0.8rem", fontWeight: theme.fontWeight.semibold, fontSize: theme.fontSize.sm };
-const td: CSSProperties = { padding: "0.6rem 0.8rem", color: theme.text.secondary, verticalAlign: "top" };
+const th: CSSProperties = {
+  padding: "0.6rem 0.8rem",
+  fontWeight: theme.fontWeight.semibold,
+  fontSize: theme.fontSize.sm,
+};
+const td: CSSProperties = {
+  padding: "0.6rem 0.8rem",
+  color: theme.text.secondary,
+  verticalAlign: "top",
+};

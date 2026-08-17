@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { theme, Button, Card, EmptyState, Input, PageHeader, TabNav, Textarea } from "@hims/ui";
+import {
+  theme,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  PageHeader,
+  TabNav,
+  Textarea,
+  useToast,
+} from "@hims/ui";
 import { apiFetch } from "../api/client";
 
 interface Staff {
@@ -48,6 +58,7 @@ export default function CommunicationsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const toast = useToast();
 
   // DM state.
   const [selectedPeer, setSelectedPeer] = useState<Staff | null>(null);
@@ -147,7 +158,9 @@ export default function CommunicationsPage() {
       setMessages(updated);
       setDmThread((prev) => ({ ...prev, [selectedPeer.userId]: updated }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the message.");
+      const msg = err instanceof Error ? err.message : "Could not send the message.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -179,7 +192,9 @@ export default function CommunicationsPage() {
       setChannelInput("");
       setChannelMessages((prev) => [...prev, msg]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send the message.");
+      const msg = err instanceof Error ? err.message : "Could not send the message.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -195,8 +210,11 @@ export default function CommunicationsPage() {
       setBroadcastInput("");
       const updated = await apiFetch<Message[]>("/communications/announcements");
       setAnnouncements(updated);
+      toast.success("Broadcast dispatched to all staff.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not post the announcement.");
+      const msg = err instanceof Error ? err.message : "Could not post the announcement.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -205,8 +223,11 @@ export default function CommunicationsPage() {
     try {
       await apiFetch<unknown>("/communications/policy/acknowledge", { method: "POST" });
       setPolicy((prev) => (prev ? { ...prev, acknowledged: true } : prev));
+      toast.success("Communications policy acknowledged.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not acknowledge the policy.");
+      const msg = err instanceof Error ? err.message : "Could not acknowledge the policy.";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -238,8 +259,8 @@ export default function CommunicationsPage() {
       {policy && !policy.acknowledged && (
         <div
           style={{
-            background: "#fffbeb",
-            border: "1px solid #fcd34d",
+            background: theme.surface.warning,
+            border: `1px solid ${theme.surface.warningBorder}`,
             borderRadius: theme.radius.md,
             padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
             display: "flex",
@@ -249,24 +270,33 @@ export default function CommunicationsPage() {
             flexWrap: "wrap",
           }}
         >
-          <div style={{ fontSize: theme.fontSize.base, color: "#78350f" }}>
+          <div style={{ fontSize: theme.fontSize.base, color: theme.text.warning }}>
             <strong>Communications policy:</strong> {policy.notice} Messages are retained{" "}
             {policy.retentionDays} days.
           </div>
-          <Button size="sm" style={{ background: theme.action.warning }} onClick={() => acknowledgePolicy()}>
+          <Button
+            size="sm"
+            style={{ background: theme.action.warning }}
+            onClick={() => acknowledgePolicy()}
+          >
             Acknowledge
           </Button>
         </div>
       )}
 
       {error && (
-        <p role="alert" style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}>
+        <p
+          role="alert"
+          style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.danger }}
+        >
           {error}
         </p>
       )}
 
       {loading && (
-        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>Loading communications…</p>
+        <p style={{ margin: 0, fontSize: theme.fontSize.base, color: theme.text.muted }}>
+          Loading communications…
+        </p>
       )}
 
       {/* DM tab */}
@@ -276,7 +306,13 @@ export default function CommunicationsPage() {
             <div style={dirHeader}>Hospital Staff Directory</div>
             <div style={{ flex: 1, overflowY: "auto" }}>
               {staff.length === 0 && (
-                <p style={{ padding: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                <p
+                  style={{
+                    padding: theme.spacing["4"],
+                    fontSize: theme.fontSize.base,
+                    color: theme.text.muted,
+                  }}
+                >
                   No staff directory available.
                 </p>
               )}
@@ -287,14 +323,18 @@ export default function CommunicationsPage() {
                   style={{
                     padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`,
                     cursor: "pointer",
-                    background: selectedPeer?.userId === s.userId ? theme.badge.aft.bg : "transparent",
+                    background:
+                      selectedPeer?.userId === s.userId ? theme.badge.aft.bg : "transparent",
                     borderBottom: `1px solid ${theme.surface.border}`,
                   }}
                 >
                   <div
                     style={{
                       fontSize: theme.fontSize.base,
-                      fontWeight: selectedPeer?.userId === s.userId ? theme.fontWeight.bold : theme.fontWeight.medium,
+                      fontWeight:
+                        selectedPeer?.userId === s.userId
+                          ? theme.fontWeight.bold
+                          : theme.fontWeight.medium,
                       color: theme.text.primary,
                     }}
                   >
@@ -308,15 +348,47 @@ export default function CommunicationsPage() {
             </div>
           </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: theme.surface.card, minWidth: 0 }}>
-            <div style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
-              <div style={{ fontWeight: theme.fontWeight.bold, fontSize: theme.fontSize.base, color: theme.text.primary }}>
-                {selectedPeer ? `${selectedPeer.firstName} ${selectedPeer.lastName}` : "Select a staff member"}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              background: theme.surface.card,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                padding: `${theme.spacing["3"]} 1.25rem`,
+                borderBottom: `1px solid ${theme.surface.border}`,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: theme.fontWeight.bold,
+                  fontSize: theme.fontSize.base,
+                  color: theme.text.primary,
+                }}
+              >
+                {selectedPeer
+                  ? `${selectedPeer.firstName} ${selectedPeer.lastName}`
+                  : "Select a staff member"}
               </div>
-              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>Secure Channel</div>
+              <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+                Secure Channel
+              </div>
             </div>
 
-            <div style={{ flex: 1, padding: theme.spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+            <div
+              style={{
+                flex: 1,
+                padding: theme.spacing["4"],
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: theme.spacing["3"],
+              }}
+            >
               {!selectedPeer && (
                 <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
                   Choose a recipient from the directory to start messaging.
@@ -331,7 +403,10 @@ export default function CommunicationsPage() {
                 messages.map((msg) => {
                   const isMe = msg.senderId !== selectedPeer.userId;
                   return (
-                    <div key={msg.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "70%" }}>
+                    <div
+                      key={msg.id}
+                      style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "70%" }}
+                    >
                       <div
                         style={{
                           background: isMe ? theme.badge.aft.bg : theme.surface.subtle,
@@ -343,7 +418,15 @@ export default function CommunicationsPage() {
                       >
                         {msg.body}
                       </div>
-                      <div style={{ display: "flex", justifyContent: "flex-end", fontSize: theme.fontSize.xs, color: theme.text.muted, marginTop: "2px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          fontSize: theme.fontSize.xs,
+                          color: theme.text.muted,
+                          marginTop: "2px",
+                        }}
+                      >
                         <span>
                           {isMe ? `${msg.senderName} · ` : ""}
                           {new Date(msg.createdAt).toLocaleString()}
@@ -366,7 +449,11 @@ export default function CommunicationsPage() {
             >
               <Input
                 type="text"
-                placeholder={selectedPeer ? `Type secure message to ${selectedPeer.firstName}...` : "Select a recipient first"}
+                placeholder={
+                  selectedPeer
+                    ? `Type secure message to ${selectedPeer.firstName}...`
+                    : "Select a recipient first"
+                }
                 value={dmInput}
                 disabled={!selectedPeer}
                 onChange={(e) => setDmInput(e.target.value)}
@@ -387,7 +474,13 @@ export default function CommunicationsPage() {
             <div style={dirHeader}>Hospital Channels</div>
             <div style={{ flex: 1, overflowY: "auto" }}>
               {channels.length === 0 && (
-                <p style={{ padding: theme.spacing["4"], fontSize: theme.fontSize.base, color: theme.text.muted }}>
+                <p
+                  style={{
+                    padding: theme.spacing["4"],
+                    fontSize: theme.fontSize.base,
+                    color: theme.text.muted,
+                  }}
+                >
                   No channels available.
                 </p>
               )}
@@ -402,38 +495,88 @@ export default function CommunicationsPage() {
                     borderBottom: `1px solid ${theme.surface.border}`,
                   }}
                 >
-                  <div style={{ fontSize: theme.fontSize.base, fontWeight: selectedChannel?.id === ch.id ? theme.fontWeight.bold : theme.fontWeight.medium, color: theme.text.primary }}>
+                  <div
+                    style={{
+                      fontSize: theme.fontSize.base,
+                      fontWeight:
+                        selectedChannel?.id === ch.id
+                          ? theme.fontWeight.bold
+                          : theme.fontWeight.medium,
+                      color: theme.text.primary,
+                    }}
+                  >
                     #{ch.name}
                   </div>
                   <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
-                    {ch.type.toUpperCase()} · {ch.memberCount} members{ch.isMember ? " · member" : ""}
+                    {ch.type.toUpperCase()} · {ch.memberCount} members
+                    {ch.isMember ? " · member" : ""}
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", background: theme.surface.card, minWidth: 0 }}>
-            <div style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
-              <div style={{ fontWeight: theme.fontWeight.bold, fontSize: theme.fontSize.base, color: theme.text.primary }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              background: theme.surface.card,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                padding: `${theme.spacing["3"]} 1.25rem`,
+                borderBottom: `1px solid ${theme.surface.border}`,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: theme.fontWeight.bold,
+                  fontSize: theme.fontSize.base,
+                  color: theme.text.primary,
+                }}
+              >
                 {selectedChannel ? `#${selectedChannel.name}` : "Select a channel"}
               </div>
               {selectedChannel?.description && (
-                <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>{selectedChannel.description}</div>
+                <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted }}>
+                  {selectedChannel.description}
+                </div>
               )}
             </div>
 
-            <div style={{ flex: 1, padding: theme.spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: theme.spacing["3"] }}>
+            <div
+              style={{
+                flex: 1,
+                padding: theme.spacing["4"],
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: theme.spacing["3"],
+              }}
+            >
               {!selectedChannel && (
-                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>Choose a channel to view its messages.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  Choose a channel to view its messages.
+                </p>
               )}
               {selectedChannel && channelMessages.length === 0 && (
-                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>No messages yet in this channel.</p>
+                <p style={{ color: theme.text.muted, fontSize: theme.fontSize.base }}>
+                  No messages yet in this channel.
+                </p>
               )}
               {selectedChannel &&
                 channelMessages.map((msg) => (
                   <div key={msg.id} style={{ maxWidth: "80%" }}>
-                    <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, marginBottom: "2px" }}>
+                    <div
+                      style={{
+                        fontSize: theme.fontSize.sm,
+                        color: theme.text.muted,
+                        marginBottom: "2px",
+                      }}
+                    >
                       <strong>{msg.senderName}</strong> · {new Date(msg.createdAt).toLocaleString()}
                     </div>
                     <div
@@ -463,7 +606,9 @@ export default function CommunicationsPage() {
             >
               <Input
                 type="text"
-                placeholder={selectedChannel ? `Message #${selectedChannel.name}...` : "Select a channel first"}
+                placeholder={
+                  selectedChannel ? `Message #${selectedChannel.name}...` : "Select a channel first"
+                }
                 value={channelInput}
                 disabled={!selectedChannel || !selectedChannel.isMember}
                 onChange={(e) => setChannelInput(e.target.value)}
@@ -480,8 +625,19 @@ export default function CommunicationsPage() {
       {/* Broadcast tab */}
       {!loading && activeTab === "broadcast" && (
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
-          <Card title="Hospital-Wide Broadcast Dispatch" hint="Send emergency or shift bulletins to all active staff.">
-            <form onSubmit={handleBroadcast} style={{ display: "flex", flexDirection: "column", gap: theme.spacing["3"], maxWidth: 720 }}>
+          <Card
+            title="Hospital-Wide Broadcast Dispatch"
+            hint="Send emergency or shift bulletins to all active staff."
+          >
+            <form
+              onSubmit={handleBroadcast}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: theme.spacing["3"],
+                maxWidth: 720,
+              }}
+            >
               <Textarea
                 placeholder="Enter broadcast announcement..."
                 value={broadcastInput}
@@ -500,11 +656,25 @@ export default function CommunicationsPage() {
             ) : (
               <div>
                 {announcements.map((a) => (
-                  <div key={a.id} style={{ padding: `${theme.spacing["3"]} 1.25rem`, borderBottom: `1px solid ${theme.surface.border}` }}>
-                    <div style={{ fontSize: theme.fontSize.sm, color: theme.text.muted, marginBottom: "0.2rem" }}>
+                  <div
+                    key={a.id}
+                    style={{
+                      padding: `${theme.spacing["3"]} 1.25rem`,
+                      borderBottom: `1px solid ${theme.surface.border}`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: theme.fontSize.sm,
+                        color: theme.text.muted,
+                        marginBottom: "0.2rem",
+                      }}
+                    >
                       <strong>{a.senderName}</strong> · {new Date(a.createdAt).toLocaleString()}
                     </div>
-                    <div style={{ fontSize: theme.fontSize.base, color: theme.text.primary }}>{a.body}</div>
+                    <div style={{ fontSize: theme.fontSize.base, color: theme.text.primary }}>
+                      {a.body}
+                    </div>
                   </div>
                 ))}
               </div>

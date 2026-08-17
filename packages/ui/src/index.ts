@@ -26,7 +26,13 @@ export { DataTable, MatrixGrid } from "./DataTable";
 export type { DataTableProps, DataColumn, MatrixGridProps } from "./DataTable";
 
 export { Input, Select, Textarea, Checkbox, FormField } from "./FormControls";
-export type { InputProps, SelectProps, TextareaProps, CheckboxProps, FormFieldProps } from "./FormControls";
+export type {
+  InputProps,
+  SelectProps,
+  TextareaProps,
+  CheckboxProps,
+  FormFieldProps,
+} from "./FormControls";
 
 export { Modal } from "./Modal";
 export type { ModalProps } from "./Modal";
@@ -36,3 +42,6 @@ export type { EmptyStateProps } from "./EmptyState";
 
 export { Toast, ToastProvider, useToast } from "./Toast";
 export type { ToastItem, ToastType } from "./Toast";
+
+export { ConfirmDialog, useConfirm } from "./ConfirmDialog";
+export type { ConfirmDialogProps, ConfirmOptions } from "./ConfirmDialog";
