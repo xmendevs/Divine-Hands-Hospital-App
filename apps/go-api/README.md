@@ -22,6 +22,7 @@ Go core service for the Divine Hands HMS: identity, RBAC, sessions, and audit.
 | GET    | `/api/v1/admin/audit-logs`                                 | `audit.view`               |
 | *      | `/api/v1/admin/settings...`                                | `settings.*`               |
 | POST   | `/api/v1/patients`                                         | `patients.create`          |
+| GET    | `/api/v1/patients`                                         | `patients.view`            |
 | GET    | `/api/v1/patients/search`                                  | `patients.search`          |
 | GET    | `/api/v1/patients/{id}`                                    | `patients.view`            |
 | PATCH  | `/api/v1/patients/{id}`                                    | `patients.edit`            |

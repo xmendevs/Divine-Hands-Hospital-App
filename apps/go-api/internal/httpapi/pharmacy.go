@@ -192,6 +192,21 @@ func (s *server) handleUpdateMedicine(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleDeleteMedicine soft-deletes a medicine by setting active = false.
+func (s *server) handleDeleteMedicine(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.store.DeleteMedicine(r.Context(), id); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "medicine not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionMedicineUpdate, "medicine", id, nil, map[string]any{"action": "soft_delete"})
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ---- batches ----
 
 type batchResponse struct {
@@ -304,28 +319,43 @@ type dispensationItemResponse struct {
 }
 
 type dispensationResponse struct {
-	ID                  string                     `json:"id"`
-	DispensationNo      string                     `json:"dispensationNo"`
-	PrescriptionOrderID string                     `json:"prescriptionOrderId"`
-	PatientID           string                     `json:"patientId"`
-	DispensedBy         string                     `json:"dispensedBy"`
-	TotalAmount         float64                    `json:"totalAmount"`
-	Notes               string                     `json:"notes,omitempty"`
-	CreatedAt           string                     `json:"createdAt"`
-	Items               []dispensationItemResponse `json:"items,omitempty"`
+	ID                     string                     `json:"id"`
+	DispensationNo         string                     `json:"dispensationNo"`
+	PrescriptionOrderID    string                     `json:"prescriptionOrderId"`
+	PatientID              string                     `json:"patientId"`
+	DispensedBy            string                     `json:"dispensedBy"`
+	TotalAmount            float64                    `json:"totalAmount"`
+	Notes                  string                     `json:"notes,omitempty"`
+	DispenseStatus         string                     `json:"dispenseStatus"`
+	CounselingNotes        string                     `json:"counselingNotes,omitempty"`
+	AllergyCheckPassed     bool                       `json:"allergyCheckPassed"`
+	InteractionCheckPassed bool                       `json:"interactionCheckPassed"`
+	SignOffBy              *string                    `json:"signOffBy,omitempty"`
+	SignOffAt              *string                    `json:"signOffAt,omitempty"`
+	CreatedAt              string                     `json:"createdAt"`
+	Items                  []dispensationItemResponse `json:"items,omitempty"`
 }
 
 func newDispensationResponse(d *domain.Dispensation) dispensationResponse {
 	resp := dispensationResponse{
-		ID:                  d.ID,
-		DispensationNo:      d.DispensationNo,
-		PrescriptionOrderID: d.PrescriptionOrderID,
-		PatientID:           d.PatientID,
-		DispensedBy:         d.DispensedBy,
-		TotalAmount:         d.TotalAmount,
-		Notes:               d.Notes,
-		CreatedAt:           d.CreatedAt.UTC().Format(timeRFC3339),
-		Items:               make([]dispensationItemResponse, 0, len(d.Items)),
+		ID:                     d.ID,
+		DispensationNo:         d.DispensationNo,
+		PrescriptionOrderID:    d.PrescriptionOrderID,
+		PatientID:              d.PatientID,
+		DispensedBy:            d.DispensedBy,
+		TotalAmount:            d.TotalAmount,
+		Notes:                  d.Notes,
+		DispenseStatus:         d.DispenseStatus,
+		CounselingNotes:        d.CounselingNotes,
+		AllergyCheckPassed:     d.AllergyCheckPassed,
+		InteractionCheckPassed: d.InteractionCheckPassed,
+		SignOffBy:              d.SignOffBy,
+		CreatedAt:              d.CreatedAt.UTC().Format(timeRFC3339),
+		Items:                  make([]dispensationItemResponse, 0, len(d.Items)),
+	}
+	if d.SignOffAt != nil {
+		t := d.SignOffAt.UTC().Format(timeRFC3339)
+		resp.SignOffAt = &t
 	}
 	for _, it := range d.Items {
 		resp.Items = append(resp.Items, dispensationItemResponse{
@@ -872,4 +902,220 @@ func (s *server) handleGetAlerts(w http.ResponseWriter, r *http.Request) {
 		"expiring": expiring,
 		"expired":  expired,
 	})
+}
+
+// ---- allergy & interaction checks ----
+
+// handleCheckAllergies returns the patient's known allergies.
+func (s *server) handleCheckAllergies(w http.ResponseWriter, r *http.Request) {
+	patientID := r.URL.Query().Get("patientId")
+	if patientID == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "patientId query parameter is required")
+		return
+	}
+	allergies, err := s.store.GetPatientAllergies(r.Context(), patientID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"allergies": allergies,
+		"count":     len(allergies),
+	})
+}
+
+// handleCheckInteractions returns potential drug interactions for a medication.
+func (s *server) handleCheckInteractions(w http.ResponseWriter, r *http.Request) {
+	patientID := r.URL.Query().Get("patientId")
+	medication := r.URL.Query().Get("medication")
+	if patientID == "" || medication == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "patientId and medication query parameters are required")
+		return
+	}
+	interactions, err := s.store.CheckDrugInteractions(r.Context(), patientID, medication)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"interactions": interactions,
+		"count":        len(interactions),
+	})
+}
+
+// ---- dispense status transitions ----
+
+type dispenseStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// handleUpdateDispenseStatus transitions a dispensation's workflow status.
+func (s *server) handleUpdateDispenseStatus(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req dispenseStatusRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.Status != "ready_for_pickup" && req.Status != "dispensed" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "status must be 'ready_for_pickup' or 'dispensed'")
+		return
+	}
+	actor := userFromContext(r.Context())
+	disp, err := s.store.UpdateDispenseStatus(r.Context(), store.UpdateDispenseStatusParams{
+		DispensationID: id,
+		DispenseStatus: req.Status,
+		SignOffBy:      actor.ID,
+	})
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		writeError(w, r, http.StatusNotFound, "not_found", "dispensation not found")
+		return
+	case errors.Is(err, store.ErrInvalidTransition):
+		writeError(w, r, http.StatusConflict, "invalid_transition", "invalid status transition")
+		return
+	case err != nil:
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionInventoryDispense, "dispensation", id, nil, map[string]any{"newStatus": req.Status})
+	writeJSON(w, http.StatusOK, newDispensationResponse(disp))
+}
+
+// ---- FIFO batch list for dispense drawer ----
+
+type batchFifoResponse struct {
+	ID                string  `json:"id"`
+	MedicineID        string  `json:"medicineId"`
+	BatchNumber       string  `json:"batchNumber"`
+	ManufacturingDate *string `json:"manufacturingDate,omitempty"`
+	ExpiryDate        *string `json:"expiryDate,omitempty"`
+	QuantityOnHand    float64 `json:"quantityOnHand"`
+	SellingPrice      float64 `json:"sellingPrice"`
+	Supplier          string  `json:"supplier"`
+	Status            string  `json:"status"`
+	FIFOPriority      int     `json:"fifoPriority"`
+	TotalStock        float64 `json:"totalStock"`
+}
+
+func newBatchFifoResponse(bf store.BatchWithFifoInfo) batchFifoResponse {
+	return batchFifoResponse{
+		ID:                bf.Batch.ID,
+		MedicineID:        bf.Batch.MedicineID,
+		BatchNumber:       bf.Batch.BatchNumber,
+		ManufacturingDate: bf.Batch.ManufacturingDate,
+		ExpiryDate:        bf.Batch.ExpiryDate,
+		QuantityOnHand:    bf.Batch.QuantityOnHand,
+		SellingPrice:      bf.Batch.SellingPrice,
+		Supplier:          bf.Batch.Supplier,
+		Status:            bf.Batch.Status,
+		FIFOPriority:      bf.FIFOPriority,
+		TotalStock:        bf.TotalStock,
+	}
+}
+
+// handleListBatchesFifo returns a medicine's batches ordered by FIFO.
+func (s *server) handleListBatchesFifo(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	batches, err := s.store.ListBatchesWithFifo(r.Context(), id)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]batchFifoResponse, 0, len(batches))
+	for _, b := range batches {
+		out = append(out, newBatchFifoResponse(b))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// ---- enhanced dispense ----
+
+type enhancedDispenseRequest struct {
+	OrderID                string                `json:"orderId"`
+	Items                  []dispenseItemRequest `json:"items"`
+	Notes                  string                `json:"notes"`
+	AllergyCheckPassed     bool                  `json:"allergyCheckPassed"`
+	InteractionCheckPassed bool                  `json:"interactionCheckPassed"`
+	CounselingNotes        string                `json:"counselingNotes"`
+	DispenseStatus         string                `json:"dispenseStatus"` // optional; defaults to pending_verification
+}
+
+// handleEnhancedDispense fills a prescription with safety check tracking.
+func (s *server) handleEnhancedDispense(w http.ResponseWriter, r *http.Request) {
+	var req enhancedDispenseRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.OrderID == "" || len(req.Items) == 0 {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "orderId and at least one item are required")
+		return
+	}
+	order, err := s.store.GetOrder(r.Context(), req.OrderID)
+	if err != nil {
+		writeError(w, r, http.StatusNotFound, "not_found", "order not found")
+		return
+	}
+	if order.OrderType != domain.OrderTypePrescription {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "order is not a prescription")
+		return
+	}
+	if order.Status == domain.OrderStatusCompleted {
+		writeError(w, r, http.StatusConflict, "already_dispensed", "prescription already dispensed")
+		return
+	}
+	if order.Status == domain.OrderStatusCancelled || order.Status == domain.OrderStatusDraft {
+		writeError(w, r, http.StatusConflict, "invalid_transition", "order is not in a dispensable state")
+		return
+	}
+
+	items := make([]store.DispenseItemParams, 0, len(req.Items))
+	for _, it := range req.Items {
+		if it.Quantity <= 0 {
+			writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "item quantity must be positive")
+			return
+		}
+		items = append(items, store.DispenseItemParams{MedicineID: it.MedicineID, Quantity: it.Quantity})
+	}
+
+	actor := userFromContext(r.Context())
+	status := req.DispenseStatus
+	if status == "" {
+		status = "pending_verification"
+	}
+	disp, err := s.store.EnhancedDispense(r.Context(), store.EnhancedDispenseParams{
+		DispenseParams: store.DispenseParams{
+			OrderID:     req.OrderID,
+			Items:       items,
+			Notes:       req.Notes,
+			DispensedBy: actor.ID,
+		},
+		AllergyCheckPassed:     req.AllergyCheckPassed,
+		InteractionCheckPassed: req.InteractionCheckPassed,
+		CounselingNotes:        req.CounselingNotes,
+		DispenseStatus:         status,
+	})
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		writeError(w, r, http.StatusNotFound, "not_found", "medicine not found")
+		return
+	case errors.Is(err, store.ErrInsufficientStock):
+		writeError(w, r, http.StatusConflict, "insufficient_stock", "not enough dispensable stock")
+		return
+	case errors.Is(err, store.ErrNotDispensable):
+		writeError(w, r, http.StatusConflict, "not_dispensable", "medicine or batch is not dispensable")
+		return
+	case errors.Is(err, store.ErrAlreadyDispensed):
+		writeError(w, r, http.StatusConflict, "already_dispensed", "prescription already dispensed")
+		return
+	case err != nil:
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionInventoryDispense, "patient", order.PatientID, nil, map[string]any{
+		"orderNo": order.OrderNo, "dispensationNo": disp.DispensationNo,
+		"allergyCheck": req.AllergyCheckPassed, "interactionCheck": req.InteractionCheckPassed,
+	})
+	writeJSON(w, http.StatusCreated, newDispensationResponse(disp))
 }

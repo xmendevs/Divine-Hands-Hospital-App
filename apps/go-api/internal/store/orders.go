@@ -23,13 +23,15 @@ var orderTransitions = map[string]map[string]bool{
 	domain.OrderStatusInProgress: {domain.OrderStatusCompleted: true},
 }
 
-const orderCols = `id::text, order_no, patient_id::text, order_type, status, department_id::text, ordered_by::text, details, clinical_note_id::text, acted_by::text, cancelled_by::text, cancel_reason, created_at, submitted_at, accepted_at, completed_at, cancelled_at, updated_at`
+const orderCols = `id::text, order_no, patient_id::text, order_type, status, department_id::text, ordered_by::text, details, clinical_note_id::text, acted_by::text, cancelled_by::text, cancel_reason, signed_by::text, signed_at, signature_hash, priority, invoice_id::text, created_at, submitted_at, accepted_at, completed_at, cancelled_at, updated_at`
 
 func scanOrder(r pgx.Row) (*domain.Order, error) {
 	var o domain.Order
 	err := r.Scan(
 		&o.ID, &o.OrderNo, &o.PatientID, &o.OrderType, &o.Status, &o.DepartmentID,
 		&o.OrderedBy, &o.Details, &o.ClinicalNoteID, &o.ActedBy, &o.CancelledBy, &o.CancelReason,
+		&o.SignedBy, &o.SignedAt, &o.SignatureHash,
+		&o.Priority, &o.InvoiceID,
 		&o.CreatedAt, &o.SubmittedAt, &o.AcceptedAt, &o.CompletedAt, &o.CancelledAt, &o.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -54,6 +56,7 @@ type CreateOrderParams struct {
 	Details        map[string]any
 	ClinicalNoteID *string
 	Submit         bool
+	Priority       string
 }
 
 // CreateOrder inserts an order (draft or submitted) in one transaction, and
@@ -82,12 +85,16 @@ func (s *Store) CreateOrder(ctx context.Context, p CreateOrderParams) (*domain.O
 		submittedAt = &now
 	}
 
+	priority := p.Priority
+	if priority == "" {
+		priority = "routine"
+	}
 	row := tx.QueryRow(ctx, `
-		INSERT INTO orders (order_no, patient_id, order_type, status, department_id, ordered_by, details, clinical_note_id, submitted_at)
-		VALUES ($1, $2::uuid, $3, $4, $5::uuid, $6::uuid, $7::jsonb, $8::uuid, $9)
+		INSERT INTO orders (order_no, patient_id, order_type, status, department_id, ordered_by, details, clinical_note_id, submitted_at, priority)
+		VALUES ($1, $2::uuid, $3, $4, $5::uuid, $6::uuid, $7::jsonb, $8::uuid, $9, $10)
 		RETURNING `+orderCols,
 		orderNo, p.PatientID, p.OrderType, status, nullableUUID(p.DepartmentID),
-		p.OrderedBy, details, nullableUUID(p.ClinicalNoteID), submittedAt)
+		p.OrderedBy, details, nullableUUID(p.ClinicalNoteID), submittedAt, priority)
 	order, err := scanOrder(row)
 	if err != nil {
 		return nil, err
@@ -145,6 +152,33 @@ func (s *Store) ListActionableOrders(ctx context.Context, limit, offset int) ([]
 	rows, err := s.pool.Query(ctx, `
 		SELECT `+orderCols+` FROM orders
 		WHERE status IN ('submitted','accepted','in_progress')
+		ORDER BY created_at ASC LIMIT $1 OFFSET $2`, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanOrders(rows)
+}
+
+// ListActionableOrdersForRole returns orders filtered by order type based on
+// the requesting user's role. This ensures each role only sees orders relevant
+// to their department.
+func (s *Store) ListActionableOrdersForRole(ctx context.Context, roleCode string, limit, offset int) ([]domain.Order, error) {
+	var typeFilter string
+	switch roleCode {
+	case "pharmacist":
+		typeFilter = "order_type = 'prescription'"
+	case "lab_technician", "lab_supervisor":
+		typeFilter = "order_type IN ('lab_request','lab_investigation','radiology_imaging')"
+	case "nurse", "matron":
+		typeFilter = "order_type IN ('nursing_order','nursing_procedure','dietary_ward','prescription')"
+	default:
+		// super_admin, doctor, cashier see everything
+		typeFilter = "1=1"
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+orderCols+` FROM orders
+		WHERE status IN ('submitted','accepted','in_progress') AND `+typeFilter+`
 		ORDER BY created_at ASC LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err

@@ -2,11 +2,32 @@ package httpapi
 
 import (
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
 )
+
+// numValue extracts a positive finite float from a JSON number or numeric
+// string (used for structured vitals like weight/height).
+func numValue(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		if math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 {
+			return 0, false
+		}
+		return n, true
+	case string:
+		f, err := strconv.ParseFloat(n, 64)
+		if err != nil || math.IsNaN(f) || math.IsInf(f, 0) || f <= 0 {
+			return 0, false
+		}
+		return f, true
+	}
+	return 0, false
+}
 
 // ---- notes ----
 
@@ -25,16 +46,21 @@ type noteResponse struct {
 	NoteType      string  `json:"noteType"`
 	DepartmentID  *string `json:"departmentId,omitempty"`
 	AuthorUserID  string  `json:"authorUserId"`
+	AuthorName    string  `json:"authorName"`
 	AuthorRole    string  `json:"authorRole"`
 	Note          string  `json:"note"`
 	Diagnosis     string  `json:"diagnosis,omitempty"`
 	TreatmentPlan string  `json:"treatmentPlan,omitempty"`
 	Version       int     `json:"version"`
+	SignedBy      *string `json:"signedBy,omitempty"`
+	SignedByName  string  `json:"signedByName,omitempty"`
+	SignedAt      *string `json:"signedAt,omitempty"`
+	SignatureHash string  `json:"signatureHash,omitempty"`
 	CreatedAt     string  `json:"createdAt"`
 }
 
 func newNoteResponse(n *domain.ClinicalNote) noteResponse {
-	return noteResponse{
+	resp := noteResponse{
 		ID:            n.ID,
 		GroupID:       n.GroupID,
 		PatientID:     n.PatientID,
@@ -46,8 +72,15 @@ func newNoteResponse(n *domain.ClinicalNote) noteResponse {
 		Diagnosis:     n.Diagnosis,
 		TreatmentPlan: n.TreatmentPlan,
 		Version:       n.Version,
+		SignedBy:      n.SignedBy,
+		SignatureHash: n.SignatureHash,
 		CreatedAt:     n.CreatedAt.UTC().Format(timeRFC3339),
 	}
+	if n.SignedAt != nil {
+		v := n.SignedAt.UTC().Format(timeRFC3339)
+		resp.SignedAt = &v
+	}
+	return resp
 }
 
 type createNoteRequest struct {
@@ -95,7 +128,9 @@ func (s *server) handleCreateNote(w http.ResponseWriter, r *http.Request) {
 	_ = s.store.AppendTimelineEvent(r.Context(), patientID, domain.EventNoteCreated,
 		"Clinical note created", map[string]any{"noteType": req.NoteType, "groupId": n.GroupID}, &actor.ID)
 	s.recordAudit(r, domain.ActionNoteCreate, "patient", patientID, nil, map[string]any{"groupId": n.GroupID, "noteType": req.NoteType})
-	writeJSON(w, http.StatusCreated, newNoteResponse(n))
+	resp := newNoteResponse(n)
+	resp.AuthorName = s.displayName(r, actor.ID)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // handleListNotes lists the current version of each note group.
@@ -107,8 +142,15 @@ func (s *server) handleListNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]noteResponse, 0, len(notes))
+	names := s.displayNames(r, notes)
+	signedNames := s.noteSignedNames(r, notes)
 	for i := range notes {
-		out = append(out, newNoteResponse(&notes[i]))
+		resp := newNoteResponse(&notes[i])
+		resp.AuthorName = names[notes[i].AuthorUserID]
+		if notes[i].SignedBy != nil {
+			resp.SignedByName = signedNames[*notes[i].SignedBy]
+		}
+		out = append(out, resp)
 	}
 	s.recordAudit(r, domain.ActionNotesViewed, "patient", id, nil, nil)
 	writeJSON(w, http.StatusOK, out)
@@ -123,8 +165,15 @@ func (s *server) handleListNoteVersions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	out := make([]noteResponse, 0, len(notes))
+	names := s.displayNames(r, notes)
+	signedNames := s.noteSignedNames(r, notes)
 	for i := range notes {
-		out = append(out, newNoteResponse(&notes[i]))
+		resp := newNoteResponse(&notes[i])
+		resp.AuthorName = names[notes[i].AuthorUserID]
+		if notes[i].SignedBy != nil {
+			resp.SignedByName = signedNames[*notes[i].SignedBy]
+		}
+		out = append(out, resp)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
@@ -175,7 +224,9 @@ func (s *server) handleAddNoteVersion(w http.ResponseWriter, r *http.Request) {
 	_ = s.store.AppendTimelineEvent(r.Context(), patientID, domain.EventNoteUpdated,
 		"Clinical note updated", map[string]any{"groupId": groupID, "version": n.Version}, &actor.ID)
 	s.recordAudit(r, domain.ActionNoteVersion, "patient", patientID, nil, map[string]any{"groupId": groupID, "version": n.Version})
-	writeJSON(w, http.StatusCreated, newNoteResponse(n))
+	resp := newNoteResponse(n)
+	resp.AuthorName = s.displayName(r, actor.ID)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // ---- observations & vitals ----
@@ -215,13 +266,24 @@ func (s *server) handleAddObservation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	actor := userFromContext(r.Context())
+
+	// Structured vitals coding: compute BMI from weight (kg) + height (cm) when
+	// both are supplied so the derived value is consistent everywhere.
+	if req.Category == domain.ObservationCategoryVitals {
+		if w, ok := numValue(req.Measurements["weight"]); ok && w > 0 {
+			if h, ok := numValue(req.Measurements["height"]); ok && h > 0 {
+				req.Measurements["bmi"] = math.Round(w/((h/100)*(h/100))*10) / 10
+			}
+		}
+	}
+
 	obsID, err := s.store.AddObservation(r.Context(), patientID, req.Category, req.Measurements, req.Notes, actor.ID)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
 	_ = s.store.AppendTimelineEvent(r.Context(), patientID, domain.EventObservationRecorded,
-		"Observation recorded", map[string]any{"category": req.Category}, &actor.ID)
+		"Observation recorded", map[string]any{"category": req.Category, "bmi": req.Measurements["bmi"]}, &actor.ID)
 	s.recordAudit(r, domain.ActionObservationRecorded, "patient", patientID, nil, map[string]any{"category": req.Category})
 	writeJSON(w, http.StatusCreated, map[string]string{"id": obsID})
 }

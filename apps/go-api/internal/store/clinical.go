@@ -14,12 +14,13 @@ import (
 
 // ---- clinical notes (immutable, versioned) ----
 
-const noteCols = `id::text, group_id::text, patient_id::text, note_type, department_id::text, author_user_id::text, author_role, note, diagnosis, treatment_plan, version, created_at`
+const noteCols = `id::text, group_id::text, patient_id::text, note_type, department_id::text, author_user_id::text, author_role, note, diagnosis, treatment_plan, version, signed_by::text, signed_at, signature_hash, created_at`
 
 func scanNote(r pgx.Row) (*domain.ClinicalNote, error) {
 	var n domain.ClinicalNote
 	err := r.Scan(&n.ID, &n.GroupID, &n.PatientID, &n.NoteType, &n.DepartmentID,
-		&n.AuthorUserID, &n.AuthorRole, &n.Note, &n.Diagnosis, &n.TreatmentPlan, &n.Version, &n.CreatedAt)
+		&n.AuthorUserID, &n.AuthorRole, &n.Note, &n.Diagnosis, &n.TreatmentPlan, &n.Version,
+		&n.SignedBy, &n.SignedAt, &n.SignatureHash, &n.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +52,15 @@ func (s *Store) CreateNote(ctx context.Context, p CreateNoteParams) (*domain.Cli
 		return nil, err
 	}
 	return n, nil
+}
+
+// GetNote returns a note by internal UUID.
+func (s *Store) GetNote(ctx context.Context, id string) (*domain.ClinicalNote, error) {
+	n, err := scanNote(s.pool.QueryRow(ctx, `SELECT `+noteCols+` FROM clinical_notes WHERE id = $1::uuid`, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return n, err
 }
 
 // ListNotes returns the current (latest) version of each note group, newest first.

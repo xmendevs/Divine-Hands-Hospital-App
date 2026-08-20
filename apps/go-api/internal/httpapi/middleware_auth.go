@@ -94,6 +94,31 @@ func (s *server) requirePermission(code string, next http.Handler) http.Handler 
 	})
 }
 
+// requireSuperAdmin protects financial controls that cannot be delegated to a
+// general billing role: a payment sign-off and a bill correction both require
+// the hospital's highest approval authority.
+func (s *server) requireSuperAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := userFromContext(r.Context())
+		if u == nil {
+			writeError(w, r, http.StatusUnauthorized, "unauthorized", "authentication required")
+			return
+		}
+		roles, err := s.store.GetUserRoles(r.Context(), u.ID)
+		if err != nil {
+			writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+		for _, role := range roles {
+			if role.Code == "super_admin" {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		writeError(w, r, http.StatusForbidden, "forbidden", "super admin approval required")
+	})
+}
+
 // admin chains requireAuth + requirePermission for admin endpoints.
 func (s *server) admin(perm string, h http.HandlerFunc) http.Handler {
 	return s.requireAuth(s.requirePermission(perm, h))
@@ -102,4 +127,8 @@ func (s *server) admin(perm string, h http.HandlerFunc) http.Handler {
 // perm chains requireAuth + requirePermission for non-admin protected endpoints.
 func (s *server) perm(perm string, h http.HandlerFunc) http.Handler {
 	return s.requireAuth(s.requirePermission(perm, h))
+}
+
+func (s *server) superAdmin(h http.HandlerFunc) http.Handler {
+	return s.requireAuth(s.requireSuperAdmin(h))
 }

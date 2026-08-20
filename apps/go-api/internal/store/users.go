@@ -147,6 +147,33 @@ func (s *Store) ListUsers(ctx context.Context) ([]UserRow, error) {
 	return out, rows.Err()
 }
 
+// NamesByUserIDs resolves display names for a set of user IDs. Staff full
+// names are preferred; the login username is the fallback. Used for audit
+// trail / authoring metadata on notes and orders.
+func (s *Store) NamesByUserIDs(ctx context.Context, userIDs []string) (map[string]string, error) {
+	out := make(map[string]string, len(userIDs))
+	if len(userIDs) == 0 {
+		return out, nil
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT u.id::text, COALESCE(st.first_name || ' ' || st.last_name, u.username)
+		FROM users u
+		LEFT JOIN staff st ON st.user_id = u.id
+		WHERE u.id = ANY($1::uuid[])`, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out[id] = name
+	}
+	return out, rows.Err()
+}
+
 // SetUserStatus updates a user's activation status.
 func (s *Store) SetUserStatus(ctx context.Context, id string, status domain.UserStatus) error {
 	ct, err := s.pool.Exec(ctx, `

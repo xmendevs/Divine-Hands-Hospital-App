@@ -11,7 +11,9 @@ import (
 
 func validOrderType(s string) bool {
 	switch s {
-	case domain.OrderTypePrescription, domain.OrderTypeLabRequest, domain.OrderTypeNursingOrder, domain.OrderTypeReferral:
+	case domain.OrderTypePrescription, domain.OrderTypeLabRequest, domain.OrderTypeLabInvestigation,
+		domain.OrderTypeRadiologyImaging, domain.OrderTypeNursingOrder, domain.OrderTypeNursingProcedure,
+		domain.OrderTypeDietaryWard, domain.OrderTypeReferral:
 		return true
 	}
 	return false
@@ -21,15 +23,24 @@ type orderResponse struct {
 	ID             string         `json:"id"`
 	OrderNo        string         `json:"orderNo"`
 	PatientID      string         `json:"patientId"`
+	PatientName    string         `json:"patientName,omitempty"`
+	PatientNo      string         `json:"patientNo,omitempty"`
 	OrderType      string         `json:"orderType"`
 	Status         string         `json:"status"`
 	DepartmentID   *string        `json:"departmentId,omitempty"`
 	OrderedBy      string         `json:"orderedBy"`
+	OrderedByName  string         `json:"orderedByName"`
 	Details        map[string]any `json:"details"`
 	ClinicalNoteID *string        `json:"clinicalNoteId,omitempty"`
 	ActedBy        *string        `json:"actedBy,omitempty"`
 	CancelledBy    *string        `json:"cancelledBy,omitempty"`
 	CancelReason   string         `json:"cancelReason,omitempty"`
+	SignedBy       *string        `json:"signedBy,omitempty"`
+	SignedByName   string         `json:"signedByName,omitempty"`
+	SignedAt       *string        `json:"signedAt,omitempty"`
+	SignatureHash  string         `json:"signatureHash,omitempty"`
+	Priority       string         `json:"priority"`
+	InvoiceID      *string        `json:"invoiceId,omitempty"`
 	CreatedAt      string         `json:"createdAt"`
 	SubmittedAt    string         `json:"submittedAt,omitempty"`
 	AcceptedAt     string         `json:"acceptedAt,omitempty"`
@@ -52,8 +63,16 @@ func newOrderResponse(o *domain.Order) orderResponse {
 		ActedBy:        o.ActedBy,
 		CancelledBy:    o.CancelledBy,
 		CancelReason:   o.CancelReason,
+		SignedBy:       o.SignedBy,
+		SignatureHash:  o.SignatureHash,
+		Priority:       o.Priority,
+		InvoiceID:      o.InvoiceID,
 		CreatedAt:      o.CreatedAt.UTC().Format(timeRFC3339),
 		UpdatedAt:      o.UpdatedAt.UTC().Format(timeRFC3339),
+	}
+	if o.SignedAt != nil {
+		v := o.SignedAt.UTC().Format(timeRFC3339)
+		resp.SignedAt = &v
 	}
 	if o.SubmittedAt != nil {
 		resp.SubmittedAt = o.SubmittedAt.UTC().Format(timeRFC3339)
@@ -76,6 +95,7 @@ type createOrderRequest struct {
 	Details      map[string]any `json:"details"`
 	NoteID       string         `json:"noteId"`
 	Submit       bool           `json:"submit"`
+	Priority     string         `json:"priority"`
 }
 
 // handleCreateOrder creates a doctor order (draft or submitted).
@@ -108,6 +128,7 @@ func (s *server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		Details:        req.Details,
 		ClinicalNoteID: noteID,
 		Submit:         req.Submit,
+		Priority:       req.Priority,
 	})
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
@@ -116,7 +137,9 @@ func (s *server) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	s.recordAudit(r, domain.ActionOrderCreate, "order", order.ID, nil, map[string]any{
 		"orderNo": order.OrderNo, "orderType": order.OrderType, "status": order.Status,
 	})
-	writeJSON(w, http.StatusCreated, newOrderResponse(order))
+	resp := newOrderResponse(order)
+	resp.OrderedByName = s.displayName(r, order.OrderedBy)
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // handleListPatientOrders lists a patient's orders.
@@ -128,24 +151,60 @@ func (s *server) handleListPatientOrders(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	out := make([]orderResponse, 0, len(orders))
+	names := s.orderDisplayNames(r, orders)
+	signedNames := s.orderSignedNames(r, orders)
 	for i := range orders {
-		out = append(out, newOrderResponse(&orders[i]))
+		resp := newOrderResponse(&orders[i])
+		resp.OrderedByName = names[orders[i].OrderedBy]
+		if orders[i].SignedBy != nil {
+			resp.SignedByName = signedNames[*orders[i].SignedBy]
+		}
+		out = append(out, resp)
 	}
 	s.recordAudit(r, domain.ActionOrdersViewed, "patient", id, nil, nil)
 	writeJSON(w, http.StatusOK, out)
 }
 
 // handleListActionableOrders lists orders awaiting/under nursing action.
+// When the user has a clinical role, orders are filtered to only show types
+// relevant to that role's department.
 func (s *server) handleListActionableOrders(w http.ResponseWriter, r *http.Request) {
 	limit, offset := pagination(r)
-	orders, err := s.store.ListActionableOrders(r.Context(), limit, offset)
+	actor := userFromContext(r.Context())
+	var orders []domain.Order
+	var err error
+	if actor != nil {
+		roles, _ := s.store.GetUserRoles(r.Context(), actor.ID)
+		roleCode := ""
+		for _, rl := range roles {
+			roleCode = rl.Code
+			break
+		}
+		if roleCode != "" {
+			orders, err = s.store.ListActionableOrdersForRole(r.Context(), roleCode, limit, offset)
+		} else {
+			orders, err = s.store.ListActionableOrders(r.Context(), limit, offset)
+		}
+	} else {
+		orders, err = s.store.ListActionableOrders(r.Context(), limit, offset)
+	}
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
 	out := make([]orderResponse, 0, len(orders))
+	names := s.orderDisplayNames(r, orders)
+	signedNames := s.orderSignedNames(r, orders)
+	patientNames, patientNos := s.patientDisplayNames(r, orders)
 	for i := range orders {
-		out = append(out, newOrderResponse(&orders[i]))
+		resp := newOrderResponse(&orders[i])
+		resp.OrderedByName = names[orders[i].OrderedBy]
+		resp.PatientName = patientNames[orders[i].PatientID]
+		resp.PatientNo = patientNos[orders[i].PatientID]
+		if orders[i].SignedBy != nil {
+			resp.SignedByName = signedNames[*orders[i].SignedBy]
+		}
+		out = append(out, resp)
 	}
 	s.recordAudit(r, domain.ActionOrdersViewed, "order", "", nil, nil)
 	writeJSON(w, http.StatusOK, out)

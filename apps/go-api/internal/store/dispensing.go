@@ -250,12 +250,21 @@ func (s *Store) fefoDeductTx(ctx context.Context, tx pgx.Tx, medicineID string, 
 }
 
 // GetDispensation returns a dispensation with its line items.
-func (s *Store) GetDispensation(ctx context.Context, id string) (*domain.Dispensation, error) {
+const dispCols = `id::text, dispensation_no, prescription_order_id::text, patient_id::text, dispensed_by::text, total_amount, notes, dispense_status, counseling_notes, allergy_check_passed, interaction_check_passed, sign_off_by::text, sign_off_at, created_at`
+
+func scanDispensation(r pgx.Row) (*domain.Dispensation, error) {
 	var d domain.Dispensation
-	err := s.pool.QueryRow(ctx, `
-		SELECT id::text, dispensation_no, prescription_order_id::text, patient_id::text, dispensed_by::text, total_amount, notes, created_at
-		FROM dispensations WHERE id = $1::uuid`, id).
-		Scan(&d.ID, &d.DispensationNo, &d.PrescriptionOrderID, &d.PatientID, &d.DispensedBy, &d.TotalAmount, &d.Notes, &d.CreatedAt)
+	err := r.Scan(&d.ID, &d.DispensationNo, &d.PrescriptionOrderID, &d.PatientID, &d.DispensedBy,
+		&d.TotalAmount, &d.Notes, &d.DispenseStatus, &d.CounselingNotes,
+		&d.AllergyCheckPassed, &d.InteractionCheckPassed, &d.SignOffBy, &d.SignOffAt, &d.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+func (s *Store) GetDispensation(ctx context.Context, id string) (*domain.Dispensation, error) {
+	d, err := scanDispensation(s.pool.QueryRow(ctx, `SELECT `+dispCols+` FROM dispensations WHERE id = $1::uuid`, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -277,13 +286,12 @@ func (s *Store) GetDispensation(ctx context.Context, id string) (*domain.Dispens
 		}
 		d.Items = append(d.Items, it)
 	}
-	return &d, rows.Err()
+	return d, rows.Err()
 }
 
 // ListDispensations returns dispensing history, newest first.
 func (s *Store) ListDispensations(ctx context.Context, patientID string, limit, offset int) ([]domain.Dispensation, error) {
-	q := `SELECT id::text, dispensation_no, prescription_order_id::text, patient_id::text, dispensed_by::text, total_amount, notes, created_at
-	      FROM dispensations`
+	q := `SELECT ` + dispCols + ` FROM dispensations`
 	args := []any{}
 	if patientID != "" {
 		q += ` WHERE patient_id = $1::uuid`
@@ -300,11 +308,11 @@ func (s *Store) ListDispensations(ctx context.Context, patientID string, limit, 
 
 	out := make([]domain.Dispensation, 0)
 	for rows.Next() {
-		var d domain.Dispensation
-		if err := rows.Scan(&d.ID, &d.DispensationNo, &d.PrescriptionOrderID, &d.PatientID, &d.DispensedBy, &d.TotalAmount, &d.Notes, &d.CreatedAt); err != nil {
+		d, err := scanDispensation(rows)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, d)
+		out = append(out, *d)
 	}
 	return out, rows.Err()
 }
@@ -654,6 +662,266 @@ func (s *Store) ListStockCounts(ctx context.Context, batchID string) ([]domain.S
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// ---- allergy & interaction checks ----
+
+// AllergyAlert represents a known patient allergy relevant to a medication.
+type AllergyAlert struct {
+	AllergyID    string
+	Summary      string
+	Severity     string
+	MedicineName string
+}
+
+// GetPatientAllergies returns the patient's recorded allergies.
+func (s *Store) GetPatientAllergies(ctx context.Context, patientID string) ([]AllergyAlert, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, summary, COALESCE(details->>'severity','') AS severity
+		FROM patient_clinical_entries
+		WHERE patient_id = $1::uuid AND section = 'allergy'
+		ORDER BY created_at DESC`, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AllergyAlert, 0)
+	for rows.Next() {
+		var a AllergyAlert
+		if err := rows.Scan(&a.AllergyID, &a.Summary, &a.Severity); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// InteractionAlert represents a potential drug interaction.
+type InteractionAlert struct {
+	ExistingMedication string
+	ExistingDose       string
+	Warning            string
+	Severity           string // mild | moderate | severe
+}
+
+// CheckDrugInteractions checks a medication against the patient's current
+// medications for potential interactions. Uses a built-in severity table.
+func (s *Store) CheckDrugInteractions(ctx context.Context, patientID, medication string) ([]InteractionAlert, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT summary, COALESCE(details->>'dose','') AS dose
+		FROM patient_clinical_entries
+		WHERE patient_id = $1::uuid AND section = 'medication'
+		ORDER BY created_at DESC`, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	type med struct{ name, dose string }
+	var meds []med
+	for rows.Next() {
+		var m med
+		if err := rows.Scan(&m.name, &m.dose); err != nil {
+			return nil, err
+		}
+		meds = append(meds, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	medLower := toLower(medication)
+	var alerts []InteractionAlert
+	for _, m := range meds {
+		if sev, warn := knownInteraction(medLower, toLower(m.name)); sev != "" {
+			alerts = append(alerts, InteractionAlert{
+				ExistingMedication: m.name,
+				ExistingDose:       m.dose,
+				Warning:            warn,
+				Severity:           sev,
+			})
+		}
+	}
+	return alerts, nil
+}
+
+func toLower(s string) string {
+	b := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		b[i] = c
+	}
+	return string(b)
+}
+
+// knownInteraction returns severity and warning for known drug pairs.
+func knownInteraction(a, b string) (severity, warning string) {
+	pair := a + "|" + b
+	if a > b {
+		pair = b + "|" + a
+	}
+	interactions := map[string]struct{ sev, warn string }{
+		"warfarin|aspirin":          {"severe", "Increased bleeding risk: both affect coagulation."},
+		"warfarin|ibuprofen":        {"severe", "NSAIDs increase bleeding risk with warfarin."},
+		"warfarin|paracetamol":      {"moderate", "High-dose paracetamol may potentiate warfarin."},
+		"metformin|alcohol":         {"severe", "Alcohol increases risk of lactic acidosis with metformin."},
+		"metformin|gliclazide":      {"moderate", "Dual hypoglycemics: monitor blood glucose closely."},
+		"amlodipine|simvastatin":    {"moderate", "Amlodipine increases simvastatin exposure; max simvastatin 20mg."},
+		"omeprazole|clopidogrel":    {"severe", "Omeprazole reduces clopidogrel activation; consider pantoprazole."},
+		"ciprofloxacin|theophylline": {"moderate", "Fluoroquinolones increase theophylline levels."},
+		"ciprofloxacin|warfarin":    {"moderate", "Ciprofloxacin may increase INR with warfarin."},
+		"enalapril|spironolactone":  {"severe", "Dual RAAS blockade: risk of hyperkalaemia."},
+		"metoprolol|verapamil":      {"severe", "Combined bradycardia and heart block risk."},
+		"lithium|ibuprofen":         {"severe", "NSAIDs increase lithium levels; toxicity risk."},
+		"methotrexate|ibuprofen":    {"severe", "NSAIDs reduce methotrexate clearance; toxicity risk."},
+		"fluoxetine|tramadol":       {"severe", "Serotonin syndrome risk with combined serotonergic agents."},
+		"sertraline|tramadol":       {"severe", "Serotonin syndrome risk with combined serotonergic agents."},
+		"amiodarone|simvastatin":    {"severe", "Amiodarone doubles simvastatin exposure; rhabdomyolysis risk."},
+		"fluconazole|warfarin":      {"severe", "Fluconazole potentiates warfarin; monitor INR closely."},
+	}
+	if v, ok := interactions[pair]; ok {
+		return v.sev, v.warn
+	}
+	return "", ""
+}
+
+// ---- dispense status transitions ----
+
+// UpdateDispenseStatusParams carries a status change with sign-off.
+type UpdateDispenseStatusParams struct {
+	DispensationID string
+	DispenseStatus string
+	SignOffBy      string
+}
+
+// UpdateDispenseStatus transitions a dispensation's workflow status.
+// Valid transitions: pending_verification → ready_for_pickup → dispensed.
+func (s *Store) UpdateDispenseStatus(ctx context.Context, p UpdateDispenseStatusParams) (*domain.Dispensation, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var current string
+	err = tx.QueryRow(ctx, `SELECT dispense_status FROM dispensations WHERE id = $1::uuid FOR UPDATE`, p.DispensationID).
+		Scan(&current)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	valid := map[string]string{
+		"pending_verification": "ready_for_pickup",
+		"ready_for_pickup":     "dispensed",
+	}
+	next, ok := valid[current]
+	if !ok || next != p.DispenseStatus {
+		return nil, ErrInvalidTransition
+	}
+
+	if p.DispenseStatus == "ready_for_pickup" {
+		if _, err := tx.Exec(ctx, `
+			UPDATE dispensations SET dispense_status = $2, sign_off_by = $3::uuid, sign_off_at = now()
+			WHERE id = $1::uuid`, p.DispensationID, p.DispenseStatus, p.SignOffBy); err != nil {
+			return nil, err
+		}
+	} else {
+		if _, err := tx.Exec(ctx, `
+			UPDATE dispensations SET dispense_status = $2
+			WHERE id = $1::uuid`, p.DispensationID, p.DispenseStatus); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return s.GetDispensation(ctx, p.DispensationID)
+}
+
+// ---- enhanced dispense with allergy/interaction tracking ----
+
+// EnhancedDispenseParams extends DispenseParams with safety checks.
+type EnhancedDispenseParams struct {
+	DispenseParams
+	AllergyCheckPassed     bool
+	InteractionCheckPassed bool
+	CounselingNotes        string
+	DispenseStatus         string
+}
+
+// EnhancedDispense fills a prescription with safety check tracking.
+func (s *Store) EnhancedDispense(ctx context.Context, p EnhancedDispenseParams) (*domain.Dispensation, error) {
+	disp, err := s.Dispense(ctx, p.DispenseParams)
+	if err != nil {
+		return nil, err
+	}
+
+	status := p.DispenseStatus
+	if status == "" {
+		status = "pending_verification"
+	}
+	_, err = s.pool.Exec(ctx, `
+		UPDATE dispensations
+		SET allergy_check_passed = $2, interaction_check_passed = $3,
+		    counseling_notes = $4, dispense_status = $5
+		WHERE id = $1::uuid`,
+		disp.ID, p.AllergyCheckPassed, p.InteractionCheckPassed, p.CounselingNotes, status)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetDispensation(ctx, disp.ID)
+}
+
+// ---- batch lookup for dispense drawer ----
+
+// BatchWithFifoInfo extends Batch with FIFO priority.
+type BatchWithFifoInfo struct {
+	Batch        domain.Batch
+	MedicineName string
+	FIFOPriority int
+	TotalStock   float64
+}
+
+// ListBatchesWithFifo returns a medicine's active batches with FIFO ordering.
+func (s *Store) ListBatchesWithFifo(ctx context.Context, medicineID string) ([]BatchWithFifoInfo, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT b.id::text, b.medicine_id::text, b.batch_number, b.manufacturing_date::text, b.expiry_date::text,
+		       b.quantity_on_hand, b.purchase_cost, b.selling_price, b.supplier, b.status, b.received_at, b.created_at, b.updated_at,
+		       m.generic_name,
+		       (SELECT COALESCE(SUM(b2.quantity_on_hand),0) FROM medicine_batches b2
+		        WHERE b2.medicine_id = b.medicine_id AND b2.status = 'active') AS total_stock
+		FROM medicine_batches b
+		JOIN medicines m ON m.id = b.medicine_id
+		WHERE b.medicine_id = $1::uuid AND b.status = 'active'
+		  AND (b.expiry_date IS NULL OR b.expiry_date > CURRENT_DATE)
+		  AND b.quantity_on_hand > 0
+		ORDER BY b.expiry_date ASC NULLS LAST, b.received_at ASC`, medicineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BatchWithFifoInfo
+	priority := 0
+	for rows.Next() {
+		var bi BatchWithFifoInfo
+		priority++
+		if err := rows.Scan(&bi.Batch.ID, &bi.Batch.MedicineID, &bi.Batch.BatchNumber,
+			&bi.Batch.ManufacturingDate, &bi.Batch.ExpiryDate, &bi.Batch.QuantityOnHand,
+			&bi.Batch.PurchaseCost, &bi.Batch.SellingPrice, &bi.Batch.Supplier,
+			&bi.Batch.Status, &bi.Batch.ReceivedAt, &bi.Batch.CreatedAt, &bi.Batch.UpdatedAt,
+			&bi.MedicineName, &bi.TotalStock); err != nil {
+			return nil, err
+		}
+		bi.FIFOPriority = priority
+		out = append(out, bi)
 	}
 	return out, rows.Err()
 }

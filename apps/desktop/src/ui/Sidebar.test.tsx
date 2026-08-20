@@ -54,7 +54,7 @@ describe("Sidebar", () => {
       "Pharmacy & Inventory",
       "Finance & Billing",
       "Staff & Operations",
-      "System & Admin",
+      "Quick Switch Account",
       "Patients Directory",
       "Orders & Clinical",
       "Lab & Pathology",

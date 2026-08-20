@@ -134,10 +134,23 @@ func (s *Store) DoctorReport(ctx context.Context, userID string) (domain.DoctorR
 		return r, err
 	}
 	if err := s.pool.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT patient_id) FROM clinical_notes
+		WHERE author_user_id = $1::uuid AND created_at::date = CURRENT_DATE`, userID).
+		Scan(&r.PatientsSeenToday); err != nil {
+		return r, err
+	}
+	if err := s.pool.QueryRow(ctx, `
 		SELECT COUNT(DISTINCT lr.id) FROM lab_requests lr
 		JOIN patient_assignments pa ON pa.patient_id = lr.patient_id
 		     AND pa.assignee_user_id = $1::uuid AND pa.ended_at IS NULL
 		WHERE lr.status <> 'cancelled' AND lr.released_at IS NULL`, userID).Scan(&r.PendingResults); err != nil {
+		return r, err
+	}
+	if err := s.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM lab_critical_notifications lcn
+		JOIN patient_assignments pa ON pa.patient_id = lcn.patient_id
+		     AND pa.assignee_user_id = $1::uuid AND pa.ended_at IS NULL
+		WHERE lcn.status = 'pending'`, userID).Scan(&r.PendingCriticalLabs); err != nil {
 		return r, err
 	}
 	if err := s.pool.QueryRow(ctx, `
@@ -146,7 +159,53 @@ func (s *Store) DoctorReport(ctx context.Context, userID string) (domain.DoctorR
 		Scan(&r.PendingOrders); err != nil {
 		return r, err
 	}
-	return r, nil
+
+	// Active orders broken down by type.
+	rows, err := s.pool.Query(ctx, `
+		SELECT order_type, COUNT(*) FROM orders
+		WHERE ordered_by = $1::uuid AND status NOT IN ('completed','cancelled')
+		GROUP BY order_type ORDER BY COUNT(*) DESC`, userID)
+	if err != nil {
+		return r, err
+	}
+	defer rows.Close()
+	r.ActiveOrdersByType = make([]domain.NameValue, 0)
+	for rows.Next() {
+		var nv domain.NameValue
+		if err := rows.Scan(&nv.Name, &nv.Value); err != nil {
+			return r, err
+		}
+		r.ActiveOrdersByType = append(r.ActiveOrdersByType, nv)
+	}
+	if err := rows.Err(); err != nil {
+		return r, err
+	}
+
+	// Recently active assigned patients with their pending results/orders.
+	actRows, err := s.pool.Query(ctx, `
+		SELECT p.id::text, p.patient_no, p.first_name, p.last_name,
+		       (SELECT COUNT(*) FROM lab_requests lr
+		         WHERE lr.patient_id = p.id AND lr.status <> 'cancelled' AND lr.released_at IS NULL),
+		       (SELECT COUNT(*) FROM orders o
+		         WHERE o.patient_id = p.id AND o.status NOT IN ('completed','cancelled'))
+		FROM patient_assignments pa
+		JOIN patients p ON p.id = pa.patient_id
+		WHERE pa.assignee_user_id = $1::uuid AND pa.ended_at IS NULL
+		ORDER BY pa.created_at DESC
+		LIMIT 10`, userID)
+	if err != nil {
+		return r, err
+	}
+	defer actRows.Close()
+	r.RecentPatientActivity = make([]domain.DoctorActivity, 0)
+	for actRows.Next() {
+		var a domain.DoctorActivity
+		if err := actRows.Scan(&a.PatientID, &a.PatientNo, &a.FirstName, &a.LastName, &a.PendingLabs, &a.ActiveOrders); err != nil {
+			return r, err
+		}
+		r.RecentPatientActivity = append(r.RecentPatientActivity, a)
+	}
+	return r, actRows.Err()
 }
 
 // NursingReport returns the nursing-scoped report for userID.

@@ -109,7 +109,7 @@ func (s *Store) GetMedicine(ctx context.Context, id string) (*domain.Medicine, e
 // ListMedicines returns medicines, newest first.
 func (s *Store) ListMedicines(ctx context.Context, limit, offset int) ([]domain.Medicine, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT `+medicineCols+` FROM medicines ORDER BY generic_name ASC LIMIT $1 OFFSET $2`, limit, offset)
+		SELECT `+medicineCols+` FROM medicines WHERE active ORDER BY generic_name ASC LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +150,18 @@ func (s *Store) UpdateMedicine(ctx context.Context, id string, p UpdateMedicineP
 		WHERE id = $1::uuid`,
 		id, p.GenericName, p.Brand, p.Strength, p.DosageForm, p.Category, p.Supplier,
 		p.ReorderLevel, p.StorageLocation, p.UnitCost, p.SellingPrice, p.Active)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteMedicine soft-deletes a medicine by setting active = false.
+func (s *Store) DeleteMedicine(ctx context.Context, id string) error {
+	ct, err := s.pool.Exec(ctx, `UPDATE medicines SET active = false, updated_at = now() WHERE id = $1::uuid`, id)
 	if err != nil {
 		return err
 	}

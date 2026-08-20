@@ -3,7 +3,10 @@
 // business identifiers (username, employee_no, codes) are stored separately.
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type UserStatus string
 
@@ -154,6 +157,8 @@ const (
 	ActionOrdersViewed           = "orders.viewed"
 	ActionNoteCreate             = "note.create"
 	ActionNoteVersion            = "note.version"
+	ActionNoteSign               = "note.sign"
+	ActionOrderSign              = "order.sign"
 	ActionNotesViewed            = "notes.viewed"
 	ActionObservationRecorded    = "observation.recorded"
 	ActionVitalsViewed           = "vitals.viewed"
@@ -173,10 +178,14 @@ const (
 
 // Order types.
 const (
-	OrderTypePrescription = "prescription"
-	OrderTypeLabRequest   = "lab_request"
-	OrderTypeNursingOrder = "nursing_order"
-	OrderTypeReferral     = "referral"
+	OrderTypePrescription     = "prescription"
+	OrderTypeLabRequest       = "lab_request"
+	OrderTypeLabInvestigation = "lab_investigation"
+	OrderTypeRadiologyImaging = "radiology_imaging"
+	OrderTypeNursingOrder     = "nursing_order"
+	OrderTypeNursingProcedure = "nursing_procedure"
+	OrderTypeDietaryWard      = "dietary_ward"
+	OrderTypeReferral         = "referral"
 )
 
 // Order statuses: draft → submitted → accepted → in_progress → completed
@@ -204,6 +213,11 @@ type Order struct {
 	ActedBy        *string
 	CancelledBy    *string
 	CancelReason   string
+	SignedBy       *string
+	SignedAt       *time.Time
+	SignatureHash  string
+	Priority       string
+	InvoiceID      *string
 	CreatedAt      time.Time
 	SubmittedAt    *time.Time
 	AcceptedAt     *time.Time
@@ -232,6 +246,9 @@ type ClinicalNote struct {
 	Diagnosis     string
 	TreatmentPlan string
 	Version       int
+	SignedBy      *string
+	SignedAt      *time.Time
+	SignatureHash string
 	CreatedAt     time.Time
 }
 
@@ -505,15 +522,21 @@ type ApprovalRequest struct {
 
 // Dispensation is a dispensing transaction header.
 type Dispensation struct {
-	ID                  string
-	DispensationNo      string
-	PrescriptionOrderID string
-	PatientID           string
-	DispensedBy         string
-	TotalAmount         float64
-	Notes               string
-	CreatedAt           time.Time
-	Items               []DispensationItem
+	ID                     string
+	DispensationNo         string
+	PrescriptionOrderID    string
+	PatientID              string
+	DispensedBy            string
+	TotalAmount            float64
+	Notes                  string
+	DispenseStatus         string // pending_verification | ready_for_pickup | dispensed
+	CounselingNotes        string
+	AllergyCheckPassed     bool
+	InteractionCheckPassed bool
+	SignOffBy              *string
+	SignOffAt              *time.Time
+	CreatedAt              time.Time
+	Items                  []DispensationItem
 }
 
 // DispensationItem is a dispensing line item.
@@ -587,6 +610,9 @@ type Patient struct {
 	NextOfKinName        string
 	NextOfKinRelation    string
 	NextOfKinPhone       string
+	NextOfKinAddress     string
+	PhotoData            string // base64-encoded image, empty when none
+	PhotoContentType     string
 	ConsentGiven         bool
 	ConsentDate          *time.Time
 	PrivacyNotes         string
@@ -610,6 +636,7 @@ type PatientSummary struct {
 
 // Clinical sections.
 const (
+	SectionChiefComplaint   = "chief_complaint"
 	SectionAllergy          = "allergy"
 	SectionMedicalHistory   = "medical_history"
 	SectionSurgicalHistory  = "surgical_history"
@@ -869,6 +896,27 @@ type MaintenanceRecord struct {
 	CreatedAt         time.Time
 }
 
+// LabConsumable is a laboratory supply item (reagents, kits, PPE, etc.).
+type LabConsumable struct {
+	ID              string
+	ItemCode        string
+	Name            string
+	Category        string
+	PackagingUnit   string
+	BatchLotNumber  string
+	ReorderLevel    float64
+	UnitCost        float64
+	QuantityOnHand  float64
+	StorageLocation string
+	Supplier        string
+	ExpiryDate      *string
+	Active          bool
+	Notes           string
+	CreatedBy       *string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 // Lab client types.
 const (
 	LabClientExternal = "external"
@@ -942,6 +990,9 @@ const (
 	ActionLabResultRelease   = "lab.result_release"
 	ActionLabCriticalAck     = "lab.critical_acknowledge"
 	ActionLabViewed          = "lab.viewed"
+	ActionInstrumentRegister = "lab.instrument_register"
+	ActionInstrumentStatus   = "lab.instrument_status"
+	ActionInstrumentLog      = "lab.instrument_log"
 )
 
 // Patient timeline events (lab, Phase 07).
@@ -1005,6 +1056,7 @@ type LabRequest struct {
 	ClientName    string
 	OrderedBy     string
 	OrderedByName string
+	OrderID       *string
 	Priority      string
 	ClinicalNotes string
 	PaymentStatus string
@@ -1036,15 +1088,19 @@ type LabRequestItem struct {
 	ResultEnteredAt      *time.Time
 	ResultVerifiedBy     *string
 	ResultVerifiedAt     *time.Time
+	ResultEnteredByName  string
+	ResultVerifiedByName string
 }
 
 // LabSpecimen is one collected specimen with its chain of custody.
 type LabSpecimen struct {
 	ID              string
 	SpecimenNo      string
+	Barcode         string
 	RequestID       string
 	ItemID          string
 	SpecimenType    string
+	OriginLocation  string
 	CollectedBy     string
 	CollectedAt     time.Time
 	ReceivedBy      *string
@@ -1065,6 +1121,77 @@ type LabSpecimenEvent struct {
 	Actor      string
 	Notes      string
 	CreatedAt  time.Time
+}
+
+// LabTATPhase labels one segment of the specimen turnaround pipeline.
+type LabTATPhase string
+
+const (
+	LabTATPreAnalytical  LabTATPhase = "pre_analytical"
+	LabTATAnalytical     LabTATPhase = "analytical"
+	LabTATPostAnalytical LabTATPhase = "post_analytical"
+)
+
+// LabTATEntry is one request's per-phase turnaround times (minutes).
+// Nil values mean the phase has not completed yet.
+type LabTATEntry struct {
+	RequestID      string   `json:"requestId"`
+	RequestNo      string   `json:"requestNo"`
+	PatientName    string   `json:"patientName,omitempty"`
+	PatientNo      string   `json:"patientNo,omitempty"`
+	Priority       string   `json:"priority"`
+	Status         string   `json:"status"`
+	PreAnalytical  *float64 `json:"preAnalyticalMin,omitempty"`
+	Analytical     *float64 `json:"analyticalMin,omitempty"`
+	PostAnalytical *float64 `json:"postAnalyticalMin,omitempty"`
+	Total          *float64 `json:"totalMin,omitempty"`
+}
+
+// LabTATSummary aggregates TAT across completed requests with quality
+// indicator targets and bottleneck flags.
+type LabTATSummary struct {
+	Phase          string  `json:"phase"`
+	Label          string  `json:"label"`
+	Completed      int     `json:"completed"`
+	AvgMinutes     float64 `json:"avgMinutes"`
+	P95Minutes     float64 `json:"p95Minutes"`
+	TargetMinutes  int     `json:"targetMinutes"`
+	WithinTarget   float64 `json:"withinTargetPct"`
+	Bottleneck     bool    `json:"bottleneck"`
+	BottleneckHits int     `json:"bottleneckHits"`
+}
+
+// LabTATReport is the complete TAT monitoring dashboard payload.
+type LabTATReport struct {
+	Summary  []LabTATSummary `json:"summary"`
+	Requests []LabTATEntry   `json:"requests"`
+}
+
+// LabInstrument is a connected analyser / instrument.
+type LabInstrument struct {
+	ID              string     `json:"id"`
+	Code            string     `json:"code"`
+	Name            string     `json:"name"`
+	InstrumentType  string     `json:"instrumentType"`
+	Manufacturer    string     `json:"manufacturer"`
+	Model           string     `json:"model"`
+	Status          string     `json:"status"`
+	LastConnectedAt *time.Time `json:"lastConnectedAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+// LabInstrumentLog is one queued or processed interface message.
+type LabInstrumentLog struct {
+	ID           string          `json:"id"`
+	InstrumentID string          `json:"instrumentId"`
+	Direction    string          `json:"direction"`
+	MessageType  string          `json:"messageType"`
+	Payload      json.RawMessage `json:"payload"`
+	Status       string          `json:"status"`
+	Error        string          `json:"error,omitempty"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	ProcessedAt  *time.Time      `json:"processedAt,omitempty"`
 }
 
 // LabCriticalNotification records a critical result notification and its
@@ -1141,6 +1268,8 @@ const (
 	ActionBillingInvoiceCreate   = "billing.invoice_create"
 	ActionBillingInvoiceIssue    = "billing.invoice_issue"
 	ActionBillingInvoiceVoid     = "billing.invoice_void"
+	ActionBillingInvoiceValidate = "billing.invoice_validate"
+	ActionBillingInvoiceUpdate   = "billing.invoice_update"
 	ActionBillingPaymentReceive  = "billing.payment_receive"
 	ActionBillingReceiptShare    = "billing.receipt_share"
 	ActionBillingRefundRequest   = "billing.refund_request"
@@ -1205,31 +1334,38 @@ type InvoiceItem struct {
 
 // Invoice is the central billing document.
 type Invoice struct {
-	ID             string
-	InvoiceNo      string
-	PatientID      *string
-	PriceListID    *string
-	Currency       string
-	BillTo         string
-	PayerName      string
-	PolicyNumber   string
-	Subtotal       float64
-	DiscountAmount float64
-	TaxAmount      float64
-	TotalAmount    float64
-	AmountPaid     float64
-	Status         string
-	IssuedBy       *string
-	IssuedAt       *time.Time
-	VoidReason     string
-	VoidedBy       *string
-	VoidedAt       *time.Time
-	CreatedBy      *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Items          []InvoiceItem
-	PatientNo      string
-	PatientName    string
+	ID                   string
+	InvoiceNo            string
+	PatientID            *string
+	PriceListID          *string
+	Currency             string
+	BillTo               string
+	PayerName            string
+	PolicyNumber         string
+	Subtotal             float64
+	DiscountAmount       float64
+	TaxAmount            float64
+	TotalAmount          float64
+	AmountPaid           float64
+	Status               string
+	IssuedBy             *string
+	IssuedAt             *time.Time
+	VoidReason           string
+	VoidedBy             *string
+	VoidedAt             *time.Time
+	ValidatedBy          *string
+	ValidatedAt          *time.Time
+	PaymentPlan          string
+	InstallmentAmount    *float64
+	InstallmentFrequency string
+	UpdateReason         string
+	UpdatedBy            *string
+	CreatedBy            *string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	Items                []InvoiceItem
+	PatientNo            string
+	PatientName          string
 }
 
 // Payment is an append-only payment received against an invoice.
@@ -1242,6 +1378,7 @@ type Payment struct {
 	Amount      float64
 	Method      string
 	Reference   string
+	PayerName   string
 	ReceivedBy  string
 	ReceivedAt  time.Time
 	CreatedAt   time.Time
@@ -1694,6 +1831,9 @@ type CommsChannel struct {
 	CreatedAt      time.Time
 	MemberCount    int
 	IsMember       bool
+	IsReadOnly     bool
+	IsArchived     bool
+	UnreadCount    int
 }
 
 // CommsChannelMember is one user's membership in a channel.
@@ -1727,12 +1867,18 @@ type Message struct {
 	RecipientID    *string
 	ChannelID      *string
 	Body           string
+	Priority       string // normal, urgent, critical
+	ReplyToID      *string
+	EditedAt       *time.Time
+	IsDeleted      bool
 	CreatedAt      time.Time
 	SenderName     string // joined
 	SenderUsername string // joined
 	RecipientName  string // joined
 	ChannelName    string // joined
 	Attachments    []MessageAttachment
+	ReadBy         []string // user IDs who have read this message
+	ReplyCount     int      // number of replies to this message
 }
 
 // CommsPolicy is the governance notice surfaced to users.
@@ -1741,6 +1887,23 @@ type CommsPolicy struct {
 	RetentionDays      int
 	AttachmentMaxBytes int64
 	Acknowledged       bool
+}
+
+// CallLog records a voice or video call event.
+type CallLog struct {
+	ID              string
+	CallerID        string
+	CalleeID        *string
+	ChannelID       *string
+	CallType        string // voice, video
+	Direction       string // outgoing, incoming
+	Status          string // missed, answered, rejected, timeout
+	DurationSeconds int
+	StartedAt       time.Time
+	AnsweredAt      *time.Time
+	EndedAt         *time.Time
+	CallerName      string // joined
+	CalleeName      string // joined
 }
 
 // Reporting & exports audit actions (Phase 12).
@@ -1753,6 +1916,32 @@ const (
 type NameValue struct {
 	Name  string `json:"name"`
 	Value int64  `json:"value"`
+}
+
+// CDSAlertSeverity ranks clinical decision-support warnings.
+type CDSAlertSeverity string
+
+const (
+	CDSAlertWarning  CDSAlertSeverity = "warning"
+	CDSAlertCritical CDSAlertSeverity = "critical"
+)
+
+// CDSAlert is a clinical decision-support warning surfaced to the clinician
+// (e.g. critical vitals or a severe allergy before prescribing).
+type CDSAlert struct {
+	Severity CDSAlertSeverity `json:"severity"`
+	Category string           `json:"category"` // allergy | vitals | medication
+	Message  string           `json:"message"`
+}
+
+// PatientHistoryBundle is a one-call snapshot of a patient's clinical history
+// for the timeline drawer: consultations, vitals trend, lab results, orders.
+type PatientHistoryBundle struct {
+	Notes     []ClinicalNote  `json:"notes"`
+	Vitals    []Observation   `json:"vitals"`
+	Lab       []LabRequest    `json:"lab"`
+	Orders    []Order         `json:"orders"`
+	Allergies []ClinicalEntry `json:"allergies"`
 }
 
 // Dashboard is the super-admin aggregate across all modules.
@@ -1802,9 +1991,24 @@ type Dashboard struct {
 
 // DoctorReport is the doctor-scoped workload report.
 type DoctorReport struct {
-	AssignedPatients int64 `json:"assignedPatients"`
-	PendingResults   int64 `json:"pendingResults"`
-	PendingOrders    int64 `json:"pendingOrders"`
+	AssignedPatients      int64            `json:"assignedPatients"`
+	PatientsSeenToday     int64            `json:"patientsSeenToday"`
+	PendingResults        int64            `json:"pendingResults"`
+	PendingCriticalLabs   int64            `json:"pendingCriticalLabs"`
+	PendingOrders         int64            `json:"pendingOrders"`
+	ActiveOrdersByType    []NameValue      `json:"activeOrdersByType"`
+	RecentPatientActivity []DoctorActivity `json:"recentPatientActivity"`
+}
+
+// DoctorActivity is one recently active patient row for a doctor's workload
+// view: who they are, plus their pending results and active orders.
+type DoctorActivity struct {
+	PatientID    string `json:"patientId"`
+	PatientNo    string `json:"patientNo"`
+	FirstName    string `json:"firstName"`
+	LastName     string `json:"lastName"`
+	PendingLabs  int64  `json:"pendingLabs"`
+	ActiveOrders int64  `json:"activeOrders"`
 }
 
 // NursingReport is the nursing-scoped report.

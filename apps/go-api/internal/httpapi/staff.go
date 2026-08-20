@@ -59,7 +59,15 @@ func (s *server) handleListStaff(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]staffResponse, 0, len(staff))
 	for i := range staff {
-		out = append(out, newStaffResponse(&staff[i]))
+		resp := newStaffResponse(&staff[i])
+		// Populate roles from RBAC system
+		if staff[i].UserID != "" {
+			roles, _ := s.store.GetUserRoles(r.Context(), staff[i].UserID)
+			for _, rl := range roles {
+				resp.Roles = append(resp.Roles, rl.Code)
+			}
+		}
+		out = append(out, resp)
 	}
 	writeJSON(w, http.StatusOK, out)
 }

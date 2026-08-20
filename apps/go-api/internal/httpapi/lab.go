@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
@@ -324,8 +325,10 @@ type labItemResponse struct {
 	ResultText           string          `json:"resultText,omitempty"`
 	Critical             bool            `json:"critical"`
 	ResultEnteredBy      *string         `json:"resultEnteredBy,omitempty"`
+	ResultEnteredByName  string          `json:"resultEnteredByName,omitempty"`
 	ResultEnteredAt      *string         `json:"resultEnteredAt,omitempty"`
 	ResultVerifiedBy     *string         `json:"resultVerifiedBy,omitempty"`
+	ResultVerifiedByName string          `json:"resultVerifiedByName,omitempty"`
 	ResultVerifiedAt     *string         `json:"resultVerifiedAt,omitempty"`
 }
 
@@ -344,7 +347,9 @@ func newLabItemResponse(i *domain.LabRequestItem) labItemResponse {
 		ResultText:           i.ResultText,
 		Critical:             i.Critical,
 		ResultEnteredBy:      i.ResultEnteredBy,
+		ResultEnteredByName:  i.ResultEnteredByName,
 		ResultVerifiedBy:     i.ResultVerifiedBy,
+		ResultVerifiedByName: i.ResultVerifiedByName,
 	}
 	if i.ResultEnteredAt != nil {
 		v := i.ResultEnteredAt.UTC().Format(timeRFC3339)
@@ -360,9 +365,11 @@ func newLabItemResponse(i *domain.LabRequestItem) labItemResponse {
 type labSpecimenResponse struct {
 	ID              string  `json:"id"`
 	SpecimenNo      string  `json:"specimenNo"`
+	Barcode         string  `json:"barcode"`
 	RequestID       string  `json:"requestId"`
 	ItemID          string  `json:"itemId"`
 	SpecimenType    string  `json:"specimenType"`
+	OriginLocation  string  `json:"originLocation,omitempty"`
 	CollectedBy     string  `json:"collectedBy"`
 	CollectedAt     string  `json:"collectedAt"`
 	ReceivedBy      *string `json:"receivedBy,omitempty"`
@@ -377,11 +384,14 @@ type labSpecimenResponse struct {
 
 func newLabSpecimenResponse(sp *domain.LabSpecimen) labSpecimenResponse {
 	out := labSpecimenResponse{
-		ID:              sp.ID,
-		SpecimenNo:      sp.SpecimenNo,
-		RequestID:       sp.RequestID,
-		ItemID:          sp.ItemID,
-		SpecimenType:    sp.SpecimenType,
+		ID:             sp.ID,
+		SpecimenNo:     sp.SpecimenNo,
+		Barcode:        sp.Barcode,
+		RequestID:      sp.RequestID,
+		ItemID:         sp.ItemID,
+		SpecimenType:   sp.SpecimenType,
+		OriginLocation: sp.OriginLocation,
+
 		CollectedBy:     sp.CollectedBy,
 		CollectedAt:     sp.CollectedAt.UTC().Format(timeRFC3339),
 		ReceivedBy:      sp.ReceivedBy,
@@ -410,6 +420,7 @@ type labRequestResponse struct {
 	ClientName    string                `json:"clientName,omitempty"`
 	OrderedBy     string                `json:"orderedBy"`
 	OrderedByName string                `json:"orderedByName"`
+	OrderID       *string               `json:"orderId,omitempty"`
 	Priority      string                `json:"priority"`
 	ClinicalNotes string                `json:"clinicalNotes,omitempty"`
 	PaymentStatus string                `json:"paymentStatus"`
@@ -435,6 +446,7 @@ func newLabRequestResponse(req *domain.LabRequest) labRequestResponse {
 		ClientName:    req.ClientName,
 		OrderedBy:     req.OrderedBy,
 		OrderedByName: req.OrderedByName,
+		OrderID:       req.OrderID,
 		Priority:      req.Priority,
 		ClinicalNotes: req.ClinicalNotes,
 		PaymentStatus: req.PaymentStatus,
@@ -465,6 +477,11 @@ type createLabRequestRequest struct {
 	Priority      string   `json:"priority"`
 	ClinicalNotes string   `json:"clinicalNotes"`
 	TestIDs       []string `json:"testIds"`
+	CustomTests   []struct {
+		Name         string `json:"name"`
+		SpecimenType string `json:"specimenType"`
+	} `json:"customTests"`
+	OrderID string `json:"orderId"`
 }
 
 func (s *server) handleCreateLabRequest(w http.ResponseWriter, r *http.Request) {
@@ -486,12 +503,25 @@ func (s *server) handleCreateLabRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	actor := userFromContext(r.Context())
-	var patientID, clientID *string
+	var patientID, clientID, orderID *string
 	if req.PatientID != "" {
 		patientID = &req.PatientID
 	}
 	if req.ClientID != "" {
 		clientID = &req.ClientID
+	}
+	if req.OrderID != "" {
+		orderID = &req.OrderID
+	}
+	custom := make([]store.CustomTestParams, 0, len(req.CustomTests))
+	for _, ct := range req.CustomTests {
+		if strings.TrimSpace(ct.Name) == "" {
+			continue
+		}
+		custom = append(custom, store.CustomTestParams{
+			Name:         strings.TrimSpace(ct.Name),
+			SpecimenType: ct.SpecimenType,
+		})
 	}
 	labReq, err := s.store.CreateLabRequest(r.Context(), store.CreateLabRequestParams{
 		PatientID:     patientID,
@@ -500,6 +530,8 @@ func (s *server) handleCreateLabRequest(w http.ResponseWriter, r *http.Request) 
 		Priority:      req.Priority,
 		ClinicalNotes: req.ClinicalNotes,
 		TestIDs:       req.TestIDs,
+		CustomTests:   custom,
+		OrderID:       orderID,
 	})
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicateTest) {
@@ -634,9 +666,10 @@ func (s *server) handleCancelLabRequest(w http.ResponseWriter, r *http.Request) 
 
 type collectSpecimensRequest struct {
 	Specimens []struct {
-		ItemID       string `json:"itemId"`
-		SpecimenType string `json:"specimenType"`
-		CollectedAt  string `json:"collectedAt"`
+		ItemID         string `json:"itemId"`
+		SpecimenType   string `json:"specimenType"`
+		OriginLocation string `json:"originLocation"`
+		CollectedAt    string `json:"collectedAt"`
 	} `json:"specimens"`
 }
 
@@ -662,9 +695,10 @@ func (s *server) handleCollectSpecimens(w http.ResponseWriter, r *http.Request) 
 			collectedAt = t
 		}
 		items = append(items, store.SpecimenCollectParams{
-			ItemID:       sp.ItemID,
-			SpecimenType: sp.SpecimenType,
-			CollectedAt:  collectedAt,
+			ItemID:         sp.ItemID,
+			SpecimenType:   sp.SpecimenType,
+			OriginLocation: sp.OriginLocation,
+			CollectedAt:    collectedAt,
 		})
 	}
 	actor := userFromContext(r.Context())
@@ -790,6 +824,14 @@ func (s *server) handleEnterResults(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
+	}
+	// Route critical alerts to the attending physician's communications queue
+	// and in-app notifications (critical value alerting).
+	if len(notifications) > 0 {
+		if err := s.store.RouteCriticalAlerts(r.Context(), actor.ID, notifications); err != nil {
+			// Routing failure must not fail the result entry itself.
+			s.logger.Warn("critical alert routing failed", "error", err.Error())
+		}
 	}
 	s.recordAudit(r, domain.ActionLabResultEnter, "lab_request", id, nil, map[string]any{"count": len(entries)})
 	writeJSON(w, http.StatusOK, map[string]any{"notifications": len(notifications)})

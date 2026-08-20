@@ -86,6 +86,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 
 	// Patients & families (authenticated + permission-checked).
 	mux.Handle("POST /api/v1/patients", s.perm("patients.create", s.handleRegisterPatient))
+	mux.Handle("GET /api/v1/patients", s.perm("patients.view", s.handleListPatients))
 	mux.Handle("GET /api/v1/patients/search", s.perm("patients.search", s.handleSearchPatients))
 	mux.Handle("GET /api/v1/patients/{id}", s.perm("patients.view", s.handleGetPatient))
 	mux.Handle("PATCH /api/v1/patients/{id}", s.perm("patients.edit", s.handleUpdatePatient))
@@ -103,20 +104,26 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	// Orders.
 	mux.Handle("POST /api/v1/patients/{id}/orders", s.perm("orders.create", s.handleCreateOrder))
 	mux.Handle("GET /api/v1/patients/{id}/orders", s.perm("orders.view", s.handleListPatientOrders))
-	mux.Handle("GET /api/v1/orders/actionable", s.perm("orders.manage", s.handleListActionableOrders))
+	mux.Handle("GET /api/v1/orders/actionable", s.perm("orders.view", s.handleListActionableOrders))
 	mux.Handle("POST /api/v1/orders/{id}/submit", s.perm("orders.create", s.handleSubmitOrder))
 	mux.Handle("POST /api/v1/orders/{id}/cancel", s.perm("orders.create", s.handleCancelOrder))
 	mux.Handle("POST /api/v1/orders/{id}/status", s.perm("orders.manage", s.handleTransitionOrder))
+	mux.Handle("POST /api/v1/orders/{id}/sign", s.perm("orders.create", s.handleSignOrder))
 
 	// Notes (immutable versions).
 	mux.Handle("POST /api/v1/patients/{id}/notes", s.perm("notes.write", s.handleCreateNote))
 	mux.Handle("GET /api/v1/patients/{id}/notes", s.perm("notes.view", s.handleListNotes))
 	mux.Handle("GET /api/v1/patients/{id}/notes/{groupId}", s.perm("notes.view", s.handleListNoteVersions))
 	mux.Handle("POST /api/v1/patients/{id}/notes/{groupId}/versions", s.perm("notes.write", s.handleAddNoteVersion))
+	mux.Handle("POST /api/v1/notes/{id}/sign", s.perm("notes.write", s.handleSignNote))
 
 	// Observations & vitals.
 	mux.Handle("POST /api/v1/patients/{id}/observations", s.perm("vitals.record", s.handleAddObservation))
 	mux.Handle("GET /api/v1/patients/{id}/observations", s.perm("vitals.view", s.handleListObservations))
+
+	// Clinical decision support + patient history timeline.
+	mux.Handle("GET /api/v1/patients/{id}/cds-alerts", s.perm("clinical.view", s.handleCDSAlerts))
+	mux.Handle("GET /api/v1/patients/{id}/history", s.perm("patients.view", s.handlePatientHistory))
 
 	// Medication administration records (MAR).
 	mux.Handle("POST /api/v1/patients/{id}/administrations", s.perm("mar.record", s.handleAddAdministration))
@@ -147,6 +154,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/pharmacy/medicines", s.perm("medicines.manage", s.handleCreateMedicine))
 	mux.Handle("GET /api/v1/pharmacy/medicines/{id}", s.perm("medicines.view", s.handleGetMedicine))
 	mux.Handle("PATCH /api/v1/pharmacy/medicines/{id}", s.perm("medicines.manage", s.handleUpdateMedicine))
+	mux.Handle("DELETE /api/v1/pharmacy/medicines/{id}", s.perm("medicines.manage", s.handleDeleteMedicine))
 	mux.Handle("GET /api/v1/pharmacy/medicines/{id}/batches", s.perm("medicines.view", s.handleListBatches))
 	mux.Handle("POST /api/v1/pharmacy/receipts", s.perm("inventory.receive", s.handleReceiveStock))
 	mux.Handle("POST /api/v1/pharmacy/dispense", s.perm("inventory.dispense", s.handleDispense))
@@ -164,6 +172,18 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/pharmacy/counts", s.perm("inventory.count", s.handleStockCount))
 	mux.Handle("GET /api/v1/pharmacy/movements", s.perm("medicines.view", s.handleListMovements))
 	mux.Handle("GET /api/v1/pharmacy/alerts", s.perm("medicines.view", s.handleGetAlerts))
+
+	// Lab consumables
+	mux.Handle("GET /api/v1/lab-consumables", s.perm("medicines.view", s.handleListLabConsumables))
+	mux.Handle("POST /api/v1/lab-consumables", s.perm("medicines.manage", s.handleCreateLabConsumable))
+	mux.Handle("GET /api/v1/lab-consumables/{id}", s.perm("medicines.view", s.handleGetLabConsumable))
+	mux.Handle("PATCH /api/v1/lab-consumables/{id}", s.perm("medicines.manage", s.handleUpdateLabConsumable))
+	mux.Handle("DELETE /api/v1/lab-consumables/{id}", s.perm("medicines.manage", s.handleDeleteLabConsumable))
+	mux.Handle("GET /api/v1/pharmacy/check-allergies", s.perm("medicines.view", s.handleCheckAllergies))
+	mux.Handle("GET /api/v1/pharmacy/check-interactions", s.perm("medicines.view", s.handleCheckInteractions))
+	mux.Handle("PATCH /api/v1/pharmacy/dispensations/{id}/status", s.perm("inventory.dispense", s.handleUpdateDispenseStatus))
+	mux.Handle("GET /api/v1/pharmacy/medicines/{id}/batches/fifo", s.perm("medicines.view", s.handleListBatchesFifo))
+	mux.Handle("POST /api/v1/pharmacy/dispense/enhanced", s.perm("inventory.dispense", s.handleEnhancedDispense))
 
 	// General inventory, instruments, equipment & maintenance (Phase 06).
 	mux.Handle("GET /api/v1/assets/categories", s.perm("assets.view", s.handleListAssetCategories))
@@ -204,6 +224,12 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/lab/items/{id}/verify", s.perm("lab.verify", s.handleVerifyItem))
 	mux.Handle("GET /api/v1/lab/critical", s.perm("lab.verify", s.handleListCriticalNotifications))
 	mux.Handle("POST /api/v1/lab/critical/{id}/acknowledge", s.perm("lab.verify", s.handleAcknowledgeCritical))
+	mux.Handle("GET /api/v1/lab/tat", s.perm("lab.view", s.handleLabTAT))
+	mux.Handle("GET /api/v1/lab/instruments", s.perm("lab.view", s.handleListInstruments))
+	mux.Handle("POST /api/v1/lab/instruments", s.perm("lab.manage", s.handleCreateInstrument))
+	mux.Handle("POST /api/v1/lab/instruments/{id}/status", s.perm("lab.manage", s.handleSetInstrumentStatus))
+	mux.Handle("GET /api/v1/lab/instruments/{id}/logs", s.perm("lab.view", s.handleListInstrumentLogs))
+	mux.Handle("POST /api/v1/lab/instruments/{id}/logs", s.perm("lab.manage", s.handleQueueInstrumentLog))
 
 	// Billing, cashier, payments & receipts (Phase 08).
 	mux.Handle("GET /api/v1/billing/price-lists", s.perm("billing.view", s.handleListPriceLists))
@@ -236,6 +262,11 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("POST /api/v1/billing/shifts/{id}/close", s.perm("billing.reconcile", s.handleCloseShift))
 	mux.Handle("GET /api/v1/billing/shifts", s.perm("billing.view", s.handleListShifts))
 	mux.Handle("GET /api/v1/billing/shifts/{id}", s.perm("billing.view", s.handleGetShift))
+	mux.Handle("POST /api/v1/billing/invoices/{id}/validate", s.superAdmin(s.handleValidateInvoice))
+	mux.Handle("PATCH /api/v1/billing/invoices/{id}", s.superAdmin(s.handleUpdateInvoice))
+	mux.Handle("GET /api/v1/billing/patients/{id}/balance", s.perm("billing.view", s.handleGetPatientBalance))
+	mux.Handle("GET /api/v1/billing/my-patients-bills", s.perm("billing.view", s.handleGetDoctorsPatientsBills))
+	mux.Handle("POST /api/v1/billing/auto-invoice/order/{id}", s.perm("billing.create", s.handleAutoInvoiceFromOrder))
 
 	// Staff, attendance, clock-in/out & handover (Phase 09).
 	mux.Handle("GET /api/v1/staff", s.perm("staff.view", s.handleListStaff))
@@ -300,9 +331,29 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/communications/compliance/search", s.perm("comms.audit", s.handleComplianceSearch))
 	mux.Handle("POST /api/v1/communications/retention/run", s.perm("comms.admin", s.handleRunRetention))
 
+	// Enterprise comms: read receipts, typing, search, threading, notifications.
+	mux.Handle("POST /api/v1/communications/messages/read", s.perm("comms.view", s.handleMarkMessagesRead))
+	mux.Handle("POST /api/v1/communications/conversations/read", s.perm("comms.view", s.handleMarkConversationRead))
+	mux.Handle("POST /api/v1/communications/channels/{id}/read", s.perm("comms.view", s.handleMarkChannelRead))
+	mux.Handle("GET /api/v1/communications/unread", s.perm("comms.view", s.handleGetUnreadCounts))
+	mux.Handle("POST /api/v1/communications/typing", s.perm("comms.send", s.handleSetTypingIndicator))
+	mux.Handle("GET /api/v1/communications/typing", s.perm("comms.view", s.handleGetTypingIndicators))
+	mux.Handle("PATCH /api/v1/communications/messages/{id}", s.perm("comms.send", s.handleEditMessage))
+	mux.Handle("DELETE /api/v1/communications/messages/{id}", s.perm("comms.send", s.handleDeleteMessage))
+	mux.Handle("GET /api/v1/communications/messages/{id}/thread", s.perm("comms.view", s.handleGetThreadReplies))
+	mux.Handle("GET /api/v1/communications/search", s.perm("comms.view", s.handleSearchMessages))
+	mux.Handle("GET /api/v1/communications/notifications/prefs", s.perm("comms.view", s.handleGetNotificationPrefs))
+	mux.Handle("PUT /api/v1/communications/notifications/prefs", s.perm("comms.view", s.handleUpdateNotificationPrefs))
+
+	// Call logs.
+	mux.Handle("POST /api/v1/communications/calls", s.perm("comms.send", s.handleStartCall))
+	mux.Handle("PATCH /api/v1/communications/calls/{id}", s.perm("comms.send", s.handleUpdateCall))
+	mux.Handle("GET /api/v1/communications/calls", s.perm("comms.view", s.handleListCallLogs))
+
 	// Reporting, dashboards & exports (Phase 12).
 	mux.Handle("GET /api/v1/reports/dashboard", s.perm("reports.admin", s.handleReportDashboard))
 	mux.Handle("GET /api/v1/reports/my", s.perm("reports.view", s.handleMyReport))
+	mux.Handle("GET /api/v1/reports/doctor", s.perm("reports.view", s.handleDoctorReport))
 	mux.Handle("GET /api/v1/reports/export", s.perm("reports.export", s.handleExportReport))
 
 	// Backup & disaster recovery (Phase 13, Super Admin).

@@ -18,9 +18,9 @@ func isUniqueViolation(err error) bool {
 
 func validClinicalSection(s string) bool {
 	switch s {
-	case domain.SectionAllergy, domain.SectionMedicalHistory, domain.SectionSurgicalHistory,
-		domain.SectionChronicCondition, domain.SectionMedication, domain.SectionFamilyHistory,
-		domain.SectionSocialHistory:
+	case domain.SectionChiefComplaint, domain.SectionAllergy, domain.SectionMedicalHistory,
+		domain.SectionSurgicalHistory, domain.SectionChronicCondition, domain.SectionMedication,
+		domain.SectionFamilyHistory, domain.SectionSocialHistory:
 		return true
 	}
 	return false
@@ -80,6 +80,9 @@ type patientResponse struct {
 	NextOfKinName        string                  `json:"nextOfKinName"`
 	NextOfKinRelation    string                  `json:"nextOfKinRelationship"`
 	NextOfKinPhone       string                  `json:"nextOfKinPhone"`
+	NextOfKinAddress     string                  `json:"nextOfKinAddress"`
+	PhotoData            string                  `json:"photoData,omitempty"`
+	PhotoContentType     string                  `json:"photoContentType,omitempty"`
 	ConsentGiven         bool                    `json:"consentGiven"`
 	ConsentDate          string                  `json:"consentDate,omitempty"`
 	PrivacyNotes         string                  `json:"privacyNotes"`
@@ -118,6 +121,9 @@ func newPatientResponse(p *domain.Patient) patientResponse {
 		NextOfKinName:        p.NextOfKinName,
 		NextOfKinRelation:    p.NextOfKinRelation,
 		NextOfKinPhone:       p.NextOfKinPhone,
+		NextOfKinAddress:     p.NextOfKinAddress,
+		PhotoData:            p.PhotoData,
+		PhotoContentType:     p.PhotoContentType,
 		ConsentGiven:         p.ConsentGiven,
 		PrivacyNotes:         p.PrivacyNotes,
 		Status:               string(p.Status),
@@ -161,34 +167,38 @@ func summariesToResponse(in []domain.PatientSummary) []patientSummaryResponse {
 // ---- registration ----
 
 type registerPatientRequest struct {
-	RegistrationType      string `json:"registrationType"`
-	FamilyID              string `json:"familyId"`
-	FirstName             string `json:"firstName"`
-	LastName              string `json:"lastName"`
-	MiddleName            string `json:"middleName"`
-	Gender                string `json:"gender"`
-	DateOfBirth           string `json:"dateOfBirth"`
-	BloodGroup            string `json:"bloodGroup"`
-	Genotype              string `json:"genotype"`
-	MaritalStatus         string `json:"maritalStatus"`
-	Occupation            string `json:"occupation"`
-	Phone                 string `json:"phone"`
-	AlternatePhone        string `json:"alternatePhone"`
-	Email                 string `json:"email"`
-	AddressLine1          string `json:"addressLine1"`
-	AddressLine2          string `json:"addressLine2"`
-	City                  string `json:"city"`
-	State                 string `json:"state"`
-	PostalCode            string `json:"postalCode"`
-	Country               string `json:"country"`
-	IdentificationType    string `json:"identificationType"`
-	IdentificationNumber  string `json:"identificationNumber"`
-	NextOfKinName         string `json:"nextOfKinName"`
-	NextOfKinRelationship string `json:"nextOfKinRelationship"`
-	NextOfKinPhone        string `json:"nextOfKinPhone"`
-	ConsentGiven          bool   `json:"consentGiven"`
-	PrivacyNotes          string `json:"privacyNotes"`
-	Force                 bool   `json:"force"`
+	RegistrationType      string                     `json:"registrationType"`
+	FamilyID              string                     `json:"familyId"`
+	FirstName             string                     `json:"firstName"`
+	LastName              string                     `json:"lastName"`
+	MiddleName            string                     `json:"middleName"`
+	Gender                string                     `json:"gender"`
+	DateOfBirth           string                     `json:"dateOfBirth"`
+	BloodGroup            string                     `json:"bloodGroup"`
+	Genotype              string                     `json:"genotype"`
+	MaritalStatus         string                     `json:"maritalStatus"`
+	Occupation            string                     `json:"occupation"`
+	Phone                 string                     `json:"phone"`
+	AlternatePhone        string                     `json:"alternatePhone"`
+	Email                 string                     `json:"email"`
+	AddressLine1          string                     `json:"addressLine1"`
+	AddressLine2          string                     `json:"addressLine2"`
+	City                  string                     `json:"city"`
+	State                 string                     `json:"state"`
+	PostalCode            string                     `json:"postalCode"`
+	Country               string                     `json:"country"`
+	IdentificationType    string                     `json:"identificationType"`
+	IdentificationNumber  string                     `json:"identificationNumber"`
+	NextOfKinName         string                     `json:"nextOfKinName"`
+	NextOfKinRelationship string                     `json:"nextOfKinRelationship"`
+	NextOfKinPhone        string                     `json:"nextOfKinPhone"`
+	NextOfKinAddress      string                     `json:"nextOfKinAddress"`
+	PhotoData             string                     `json:"photoData"`
+	PhotoContentType      string                     `json:"photoContentType"`
+	ConsentGiven          bool                       `json:"consentGiven"`
+	PrivacyNotes          string                     `json:"privacyNotes"`
+	Force                 bool                       `json:"force"`
+	Clinical              []store.ClinicalEntryInput `json:"clinical"`
 }
 
 // handleRegisterPatient registers a patient with a transactionally-generated ID.
@@ -209,6 +219,12 @@ func (s *server) handleRegisterPatient(w http.ResponseWriter, r *http.Request) {
 	if !validRegistrationType(regType) {
 		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "registrationType must be normal, antenatal, or emergency")
 		return
+	}
+	for _, e := range req.Clinical {
+		if !validClinicalSection(e.Section) {
+			writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "clinical section is not valid")
+			return
+		}
 	}
 
 	// Duplicate safeguard (soft check; the DB unique index is the hard backstop).
@@ -263,9 +279,13 @@ func (s *server) handleRegisterPatient(w http.ResponseWriter, r *http.Request) {
 		NextOfKinName:        req.NextOfKinName,
 		NextOfKinRelation:    req.NextOfKinRelationship,
 		NextOfKinPhone:       req.NextOfKinPhone,
+		NextOfKinAddress:     req.NextOfKinAddress,
+		PhotoData:            req.PhotoData,
+		PhotoContentType:     req.PhotoContentType,
 		ConsentGiven:         req.ConsentGiven,
 		PrivacyNotes:         req.PrivacyNotes,
 		CreatedBy:            &actor.ID,
+		ClinicalEntries:      req.Clinical,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -298,6 +318,17 @@ func (s *server) handleSearchPatients(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.recordAudit(r, domain.ActionPatientSearch, "patient", "", nil, map[string]any{"q": q})
+	writeJSON(w, http.StatusOK, summariesToResponse(results))
+}
+
+// handleListPatients returns all patients (directory view), newest first.
+func (s *server) handleListPatients(w http.ResponseWriter, r *http.Request) {
+	limit, offset := pagination(r)
+	results, err := s.store.ListPatients(r.Context(), limit, offset)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
 	writeJSON(w, http.StatusOK, summariesToResponse(results))
 }
 
@@ -342,31 +373,35 @@ func (s *server) handleGetPatient(w http.ResponseWriter, r *http.Request) {
 }
 
 type updatePatientRequest struct {
-	FirstName             *string `json:"firstName"`
-	LastName              *string `json:"lastName"`
-	MiddleName            *string `json:"middleName"`
-	Gender                *string `json:"gender"`
-	DateOfBirth           *string `json:"dateOfBirth"`
-	BloodGroup            *string `json:"bloodGroup"`
-	Genotype              *string `json:"genotype"`
-	MaritalStatus         *string `json:"maritalStatus"`
-	Occupation            *string `json:"occupation"`
-	Phone                 *string `json:"phone"`
-	AlternatePhone        *string `json:"alternatePhone"`
-	Email                 *string `json:"email"`
-	AddressLine1          *string `json:"addressLine1"`
-	AddressLine2          *string `json:"addressLine2"`
-	City                  *string `json:"city"`
-	State                 *string `json:"state"`
-	PostalCode            *string `json:"postalCode"`
-	Country               *string `json:"country"`
-	IdentificationType    *string `json:"identificationType"`
-	IdentificationNumber  *string `json:"identificationNumber"`
-	NextOfKinName         *string `json:"nextOfKinName"`
-	NextOfKinRelationship *string `json:"nextOfKinRelationship"`
-	NextOfKinPhone        *string `json:"nextOfKinPhone"`
-	ConsentGiven          *bool   `json:"consentGiven"`
-	PrivacyNotes          *string `json:"privacyNotes"`
+	FirstName             *string                    `json:"firstName"`
+	LastName              *string                    `json:"lastName"`
+	MiddleName            *string                    `json:"middleName"`
+	Gender                *string                    `json:"gender"`
+	DateOfBirth           *string                    `json:"dateOfBirth"`
+	BloodGroup            *string                    `json:"bloodGroup"`
+	Genotype              *string                    `json:"genotype"`
+	MaritalStatus         *string                    `json:"maritalStatus"`
+	Occupation            *string                    `json:"occupation"`
+	Phone                 *string                    `json:"phone"`
+	AlternatePhone        *string                    `json:"alternatePhone"`
+	Email                 *string                    `json:"email"`
+	AddressLine1          *string                    `json:"addressLine1"`
+	AddressLine2          *string                    `json:"addressLine2"`
+	City                  *string                    `json:"city"`
+	State                 *string                    `json:"state"`
+	PostalCode            *string                    `json:"postalCode"`
+	Country               *string                    `json:"country"`
+	IdentificationType    *string                    `json:"identificationType"`
+	IdentificationNumber  *string                    `json:"identificationNumber"`
+	NextOfKinName         *string                    `json:"nextOfKinName"`
+	NextOfKinRelationship *string                    `json:"nextOfKinRelationship"`
+	NextOfKinPhone        *string                    `json:"nextOfKinPhone"`
+	NextOfKinAddress      *string                    `json:"nextOfKinAddress"`
+	PhotoData             *string                    `json:"photoData"`
+	PhotoContentType      *string                    `json:"photoContentType"`
+	ConsentGiven          *bool                      `json:"consentGiven"`
+	PrivacyNotes          *string                    `json:"privacyNotes"`
+	Clinical              []store.ClinicalEntryInput `json:"clinical"`
 }
 
 func coalesceStr(p *string, def string) string {
@@ -390,6 +425,8 @@ func (s *server) handleUpdatePatient(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
 		return
 	}
+
+	actor := userFromContext(r.Context())
 
 	dob := ""
 	if p.DateOfBirth != nil {
@@ -420,8 +457,18 @@ func (s *server) handleUpdatePatient(w http.ResponseWriter, r *http.Request) {
 		NextOfKinName:        coalesceStr(req.NextOfKinName, p.NextOfKinName),
 		NextOfKinRelation:    coalesceStr(req.NextOfKinRelationship, p.NextOfKinRelation),
 		NextOfKinPhone:       coalesceStr(req.NextOfKinPhone, p.NextOfKinPhone),
+		NextOfKinAddress:     coalesceStr(req.NextOfKinAddress, p.NextOfKinAddress),
+		PhotoData:            coalesceStr(req.PhotoData, p.PhotoData),
+		PhotoContentType:     coalesceStr(req.PhotoContentType, p.PhotoContentType),
 		ConsentGiven:         coalesceBool(req.ConsentGiven, p.ConsentGiven),
 		PrivacyNotes:         coalesceStr(req.PrivacyNotes, p.PrivacyNotes),
+	}
+
+	for _, e := range req.Clinical {
+		if !validClinicalSection(e.Section) {
+			writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "clinical section is not valid")
+			return
+		}
 	}
 
 	if err := s.store.UpdatePatient(r.Context(), id, params); err != nil {
@@ -432,6 +479,15 @@ func (s *server) handleUpdatePatient(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
+
+	// Clinical-history sections are replaced wholesale (empty summary clears).
+	for _, e := range req.Clinical {
+		if err := s.store.ReplaceClinicalSection(r.Context(), id, e.Section, e.Summary, &actor.ID); err != nil {
+			writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+	}
+
 	s.recordAudit(r, domain.ActionPatientUpdate, "patient", id, nil, nil)
 	w.WriteHeader(http.StatusNoContent)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -272,6 +273,7 @@ const labRequestCols = `r.id::text, r.request_no, r.patient_id::text, r.client_i
 	COALESCE(p.patient_no, ''), COALESCE(p.first_name || ' ' || p.last_name, ''),
 	COALESCE(c.client_no, ''), COALESCE(c.first_name || ' ' || c.last_name, ''),
 	r.ordered_by::text, COALESCE(st.first_name || ' ' || st.last_name, u.username),
+	r.order_id::text,
 	r.priority, r.clinical_notes, r.payment_status, r.status, r.cancel_reason,
 	r.requested_at, r.released_at, r.created_at, r.updated_at`
 
@@ -284,7 +286,7 @@ const labRequestFrom = ` FROM lab_requests r
 func scanLabRequest(r pgx.Row) (*domain.LabRequest, error) {
 	var req domain.LabRequest
 	err := r.Scan(&req.ID, &req.RequestNo, &req.PatientID, &req.ClientID, &req.PatientNo, &req.PatientName,
-		&req.ClientNo, &req.ClientName, &req.OrderedBy, &req.OrderedByName, &req.Priority,
+		&req.ClientNo, &req.ClientName, &req.OrderedBy, &req.OrderedByName, &req.OrderID, &req.Priority,
 		&req.ClinicalNotes, &req.PaymentStatus, &req.Status, &req.CancelReason,
 		&req.RequestedAt, &req.ReleasedAt, &req.CreatedAt, &req.UpdatedAt)
 	if err != nil {
@@ -301,6 +303,40 @@ func nextLabRequestCode(ctx context.Context, q querier) (string, error) {
 	return "LAB" + lpadInt(n, 6), nil
 }
 
+// resolveCustomTestTx returns the id of an active catalogue test matching the
+// given name (case-insensitive, trimmed). If none exists it registers a new
+// catalogue entry with an auto-generated code so the request item always
+// references a real lab_tests row.
+func (s *Store) resolveCustomTestTx(ctx context.Context, tx pgx.Tx, name, specimenType string) (string, error) {
+	name = strings.TrimSpace(name)
+	var id string
+	err := tx.QueryRow(ctx, `
+		SELECT id::text FROM lab_tests
+		WHERE active AND lower(name) = lower($1)
+		ORDER BY created_at ASC LIMIT 1`, name).Scan(&id)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+	if specimenType == "" {
+		specimenType = "blood"
+	}
+	var seq int64
+	if err := tx.QueryRow(ctx, `SELECT nextval('lab_tests_no_seq')`).Scan(&seq); err != nil {
+		return "", err
+	}
+	code := "CT" + lpadInt(seq, 5)
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO lab_tests (code, name, category, price, specimen_type, turnaround_minutes)
+		VALUES ($1, $2, 'custom', 0, $3, 60)
+		RETURNING id::text`, code, name, specimenType).Scan(&id); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
 // CreateLabRequestParams carries a new lab order.
 type CreateLabRequestParams struct {
 	PatientID     *string
@@ -309,6 +345,17 @@ type CreateLabRequestParams struct {
 	Priority      string
 	ClinicalNotes string
 	TestIDs       []string
+	CustomTests   []CustomTestParams
+	OrderID       *string
+}
+
+// CustomTestParams is a manually typed test on a lab request. If a matching
+// active catalogue entry exists (case-insensitive name match) it is reused;
+// otherwise the test is registered in the catalogue on the fly so every
+// request item still references a real lab_tests row.
+type CustomTestParams struct {
+	Name         string
+	SpecimenType string
 }
 
 // CreateLabRequest orders tests for a patient or lab client, snapshotting the
@@ -317,7 +364,7 @@ func (s *Store) CreateLabRequest(ctx context.Context, p CreateLabRequestParams) 
 	if (p.PatientID == nil) == (p.ClientID == nil) {
 		return nil, errors.New("exactly one of patientId or clientId is required")
 	}
-	if len(p.TestIDs) == 0 {
+	if len(p.TestIDs) == 0 && len(p.CustomTests) == 0 {
 		return nil, errors.New("at least one test is required")
 	}
 	if p.Priority == "" {
@@ -354,33 +401,82 @@ func (s *Store) CreateLabRequest(ctx context.Context, p CreateLabRequestParams) 
 		return nil, err
 	}
 
+	// When linked to a doctor order, verify it exists and belongs to the same
+	// patient, then record the link so releasing results completes the order.
+	if p.OrderID != nil {
+		if p.PatientID == nil {
+			return nil, errors.New("order linkage requires a patient")
+		}
+		var orderType, orderPatient string
+		err := tx.QueryRow(ctx, `
+			SELECT order_type, patient_id::text FROM orders WHERE id = $1::uuid`, *p.OrderID).
+			Scan(&orderType, &orderPatient)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		if err != nil {
+			return nil, err
+		}
+		if orderType != domain.OrderTypeLabRequest && orderType != domain.OrderTypeLabInvestigation {
+			return nil, errors.New("order is not a lab order")
+		}
+		if orderPatient != *p.PatientID {
+			return nil, errors.New("order belongs to a different patient")
+		}
+	}
+
 	var requestID string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO lab_requests (request_no, patient_id, client_id, ordered_by, priority, clinical_notes)
-		VALUES ($1, $2::uuid, $3::uuid, $4::uuid, $5, $6)
+		INSERT INTO lab_requests (request_no, patient_id, client_id, ordered_by, priority, clinical_notes, order_id)
+		VALUES ($1, $2::uuid, $3::uuid, $4::uuid, $5, $6, $7::uuid)
 		RETURNING id::text`,
-		requestNo, nullableUUID(p.PatientID), nullableUUID(p.ClientID), p.OrderedBy, p.Priority, p.ClinicalNotes).
+		requestNo, nullableUUID(p.PatientID), nullableUUID(p.ClientID), p.OrderedBy, p.Priority, p.ClinicalNotes,
+		nullableUUID(p.OrderID)).
 		Scan(&requestID); err != nil {
 		return nil, err
 	}
 
 	// Price snapshot from the catalogue; duplicates of a test are rejected.
+	// Manually typed tests resolve to an existing catalogue entry by name or
+	// are registered on the fly.
 	seen := map[string]bool{}
+	insertItem := func(testID string) error {
+		var price float64
+		if err := tx.QueryRow(ctx, `SELECT price FROM lab_tests WHERE id = $1::uuid AND active`, testID).Scan(&price); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrNotFound
+			}
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO lab_request_items (request_id, test_id, price)
+			VALUES ($1::uuid, $2::uuid, $3)`, requestID, testID, price); err != nil {
+			return err
+		}
+		return nil
+	}
 	for _, testID := range p.TestIDs {
 		if seen[testID] {
 			return nil, ErrDuplicateTest
 		}
 		seen[testID] = true
-		var price float64
-		if err := tx.QueryRow(ctx, `SELECT price FROM lab_tests WHERE id = $1::uuid AND active`, testID).Scan(&price); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, ErrNotFound
-			}
+		if err := insertItem(testID); err != nil {
 			return nil, err
 		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO lab_request_items (request_id, test_id, price)
-			VALUES ($1::uuid, $2::uuid, $3)`, requestID, testID, price); err != nil {
+	}
+	for _, ct := range p.CustomTests {
+		if strings.TrimSpace(ct.Name) == "" {
+			continue
+		}
+		testID, err := s.resolveCustomTestTx(ctx, tx, ct.Name, ct.SpecimenType)
+		if err != nil {
+			return nil, err
+		}
+		if seen[testID] {
+			continue
+		}
+		seen[testID] = true
+		if err := insertItem(testID); err != nil {
 			return nil, err
 		}
 	}
@@ -462,6 +558,84 @@ func (s *Store) ListLabRequests(ctx context.Context, p ListLabRequestsParams) ([
 		}
 		out = append(out, *req)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		return out, nil
+	}
+
+	// Batch-load items and specimens for every listed request so the queue
+	// table can render tests, specimen barcodes, and origin locations without
+	// N+1 round trips.
+	ids := make([]string, 0, len(out))
+	for i := range out {
+		ids = append(ids, out[i].ID)
+	}
+	items, err := s.listRequestItemsMany(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	specimens, err := s.listRequestSpecimensMany(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[string]int, len(out))
+	for i := range out {
+		byID[out[i].ID] = i
+	}
+	for _, it := range items {
+		if idx, ok := byID[it.RequestID]; ok {
+			out[idx].Items = append(out[idx].Items, it)
+		}
+	}
+	for _, sp := range specimens {
+		if idx, ok := byID[sp.RequestID]; ok {
+			out[idx].Specimens = append(out[idx].Specimens, sp)
+		}
+	}
+	return out, nil
+}
+
+// listRequestItemsMany loads items for several requests in one query.
+func (s *Store) listRequestItemsMany(ctx context.Context, requestIDs []string) ([]domain.LabRequestItem, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+labItemCols+labItemFrom+`
+		WHERE i.request_id = ANY($1::uuid[])
+		ORDER BY t.code ASC`, requestIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.LabRequestItem, 0)
+	for rows.Next() {
+		it, err := scanLabItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *it)
+	}
+	return out, rows.Err()
+}
+
+// listRequestSpecimensMany loads specimens for several requests in one query.
+func (s *Store) listRequestSpecimensMany(ctx context.Context, requestIDs []string) ([]domain.LabSpecimen, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT `+labSpecimenCols+` FROM lab_specimens
+		WHERE request_id = ANY($1::uuid[])
+		ORDER BY collected_at ASC`, requestIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.LabSpecimen, 0)
+	for rows.Next() {
+		sp, err := scanLabSpecimen(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *sp)
+	}
 	return out, rows.Err()
 }
 
@@ -469,14 +643,24 @@ const labItemCols = `i.id::text, i.request_id::text, i.test_id::text, t.code, t.
 	t.verification_required, t.specimen_type, i.price, i.specimen_id::text,
 	i.result_value, i.result_text, i.critical,
 	i.result_entered_by::text, i.result_entered_at,
-	i.result_verified_by::text, i.result_verified_at`
+	i.result_verified_by::text, i.result_verified_at,
+	COALESCE(eb.first_name || ' ' || eb.last_name, ''),
+	COALESCE(vb.first_name || ' ' || vb.last_name, '')`
+
+const labItemFrom = ` FROM lab_request_items i
+	JOIN lab_tests t ON t.id = i.test_id
+	LEFT JOIN users eu ON eu.id = i.result_entered_by
+	LEFT JOIN staff eb ON eb.user_id = eu.id
+	LEFT JOIN users vu ON vu.id = i.result_verified_by
+	LEFT JOIN staff vb ON vb.user_id = vu.id`
 
 func scanLabItem(r pgx.Row) (*domain.LabRequestItem, error) {
 	var it domain.LabRequestItem
 	err := r.Scan(&it.ID, &it.RequestID, &it.TestID, &it.TestCode, &it.TestName,
 		&it.VerificationRequired, &it.SpecimenType, &it.Price, &it.SpecimenID,
 		&it.ResultValue, &it.ResultText, &it.Critical,
-		&it.ResultEnteredBy, &it.ResultEnteredAt, &it.ResultVerifiedBy, &it.ResultVerifiedAt)
+		&it.ResultEnteredBy, &it.ResultEnteredAt, &it.ResultVerifiedBy, &it.ResultVerifiedAt,
+		&it.ResultEnteredByName, &it.ResultVerifiedByName)
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +669,7 @@ func scanLabItem(r pgx.Row) (*domain.LabRequestItem, error) {
 
 func (s *Store) listRequestItems(ctx context.Context, requestID string) ([]domain.LabRequestItem, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT `+labItemCols+` FROM lab_request_items i JOIN lab_tests t ON t.id = i.test_id
+		SELECT `+labItemCols+labItemFrom+`
 		WHERE i.request_id = $1::uuid ORDER BY t.code ASC`, requestID)
 	if err != nil {
 		return nil, err
@@ -636,14 +820,14 @@ func allItemsVerifiedTx(ctx context.Context, tx pgx.Tx, requestID string) (bool,
 
 // ---- specimens ----
 
-const labSpecimenCols = `id::text, specimen_no, request_id::text, item_id::text, specimen_type,
-	collected_by::text, collected_at, received_by::text, received_at, condition,
+const labSpecimenCols = `id::text, specimen_no, barcode, request_id::text, item_id::text, specimen_type,
+	origin_location, collected_by::text, collected_at, received_by::text, received_at, condition,
 	storage_location, status, rejection_reason, created_at, updated_at`
 
 func scanLabSpecimen(r pgx.Row) (*domain.LabSpecimen, error) {
 	var sp domain.LabSpecimen
-	err := r.Scan(&sp.ID, &sp.SpecimenNo, &sp.RequestID, &sp.ItemID, &sp.SpecimenType,
-		&sp.CollectedBy, &sp.CollectedAt, &sp.ReceivedBy, &sp.ReceivedAt, &sp.Condition,
+	err := r.Scan(&sp.ID, &sp.SpecimenNo, &sp.Barcode, &sp.RequestID, &sp.ItemID, &sp.SpecimenType,
+		&sp.OriginLocation, &sp.CollectedBy, &sp.CollectedAt, &sp.ReceivedBy, &sp.ReceivedAt, &sp.Condition,
 		&sp.StorageLocation, &sp.Status, &sp.RejectionReason, &sp.CreatedAt, &sp.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -681,9 +865,10 @@ func (s *Store) GetLabSpecimen(ctx context.Context, id string) (*domain.LabSpeci
 
 // SpecimenCollectParams describes one specimen to collect.
 type SpecimenCollectParams struct {
-	ItemID       string
-	SpecimenType string
-	CollectedAt  time.Time
+	ItemID         string
+	SpecimenType   string
+	OriginLocation string
+	CollectedAt    time.Time
 }
 
 // CollectSpecimens collects specimens for the given items, recording the
@@ -739,19 +924,20 @@ func (s *Store) CollectSpecimens(ctx context.Context, requestID string, items []
 			return nil, err
 		}
 		specimenNo := "SPC" + lpadInt(seq, 6)
+		barcode := "BC" + lpadInt(seq, 7) + checksumChar(seq)
 		var sp domain.LabSpecimen
 		if err := tx.QueryRow(ctx, `
-			INSERT INTO lab_specimens (specimen_no, request_id, item_id, specimen_type, collected_by, collected_at)
-			VALUES ($1, $2::uuid, $3::uuid, $4, $5::uuid, $6)
+			INSERT INTO lab_specimens (specimen_no, barcode, request_id, item_id, specimen_type, origin_location, collected_by, collected_at)
+			VALUES ($1, $2, $3::uuid, $4::uuid, $5, $6, $7::uuid, $8)
 			RETURNING `+labSpecimenCols,
-			specimenNo, requestID, itemID, specimenType, collectedBy, it.CollectedAt).Scan(&sp.ID, &sp.SpecimenNo, &sp.RequestID, &sp.ItemID, &sp.SpecimenType,
-			&sp.CollectedBy, &sp.CollectedAt, &sp.ReceivedBy, &sp.ReceivedAt, &sp.Condition,
+			specimenNo, barcode, requestID, itemID, specimenType, it.OriginLocation, collectedBy, it.CollectedAt).Scan(&sp.ID, &sp.SpecimenNo, &sp.Barcode, &sp.RequestID, &sp.ItemID, &sp.SpecimenType,
+			&sp.OriginLocation, &sp.CollectedBy, &sp.CollectedAt, &sp.ReceivedBy, &sp.ReceivedAt, &sp.Condition,
 			&sp.StorageLocation, &sp.Status, &sp.RejectionReason, &sp.CreatedAt, &sp.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO lab_specimen_events (specimen_id, event_type, actor, notes)
-			VALUES ($1::uuid, 'collected', $2::uuid, 'specimen collected')`, sp.ID, collectedBy); err != nil {
+			VALUES ($1::uuid, 'collected', $2::uuid, 'specimen collected' || CASE WHEN $3 <> '' THEN ' from ' || $3 ELSE '' END)`, sp.ID, collectedBy, it.OriginLocation); err != nil {
 			return nil, err
 		}
 		// Link the item to its specimen.
@@ -1042,12 +1228,12 @@ func (s *Store) ReleaseRequest(ctx context.Context, requestID, releasedBy string
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	var status, patientID string
+	var status, patientID, orderID string
 	var clientID *string
 	if err := tx.QueryRow(ctx, `
-		SELECT status, COALESCE(patient_id::text, ''), client_id::text
+		SELECT status, COALESCE(patient_id::text, ''), client_id::text, COALESCE(order_id::text, '')
 		FROM lab_requests WHERE id = $1::uuid FOR UPDATE`, requestID).
-		Scan(&status, &patientID, &clientID); err != nil {
+		Scan(&status, &patientID, &clientID, &orderID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -1064,6 +1250,19 @@ func (s *Store) ReleaseRequest(ctx context.Context, requestID, releasedBy string
 	if patientID != "" {
 		if err := appendTimelineTx(ctx, tx, patientID, domain.EventLabReleased,
 			"lab results released", map[string]any{"requestNo": requestID}, &releasedBy); err != nil {
+			return err
+		}
+	}
+	// Real-time queue sync: releasing results completes the linked doctor
+	// order (Ordered → Verified/Released).
+	if orderID != "" {
+		if _, err := tx.Exec(ctx, `
+			UPDATE orders SET status = 'completed', completed_at = now(), acted_by = $2::uuid, updated_at = now()
+			WHERE id = $1::uuid AND status NOT IN ('completed','cancelled')`, orderID, releasedBy); err != nil {
+			return err
+		}
+		if err := appendTimelineTx(ctx, tx, patientID, domain.EventOrderStatusChanged,
+			"Order completed by lab release", map[string]any{"requestNo": requestID}, &releasedBy); err != nil {
 			return err
 		}
 	}
@@ -1113,6 +1312,79 @@ func (s *Store) ListCriticalNotifications(ctx context.Context, status string, li
 		out = append(out, *n)
 	}
 	return out, rows.Err()
+}
+
+// RouteCriticalAlerts pushes pending critical-result notifications into the
+// attending physician's communications queue (a direct message) and creates an
+// in-app notification, so the alert surfaces in the clinician's orders and
+// communications views without leaving the lab workflow.
+func (s *Store) RouteCriticalAlerts(ctx context.Context, actorID string, n []domain.LabCriticalNotification) error {
+	for i := range n {
+		if n[i].NotifiedToUserID == nil {
+			continue
+		}
+		// Build a human-readable summary of the critical result.
+		var patientNo, patientName, testName, resultText string
+		if err := s.pool.QueryRow(ctx, `
+			SELECT COALESCE(p.patient_no, ''), COALESCE(p.first_name || ' ' || p.last_name, ''),
+			       COALESCE(t.name, ''), COALESCE(i.result_text, '')
+			FROM lab_critical_notifications n
+			JOIN lab_request_items i ON i.id = n.item_id
+			JOIN lab_tests t ON t.id = i.test_id
+			LEFT JOIN patients p ON p.id = n.patient_id
+			WHERE n.id = $1::uuid`, n[i].ID).
+			Scan(&patientNo, &patientName, &testName, &resultText); err != nil {
+			return err
+		}
+		title := "CRITICAL LAB RESULT — " + testName
+		body := "Patient " + patientName + " (" + patientNo + "): critical result for " + testName
+		if resultText != "" {
+			body += " — " + resultText
+		}
+		body += ". Please review and acknowledge in Lab & Pathology."
+		if _, err := s.sendMessage(ctx, SendMessageParams{
+			Kind:        "direct",
+			SenderID:    actorID,
+			RecipientID: n[i].NotifiedToUserID,
+			Body:        body,
+		}); err != nil {
+			return err
+		}
+		if _, err := s.CreateNotification(ctx, CreateNotificationParams{
+			UserID:   *n[i].NotifiedToUserID,
+			Category: "lab_critical",
+			Title:    title,
+			Body:     body,
+			Link:     "/lab",
+			Channel:  "in_app",
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checksumChar derives a single Luhn-style check character for a numeric
+// sequence, giving the accession barcode a self-validation digit (Code128
+// printable range).
+func checksumChar(seq int64) string {
+	const digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	n := seq
+	sum := 0
+	doubled := false
+	for n > 0 {
+		d := int(n % 10)
+		n /= 10
+		if doubled {
+			d *= 2
+			if d > 9 {
+				d = d - 9
+			}
+		}
+		sum += d
+		doubled = !doubled
+	}
+	return string(digits[sum%len(digits)])
 }
 
 // AcknowledgeCritical acknowledges a pending critical-result notification.

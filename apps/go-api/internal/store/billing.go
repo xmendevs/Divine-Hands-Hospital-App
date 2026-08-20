@@ -22,6 +22,7 @@ var (
 	ErrOverpayment              = errors.New("payment exceeds balance due")
 	ErrInvalidPaymentMethod     = errors.New("unsupported payment method")
 	ErrDiscountExceedsSubtotal  = errors.New("discount cannot exceed subtotal")
+	ErrValidationNotEligible    = errors.New("invoice needs a recorded payment before sign-off")
 )
 
 // basePaymentMethods are the always-valid payment methods.
@@ -280,7 +281,10 @@ func (s *Store) UpdatePriceListItem(ctx context.Context, id string, p UpdatePric
 const invoiceCols = `i.id::text, i.invoice_no, i.patient_id::text, i.price_list_id::text, i.currency,
 	i.bill_to::text, i.payer_name, i.policy_number, i.subtotal, i.discount_amount, i.tax_amount,
 	i.total_amount, i.amount_paid, i.status::text, i.issued_by::text, i.issued_at,
-	i.void_reason, i.voided_by::text, i.voided_at, i.created_by::text, i.created_at, i.updated_at,
+	i.void_reason, i.voided_by::text, i.voided_at,
+	i.validated_by::text, i.validated_at, i.payment_plan, i.installment_amount, i.installment_frequency,
+	i.update_reason, i.updated_by::text,
+	i.created_by::text, i.created_at, i.updated_at,
 	COALESCE(p.patient_no, ''), COALESCE(p.first_name || ' ' || p.last_name, '')`
 
 const invoiceFrom = ` FROM invoices i LEFT JOIN patients p ON p.id = i.patient_id`
@@ -290,7 +294,10 @@ func scanInvoice(r pgx.Row) (*domain.Invoice, error) {
 	err := r.Scan(&inv.ID, &inv.InvoiceNo, &inv.PatientID, &inv.PriceListID, &inv.Currency,
 		&inv.BillTo, &inv.PayerName, &inv.PolicyNumber, &inv.Subtotal, &inv.DiscountAmount, &inv.TaxAmount,
 		&inv.TotalAmount, &inv.AmountPaid, &inv.Status, &inv.IssuedBy, &inv.IssuedAt,
-		&inv.VoidReason, &inv.VoidedBy, &inv.VoidedAt, &inv.CreatedBy, &inv.CreatedAt, &inv.UpdatedAt,
+		&inv.VoidReason, &inv.VoidedBy, &inv.VoidedAt,
+		&inv.ValidatedBy, &inv.ValidatedAt, &inv.PaymentPlan, &inv.InstallmentAmount, &inv.InstallmentFrequency,
+		&inv.UpdateReason, &inv.UpdatedBy,
+		&inv.CreatedBy, &inv.CreatedAt, &inv.UpdatedAt,
 		&inv.PatientNo, &inv.PatientName)
 	if err != nil {
 		return nil, err
@@ -462,9 +469,8 @@ type ListInvoicesParams struct {
 	Patient string
 	Limit   int
 	Offset  int
-}
-
-// ListInvoices returns invoices matching the filters, newest first.
+} // ListInvoices returns invoices matching the filters, newest first.
+// Items are batch-loaded so the frontend can render them directly.
 func (s *Store) ListInvoices(ctx context.Context, p ListInvoicesParams) ([]domain.Invoice, error) {
 	q := `SELECT ` + invoiceCols + invoiceFrom + ` WHERE true`
 	args := []any{}
@@ -492,6 +498,41 @@ func (s *Store) ListInvoices(ctx context.Context, p ListInvoicesParams) ([]domai
 			return nil, err
 		}
 		out = append(out, *inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Batch-load items for all invoices.
+	if len(out) > 0 {
+		ids := make([]string, 0, len(out))
+		for i := range out {
+			ids = append(ids, out[i].ID)
+		}
+		itemRows, err := s.pool.Query(ctx,
+			`SELECT `+invoiceItemCols+invoiceItemFrom+` WHERE invoice_id = ANY($1::uuid[]) ORDER BY created_at ASC`,
+			ids)
+		if err != nil {
+			return nil, err
+		}
+		defer itemRows.Close()
+		itemsByInv := make(map[string][]domain.InvoiceItem)
+		for itemRows.Next() {
+			it, err := scanInvoiceItem(itemRows)
+			if err != nil {
+				return nil, err
+			}
+			itemsByInv[it.InvoiceID] = append(itemsByInv[it.InvoiceID], *it)
+		}
+		if err := itemRows.Err(); err != nil {
+			return nil, err
+		}
+		for i := range out {
+			out[i].Items = itemsByInv[out[i].ID]
+			if out[i].Items == nil {
+				out[i].Items = []domain.InvoiceItem{}
+			}
+		}
 	}
 	return out, rows.Err()
 }
@@ -570,10 +611,94 @@ func (s *Store) VoidInvoice(ctx context.Context, invoiceID, reason, voidedBy str
 	return tx.Commit(ctx)
 }
 
+// ---- validation, update & installments ----
+
+// ValidateInvoice marks an invoice as validated by a super admin.
+func (s *Store) ValidateInvoice(ctx context.Context, invoiceID, validatedBy string) error {
+	ct, err := s.pool.Exec(ctx, `
+		UPDATE invoices SET validated_by = $2::uuid, validated_at = now(), updated_at = now()
+		WHERE id = $1::uuid AND validated_at IS NULL
+		  AND status IN ('partially_paid', 'paid') AND amount_paid > 0`, invoiceID, validatedBy)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrValidationNotEligible
+	}
+	return nil
+}
+
+// UpdateInvoiceParams carries editable invoice fields (super admin only).
+type UpdateInvoiceParams struct {
+	Subtotal             float64
+	DiscountAmount       float64
+	TaxAmount            float64
+	TotalAmount          float64
+	PaymentPlan          string
+	InstallmentAmount    *float64
+	InstallmentFrequency string
+	UpdateReason         string
+	UpdatedBy            string
+}
+
+// UpdateInvoice updates an issued/partially_paid invoice (super admin).
+func (s *Store) UpdateInvoice(ctx context.Context, invoiceID string, p UpdateInvoiceParams) error {
+	if p.UpdateReason == "" || p.DiscountAmount < 0 {
+		return ErrInvalidBillingTransition
+	}
+	if p.PaymentPlan != "full" && p.PaymentPlan != "installment" {
+		return ErrInvalidBillingTransition
+	}
+	if p.PaymentPlan == "installment" && (p.InstallmentAmount == nil || *p.InstallmentAmount <= 0 ||
+		(p.InstallmentFrequency != "weekly" && p.InstallmentFrequency != "biweekly" && p.InstallmentFrequency != "monthly")) {
+		return ErrInvalidBillingTransition
+	}
+	if p.PaymentPlan == "full" {
+		p.InstallmentAmount = nil
+		p.InstallmentFrequency = ""
+	}
+	ct, err := s.pool.Exec(ctx, `
+		UPDATE invoices SET discount_amount = $2,
+		                   total_amount = subtotal - $2 + tax_amount,
+		                   payment_plan = $3, installment_amount = $4,
+		                   installment_frequency = $5, update_reason = $6, updated_by = $7::uuid,
+		                   updated_at = now()
+		WHERE id = $1::uuid AND status IN ('issued', 'partially_paid')
+		  AND $2 <= subtotal AND subtotal - $2 + tax_amount >= amount_paid`,
+		invoiceID, p.DiscountAmount, p.PaymentPlan, p.InstallmentAmount, p.InstallmentFrequency,
+		p.UpdateReason, p.UpdatedBy)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetInvoiceInstallmentHistory returns payments against an installment plan.
+func (s *Store) GetInvoiceInstallmentHistory(ctx context.Context, invoiceID string) ([]domain.Payment, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT `+paymentCols+paymentFrom+` WHERE p.invoice_id = $1::uuid ORDER BY p.created_at ASC`, invoiceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.Payment, 0)
+	for rows.Next() {
+		p, err := scanPayment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *p)
+	}
+	return out, rows.Err()
+}
+
 // ---- payments & receipts ----
 
 const paymentCols = `p.id::text, p.payment_no, p.invoice_id::text, p.patient_id::text, p.shift_id::text,
-	p.amount, p.method, p.reference, p.received_by::text, p.received_at, p.notes, p.created_at,
+	p.amount, p.method, p.reference, p.payer_name, p.received_by::text, p.received_at, p.notes, p.created_at,
 	COALESCE(i.invoice_no, ''), COALESCE(pa.first_name || ' ' || pa.last_name, '')`
 
 const paymentFrom = ` FROM payments p
@@ -583,7 +708,7 @@ const paymentFrom = ` FROM payments p
 func scanPayment(r pgx.Row) (*domain.Payment, error) {
 	var pay domain.Payment
 	err := r.Scan(&pay.ID, &pay.PaymentNo, &pay.InvoiceID, &pay.PatientID, &pay.ShiftID,
-		&pay.Amount, &pay.Method, &pay.Reference, &pay.ReceivedBy, &pay.ReceivedAt, &pay.Notes, &pay.CreatedAt,
+		&pay.Amount, &pay.Method, &pay.Reference, &pay.PayerName, &pay.ReceivedBy, &pay.ReceivedAt, &pay.Notes, &pay.CreatedAt,
 		&pay.InvoiceNo, &pay.PatientName)
 	if err != nil {
 		return nil, err
@@ -606,6 +731,7 @@ type ReceivePaymentParams struct {
 	Amount     float64
 	Method     string
 	Reference  string
+	PayerName  string
 	Notes      string
 	ReceivedBy string
 }
@@ -658,12 +784,12 @@ func (s *Store) ReceivePayment(ctx context.Context, p ReceivePaymentParams) (*do
 	}
 	var paymentID string
 	if err := tx.QueryRow(ctx, `
-		INSERT INTO payments (payment_no, invoice_id, patient_id, shift_id, amount, method, reference,
+		INSERT INTO payments (payment_no, invoice_id, patient_id, shift_id, amount, method, reference, payer_name,
 		                      received_by, notes)
 		VALUES ($1, $2::uuid, (SELECT patient_id FROM invoices WHERE id = $2::uuid),
-		        $3::uuid, $4, $5, $6, $7::uuid, $8)
+		        $3::uuid, $4, $5, $6, $7, $8::uuid, $9)
 		RETURNING id::text`,
-		paymentNo, p.InvoiceID, shiftID, p.Amount, p.Method, p.Reference, p.ReceivedBy, p.Notes).
+		paymentNo, p.InvoiceID, shiftID, p.Amount, p.Method, p.Reference, p.PayerName, p.ReceivedBy, p.Notes).
 		Scan(&paymentID); err != nil {
 		return nil, nil, err
 	}
@@ -1370,4 +1496,270 @@ func (s *Store) ListShifts(ctx context.Context, p ListShiftsParams) ([]domain.Ca
 		out = append(out, *sh)
 	}
 	return out, rows.Err()
+}
+
+// PatientBalance returns aggregated billing info for a single patient.
+func (s *Store) PatientBalance(ctx context.Context, patientID string) (map[string]any, error) {
+	var totalCharged, totalPaid float64
+	var invoiceCount int64
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+		  COALESCE(SUM(total_amount), 0),
+		  COALESCE(SUM(amount_paid), 0),
+		  COUNT(*)
+		FROM invoices
+		WHERE patient_id = $1::uuid AND status != 'voided'`, patientID).Scan(&totalCharged, &totalPaid, &invoiceCount)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.pool.Query(ctx, `
+		SELECT i.id::text, i.invoice_no, i.total_amount, i.amount_paid,
+		       (i.total_amount - i.amount_paid), i.status, i.created_at
+		FROM invoices i
+		WHERE i.patient_id = $1::uuid AND i.status != 'voided'
+		ORDER BY i.created_at DESC`, patientID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type invSummary struct {
+		ID          string  `json:"id"`
+		InvoiceNo   string  `json:"invoiceNo"`
+		TotalAmount float64 `json:"totalAmount"`
+		AmountPaid  float64 `json:"amountPaid"`
+		BalanceDue  float64 `json:"balanceDue"`
+		Status      string  `json:"status"`
+		CreatedAt   string  `json:"createdAt"`
+	}
+	invoices := make([]invSummary, 0)
+	for rows.Next() {
+		var inv invSummary
+		if err := rows.Scan(&inv.ID, &inv.InvoiceNo, &inv.TotalAmount, &inv.AmountPaid, &inv.BalanceDue, &inv.Status, &inv.CreatedAt); err != nil {
+			return nil, err
+		}
+		invoices = append(invoices, inv)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	result := map[string]any{
+		"totalCharged": totalCharged,
+		"totalPaid":    totalPaid,
+		"balanceDue":   totalCharged - totalPaid,
+		"invoiceCount": invoiceCount,
+		"invoices":     invoices,
+	}
+	return result, nil
+}
+
+// DoctorsPatientsBills returns bills for patients the authenticated doctor has interacted with.
+func (s *Store) DoctorsPatientsBills(ctx context.Context, doctorID string) ([]map[string]any, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT DISTINCT
+		  pa.id::text, pa.first_name, pa.last_name, pa.patient_no,
+		  i.id::text, i.invoice_no, i.total_amount, i.amount_paid,
+		  (i.total_amount - i.amount_paid), i.status, i.created_at
+		FROM invoices i
+		JOIN patients pa ON pa.id = i.patient_id
+		WHERE i.patient_id IN (
+		  SELECT DISTINCT patient_id FROM clinical_notes WHERE author_id = $1::uuid
+		  UNION
+		  SELECT DISTINCT patient_id FROM orders WHERE ordered_by = $1::uuid
+		)
+		AND i.status != 'voided'
+		ORDER BY pa.last_name, pa.first_name, i.created_at DESC`, doctorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]map[string]any, 0)
+	for rows.Next() {
+		var patientID, firstName, lastName, patientNo string
+		var invoiceID, invoiceNo, status, createdAt string
+		var totalAmount, amountPaid, balanceDue float64
+		if err := rows.Scan(&patientID, &firstName, &lastName, &patientNo,
+			&invoiceID, &invoiceNo, &totalAmount, &amountPaid, &balanceDue, &status, &createdAt); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"patientId":   patientID,
+			"patientName": firstName + " " + lastName,
+			"patientNo":   patientNo,
+			"invoiceId":   invoiceID,
+			"invoiceNo":   invoiceNo,
+			"totalAmount": totalAmount,
+			"amountPaid":  amountPaid,
+			"balanceDue":  balanceDue,
+			"status":      status,
+			"createdAt":   createdAt,
+		})
+	}
+	return out, rows.Err()
+}
+
+// CreateInvoiceFromOrder auto-creates an invoice from an order based on its
+// type and details, looking up matching price list items. Returns the invoice
+// and updates the order's invoice_id column.
+func (s *Store) CreateInvoiceFromOrder(ctx context.Context, orderID string, createdBy string) (*domain.Invoice, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	// Load order details.
+	var orderType, patientID, orderDetails, priority string
+	if err := tx.QueryRow(ctx,
+		`SELECT order_type, patient_id::text, details::text, COALESCE(priority, 'routine')
+		 FROM orders WHERE id = $1::uuid`, orderID,
+	).Scan(&orderType, &patientID, &orderDetails, &priority); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	// Check if order already has an invoice.
+	var existing int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM orders WHERE id = $1::uuid AND invoice_id IS NOT NULL`, orderID).Scan(&existing); err != nil {
+		return nil, err
+	}
+	if existing > 0 {
+		return nil, errors.New("order already has an invoice")
+	}
+
+	// Find active price list.
+	var priceListID, currency string
+	if err := tx.QueryRow(ctx,
+		`SELECT id::text, currency FROM price_lists WHERE status = 'active' LIMIT 1`,
+	).Scan(&priceListID, &currency); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("no active price list found")
+		}
+		return nil, err
+	}
+
+	// Parse order details for medication/test info.
+	var details map[string]any
+	if orderDetails != "" {
+		_ = json.Unmarshal([]byte(orderDetails), &details)
+	}
+
+	// Find matching price list items based on order type.
+	var rows pgx.Rows
+	var queryErr error
+	switch orderType {
+	case domain.OrderTypePrescription:
+		medication := ""
+		if m, ok := details["medication"].(string); ok {
+			medication = m
+		}
+		rows, queryErr = tx.Query(ctx,
+			`SELECT id::text, name, price, COALESCE(tax_rate, 0) FROM price_list_items
+			 WHERE price_list_id = $1::uuid AND active AND (name ILIKE $2 OR code ILIKE $2)
+			 LIMIT 5`, priceListID, "%"+medication+"%")
+	case domain.OrderTypeLabRequest, domain.OrderTypeLabInvestigation:
+		test := ""
+		if t, ok := details["test"].(string); ok {
+			test = t
+		}
+		rows, queryErr = tx.Query(ctx,
+			`SELECT id::text, name, price, COALESCE(tax_rate, 0) FROM price_list_items
+			 WHERE price_list_id = $1::uuid AND active AND (name ILIKE $2 OR code ILIKE $2)
+			 LIMIT 5`, priceListID, "%"+test+"%")
+	case domain.OrderTypeRadiologyImaging:
+		modality := ""
+		if m, ok := details["modality"].(string); ok {
+			modality = m
+		}
+		rows, queryErr = tx.Query(ctx,
+			`SELECT id::text, name, price, COALESCE(tax_rate, 0) FROM price_list_items
+			 WHERE price_list_id = $1::uuid AND active AND (name ILIKE $2 OR code ILIKE $2)
+			 LIMIT 5`, priceListID, "%"+modality+"%")
+	default:
+		return nil, errors.New("order type does not support auto-billing")
+	}
+	if queryErr != nil {
+		return nil, queryErr
+	}
+	defer rows.Close()
+
+	// Collect matched items.
+	type matchedItem struct {
+		ID    string
+		Name  string
+		Price float64
+		Tax   float64
+	}
+	var items []matchedItem
+	for rows.Next() {
+		var id, name string
+		var price, tax float64
+		if err := rows.Scan(&id, &name, &price, &tax); err != nil {
+			return nil, err
+		}
+		items = append(items, matchedItem{ID: id, Name: name, Price: price, Tax: tax})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(items) == 0 {
+		return nil, errors.New("no matching price list items found for this order")
+	}
+
+	// Calculate totals.
+	var subtotal, taxAmount float64
+	for _, it := range items {
+		line := round2(it.Price)
+		subtotal += line
+		taxAmount += round2(line * it.Tax / 100)
+	}
+	subtotal = round2(subtotal)
+	taxAmount = round2(taxAmount)
+	total := round2(subtotal + taxAmount)
+
+	// Create invoice.
+	invoiceNo, err := nextBillingCode(ctx, tx, "invoices_no_seq", "INV")
+	if err != nil {
+		return nil, err
+	}
+	var invoiceID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO invoices (invoice_no, patient_id, price_list_id, currency, bill_to,
+		                      subtotal, tax_amount, total_amount, created_by)
+		VALUES ($1, $2::uuid, $3::uuid, $4, 'patient', $5, $6, $7, $8::uuid)
+		RETURNING id::text`,
+		invoiceNo, patientID, priceListID, currency, subtotal, taxAmount, total, createdBy,
+	).Scan(&invoiceID); err != nil {
+		return nil, err
+	}
+
+	// Create invoice items.
+	for _, it := range items {
+		line := round2(it.Price)
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO invoice_items (invoice_id, price_list_item_id, code, name,
+			                           quantity, unit_price, tax_rate, line_total, tax_amount)
+			VALUES ($1::uuid, $2::uuid, $3, $4, 1, $5, $6, $7, $8)`,
+			invoiceID, it.ID, it.ID, it.Name, it.Price, it.Tax, line, round2(line*it.Tax/100)); err != nil {
+			return nil, err
+		}
+	}
+
+	// Link invoice to order.
+	if _, err := tx.Exec(ctx,
+		`UPDATE orders SET invoice_id = $1::uuid, updated_at = now() WHERE id = $2::uuid`,
+		invoiceID, orderID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return s.GetInvoice(ctx, invoiceID)
 }

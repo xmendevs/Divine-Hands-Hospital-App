@@ -23,7 +23,7 @@ type querier interface {
 }
 
 // patientCols is the canonical column projection (with casts) for patients.
-const patientCols = `id::text, patient_no, registration_type::text, family_id::text, first_name, last_name, middle_name, gender, date_of_birth::text, blood_group, genotype, marital_status, occupation, phone, alternate_phone, email, address_line1, address_line2, city, state, postal_code, country, identification_type, identification_number, next_of_kin_name, next_of_kin_relationship, next_of_kin_phone, consent_given, consent_date, privacy_notes, status::text, created_by::text, created_at, updated_at`
+const patientCols = `id::text, patient_no, registration_type::text, family_id::text, first_name, last_name, middle_name, gender, date_of_birth::text, blood_group, genotype, marital_status, occupation, phone, alternate_phone, email, address_line1, address_line2, city, state, postal_code, country, identification_type, identification_number, next_of_kin_name, next_of_kin_relationship, next_of_kin_phone, next_of_kin_address, photo_data, photo_content_type, consent_given, consent_date, privacy_notes, status::text, created_by::text, created_at, updated_at`
 
 func scanPatient(r pgx.Row) (*domain.Patient, error) {
 	var (
@@ -38,7 +38,8 @@ func scanPatient(r pgx.Row) (*domain.Patient, error) {
 		&p.Phone, &p.AlternatePhone, &p.Email,
 		&p.AddressLine1, &p.AddressLine2, &p.City, &p.State, &p.PostalCode, &p.Country,
 		&p.IdentificationType, &p.IdentificationNumber,
-		&p.NextOfKinName, &p.NextOfKinRelation, &p.NextOfKinPhone,
+		&p.NextOfKinName, &p.NextOfKinRelation, &p.NextOfKinPhone, &p.NextOfKinAddress,
+		&p.PhotoData, &p.PhotoContentType,
 		&p.ConsentGiven, &p.ConsentDate, &p.PrivacyNotes,
 		&status, &p.CreatedBy, &p.CreatedAt, &p.UpdatedAt,
 	)
@@ -68,6 +69,12 @@ func nullableText(s string) any {
 	return s
 }
 
+// ClinicalEntryInput captures a clinical-history section at registration.
+type ClinicalEntryInput struct {
+	Section string `json:"section"`
+	Summary string `json:"summary"`
+}
+
 // RegisterPatientParams carries everything captured at registration.
 type RegisterPatientParams struct {
 	RegistrationType     domain.RegistrationType
@@ -95,9 +102,13 @@ type RegisterPatientParams struct {
 	NextOfKinName        string
 	NextOfKinRelation    string
 	NextOfKinPhone       string
+	NextOfKinAddress     string
+	PhotoData            string // base64-encoded image, "" when none
+	PhotoContentType     string
 	ConsentGiven         bool
 	PrivacyNotes         string
 	CreatedBy            *string
+	ClinicalEntries      []ClinicalEntryInput
 }
 
 // RegisterPatient inserts a patient and allocates their business ID in a single
@@ -129,7 +140,8 @@ func (s *Store) RegisterPatient(ctx context.Context, p RegisterPatientParams) (*
 			phone, alternate_phone, email,
 			address_line1, address_line2, city, state, postal_code, country,
 			identification_type, identification_number,
-			next_of_kin_name, next_of_kin_relationship, next_of_kin_phone,
+			next_of_kin_name, next_of_kin_relationship, next_of_kin_phone, next_of_kin_address,
+			photo_data, photo_content_type,
 			consent_given, consent_date, privacy_notes, created_by
 		) VALUES (
 			$1, $2::patient_registration_type, $3::uuid,
@@ -138,8 +150,9 @@ func (s *Store) RegisterPatient(ctx context.Context, p RegisterPatientParams) (*
 			$13, $14, $15,
 			$16, $17, $18, $19, $20, $21,
 			$22, $23,
-			$24, $25, $26,
-			$27, $28, $29, $30::uuid
+			$24, $25, $26, $27,
+			$28, $29,
+			$30, $31, $32, $33::uuid
 		)
 		RETURNING `+patientCols,
 		patientNo, string(p.RegistrationType), nullableUUID(p.FamilyID),
@@ -148,7 +161,8 @@ func (s *Store) RegisterPatient(ctx context.Context, p RegisterPatientParams) (*
 		p.Phone, p.AlternatePhone, p.Email,
 		p.AddressLine1, p.AddressLine2, p.City, p.State, p.PostalCode, p.Country,
 		p.IdentificationType, p.IdentificationNumber,
-		p.NextOfKinName, p.NextOfKinRelation, p.NextOfKinPhone,
+		p.NextOfKinName, p.NextOfKinRelation, p.NextOfKinPhone, p.NextOfKinAddress,
+		p.PhotoData, p.PhotoContentType,
 		p.ConsentGiven, consentDate, p.PrivacyNotes, nullableUUID(p.CreatedBy),
 	)
 	patient, err := scanPatient(row)
@@ -159,6 +173,20 @@ func (s *Store) RegisterPatient(ctx context.Context, p RegisterPatientParams) (*
 	if err := appendTimelineTx(ctx, tx, patient.ID, domain.EventPatientRegistered,
 		"Patient registered", map[string]any{"patientNo": patient.PatientNo, "registrationType": p.RegistrationType}, p.CreatedBy); err != nil {
 		return nil, err
+	}
+
+	// Registration-time clinical histories (allergies, medical history, etc.).
+	for _, e := range p.ClinicalEntries {
+		if e.Section == "" || e.Summary == "" {
+			continue
+		}
+		b, _ := json.Marshal(map[string]any{})
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO patient_clinical_entries (patient_id, section, summary, details, recorded_by)
+			VALUES ($1::uuid, $2, $3, $4::jsonb, $5::uuid)`,
+			patient.ID, e.Section, e.Summary, b, nullableUUID(p.CreatedBy)); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -210,6 +238,9 @@ type UpdatePatientParams struct {
 	NextOfKinName        string
 	NextOfKinRelation    string
 	NextOfKinPhone       string
+	NextOfKinAddress     string
+	PhotoData            string // base64-encoded image, "" when none
+	PhotoContentType     string
 	ConsentGiven         bool
 	PrivacyNotes         string
 }
@@ -226,9 +257,11 @@ func (s *Store) UpdatePatient(ctx context.Context, id string, p UpdatePatientPar
 			postal_code = $18, country = $19,
 			identification_type = $20, identification_number = $21,
 			next_of_kin_name = $22, next_of_kin_relationship = $23, next_of_kin_phone = $24,
-			consent_given = $25,
-			consent_date = CASE WHEN $25 THEN COALESCE(consent_date, now()) ELSE NULL END,
-			privacy_notes = $26, updated_at = now()
+			next_of_kin_address = $25,
+			photo_data = $26, photo_content_type = $27,
+			consent_given = $28,
+			consent_date = CASE WHEN $28 THEN COALESCE(consent_date, now()) ELSE NULL END,
+			privacy_notes = $29, updated_at = now()
 		WHERE id = $1::uuid`,
 		id, p.FirstName, p.LastName, p.MiddleName, p.Gender,
 		nullableText(p.DateOfBirth), p.BloodGroup, p.Genotype,
@@ -237,7 +270,8 @@ func (s *Store) UpdatePatient(ctx context.Context, id string, p UpdatePatientPar
 		p.AddressLine1, p.AddressLine2, p.City, p.State,
 		p.PostalCode, p.Country,
 		p.IdentificationType, p.IdentificationNumber,
-		p.NextOfKinName, p.NextOfKinRelation, p.NextOfKinPhone,
+		p.NextOfKinName, p.NextOfKinRelation, p.NextOfKinPhone, p.NextOfKinAddress,
+		p.PhotoData, p.PhotoContentType,
 		p.ConsentGiven, p.PrivacyNotes,
 	)
 	if err != nil {
@@ -355,6 +389,30 @@ func (s *Store) AddClinicalEntry(ctx context.Context, patientID, section, summar
 	return id, err
 }
 
+// ReplaceClinicalSection removes all entries in a section and inserts the new
+// summary in one transaction. An empty summary clears the section.
+func (s *Store) ReplaceClinicalSection(ctx context.Context, patientID, section, summary string, recordedBy *string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if _, err := tx.Exec(ctx, `DELETE FROM patient_clinical_entries WHERE patient_id = $1::uuid AND section = $2`, patientID, section); err != nil {
+		return err
+	}
+	if summary != "" {
+		b, _ := json.Marshal(map[string]any{})
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO patient_clinical_entries (patient_id, section, summary, details, recorded_by)
+			VALUES ($1::uuid, $2, $3, $4::jsonb, $5::uuid)`,
+			patientID, section, summary, b, nullableUUID(recordedBy)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 // ListClinicalEntries returns all clinical entries for a patient, newest first.
 func (s *Store) ListClinicalEntries(ctx context.Context, patientID string) ([]domain.ClinicalEntry, error) {
 	rows, err := s.pool.Query(ctx, `
@@ -455,7 +513,8 @@ func (s *Store) AmendClinicalEntry(ctx context.Context, p AmendClinicalEntryPara
 	return tx.Commit(ctx)
 }
 
-// SearchPatients matches by business ID or permitted demographic identifiers.
+// SearchPatients matches by business ID or permitted demographic identifiers:
+// full name, email, phone, patient number, or identification number.
 func (s *Store) SearchPatients(ctx context.Context, q string, limit, offset int) ([]domain.PatientSummary, error) {
 	like := "%" + q + "%"
 	rows, err := s.pool.Query(ctx, `
@@ -463,8 +522,25 @@ func (s *Store) SearchPatients(ctx context.Context, q string, limit, offset int)
 		       COALESCE(date_of_birth::text, ''), phone
 		FROM patients
 		WHERE patient_no ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1
-		   OR phone ILIKE $1 OR identification_number ILIKE $1
+		   OR (first_name || ' ' || last_name) ILIKE $1
+		   OR email ILIKE $1 OR phone ILIKE $1 OR alternate_phone ILIKE $1
+		   OR identification_number ILIKE $1
 		ORDER BY patient_no LIMIT $2 OFFSET $3`, like, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanSummaries(rows)
+}
+
+// ListPatients returns all patients, newest first, with pagination.
+func (s *Store) ListPatients(ctx context.Context, limit, offset int) ([]domain.PatientSummary, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, patient_no, registration_type::text, first_name, last_name, gender,
+		       COALESCE(date_of_birth::text, ''), phone
+		FROM patients
+		ORDER BY created_at DESC, patient_no
+		LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, err
 	}

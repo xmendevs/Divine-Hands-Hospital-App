@@ -306,57 +306,70 @@ func newInvoiceItemResponse(i *domain.InvoiceItem) invoiceItemResponse {
 }
 
 type invoiceResponse struct {
-	ID             string                `json:"id"`
-	InvoiceNo      string                `json:"invoiceNo"`
-	PatientID      *string               `json:"patientId,omitempty"`
-	PatientNo      string                `json:"patientNo,omitempty"`
-	PatientName    string                `json:"patientName,omitempty"`
-	PriceListID    *string               `json:"priceListId,omitempty"`
-	Currency       string                `json:"currency"`
-	BillTo         string                `json:"billTo"`
-	PayerName      string                `json:"payerName,omitempty"`
-	PolicyNumber   string                `json:"policyNumber,omitempty"`
-	Subtotal       float64               `json:"subtotal"`
-	DiscountAmount float64               `json:"discountAmount"`
-	TaxAmount      float64               `json:"taxAmount"`
-	TotalAmount    float64               `json:"totalAmount"`
-	AmountPaid     float64               `json:"amountPaid"`
-	BalanceDue     float64               `json:"balanceDue"`
-	Status         string                `json:"status"`
-	IssuedBy       *string               `json:"issuedBy,omitempty"`
-	IssuedAt       *string               `json:"issuedAt,omitempty"`
-	VoidReason     string                `json:"voidReason,omitempty"`
-	VoidedBy       *string               `json:"voidedBy,omitempty"`
-	VoidedAt       *string               `json:"voidedAt,omitempty"`
-	CreatedAt      string                `json:"createdAt"`
-	UpdatedAt      string                `json:"updatedAt"`
-	Items          []invoiceItemResponse `json:"items,omitempty"`
+	ID                   string                `json:"id"`
+	InvoiceNo            string                `json:"invoiceNo"`
+	PatientID            *string               `json:"patientId,omitempty"`
+	PatientNo            string                `json:"patientNo,omitempty"`
+	PatientName          string                `json:"patientName,omitempty"`
+	PriceListID          *string               `json:"priceListId,omitempty"`
+	Currency             string                `json:"currency"`
+	BillTo               string                `json:"billTo"`
+	PayerName            string                `json:"payerName,omitempty"`
+	PolicyNumber         string                `json:"policyNumber,omitempty"`
+	Subtotal             float64               `json:"subtotal"`
+	DiscountAmount       float64               `json:"discountAmount"`
+	TaxAmount            float64               `json:"taxAmount"`
+	TotalAmount          float64               `json:"totalAmount"`
+	AmountPaid           float64               `json:"amountPaid"`
+	BalanceDue           float64               `json:"balanceDue"`
+	Status               string                `json:"status"`
+	IssuedBy             *string               `json:"issuedBy,omitempty"`
+	IssuedAt             *string               `json:"issuedAt,omitempty"`
+	VoidReason           string                `json:"voidReason,omitempty"`
+	VoidedBy             *string               `json:"voidedBy,omitempty"`
+	VoidedAt             *string               `json:"voidedAt,omitempty"`
+	ValidatedBy          *string               `json:"validatedBy,omitempty"`
+	ValidatedAt          *string               `json:"validatedAt,omitempty"`
+	PaymentPlan          string                `json:"paymentPlan"`
+	InstallmentAmount    *float64              `json:"installmentAmount,omitempty"`
+	InstallmentFrequency string                `json:"installmentFrequency,omitempty"`
+	UpdateReason         string                `json:"updateReason,omitempty"`
+	UpdatedBy            *string               `json:"updatedBy,omitempty"`
+	CreatedAt            string                `json:"createdAt"`
+	UpdatedAt            string                `json:"updatedAt"`
+	Items                []invoiceItemResponse `json:"items,omitempty"`
 }
 
 func newInvoiceResponse(i *domain.Invoice) invoiceResponse {
 	out := invoiceResponse{
-		ID:             i.ID,
-		InvoiceNo:      i.InvoiceNo,
-		PatientID:      i.PatientID,
-		PatientNo:      i.PatientNo,
-		PatientName:    i.PatientName,
-		PriceListID:    i.PriceListID,
-		Currency:       i.Currency,
-		BillTo:         i.BillTo,
-		PayerName:      i.PayerName,
-		PolicyNumber:   i.PolicyNumber,
-		Subtotal:       i.Subtotal,
-		DiscountAmount: i.DiscountAmount,
-		TaxAmount:      i.TaxAmount,
-		TotalAmount:    i.TotalAmount,
-		AmountPaid:     i.AmountPaid,
-		BalanceDue:     i.TotalAmount - i.AmountPaid,
-		Status:         i.Status,
-		IssuedBy:       i.IssuedBy,
-		VoidReason:     i.VoidReason,
-		VoidedBy:       i.VoidedBy,
-		CreatedAt:      i.CreatedAt.UTC().Format(timeRFC3339),
-		UpdatedAt:      i.UpdatedAt.UTC().Format(timeRFC3339),
+		ID:                   i.ID,
+		InvoiceNo:            i.InvoiceNo,
+		PatientID:            i.PatientID,
+		PatientNo:            i.PatientNo,
+		PatientName:          i.PatientName,
+		PriceListID:          i.PriceListID,
+		Currency:             i.Currency,
+		BillTo:               i.BillTo,
+		PayerName:            i.PayerName,
+		PolicyNumber:         i.PolicyNumber,
+		Subtotal:             i.Subtotal,
+		DiscountAmount:       i.DiscountAmount,
+		TaxAmount:            i.TaxAmount,
+		TotalAmount:          i.TotalAmount,
+		AmountPaid:           i.AmountPaid,
+		BalanceDue:           i.TotalAmount - i.AmountPaid,
+		Status:               i.Status,
+		IssuedBy:             i.IssuedBy,
+		VoidReason:           i.VoidReason,
+		VoidedBy:             i.VoidedBy,
+		ValidatedBy:          i.ValidatedBy,
+		PaymentPlan:          i.PaymentPlan,
+		InstallmentAmount:    i.InstallmentAmount,
+		InstallmentFrequency: i.InstallmentFrequency,
+		UpdateReason:         i.UpdateReason,
+		UpdatedBy:            i.UpdatedBy,
+		CreatedAt:            i.CreatedAt.UTC().Format(timeRFC3339),
+		UpdatedAt:            i.UpdatedAt.UTC().Format(timeRFC3339),
 	}
 	if i.IssuedAt != nil {
 		v := i.IssuedAt.UTC().Format(timeRFC3339)
@@ -365,6 +378,10 @@ func newInvoiceResponse(i *domain.Invoice) invoiceResponse {
 	if i.VoidedAt != nil {
 		v := i.VoidedAt.UTC().Format(timeRFC3339)
 		out.VoidedAt = &v
+	}
+	if i.ValidatedAt != nil {
+		v := i.ValidatedAt.UTC().Format(timeRFC3339)
+		out.ValidatedAt = &v
 	}
 	out.Items = make([]invoiceItemResponse, 0, len(i.Items))
 	for idx := range i.Items {
@@ -554,6 +571,7 @@ type paymentResponse struct {
 	Amount      float64 `json:"amount"`
 	Method      string  `json:"method"`
 	Reference   string  `json:"reference,omitempty"`
+	PayerName   string  `json:"payerName,omitempty"`
 	ReceivedBy  string  `json:"receivedBy"`
 	ReceivedAt  string  `json:"receivedAt"`
 	Notes       string  `json:"notes,omitempty"`
@@ -571,6 +589,7 @@ func newPaymentResponse(p *domain.Payment) paymentResponse {
 		Amount:      p.Amount,
 		Method:      p.Method,
 		Reference:   p.Reference,
+		PayerName:   p.PayerName,
 		ReceivedBy:  p.ReceivedBy,
 		ReceivedAt:  p.ReceivedAt.UTC().Format(timeRFC3339),
 		Notes:       p.Notes,
@@ -581,6 +600,7 @@ type receivePaymentRequest struct {
 	Amount    float64 `json:"amount"`
 	Method    string  `json:"method"`
 	Reference string  `json:"reference"`
+	PayerName string  `json:"payerName"`
 	Notes     string  `json:"notes"`
 }
 
@@ -600,6 +620,7 @@ func (s *server) handleReceivePayment(w http.ResponseWriter, r *http.Request) {
 		Amount:     req.Amount,
 		Method:     req.Method,
 		Reference:  req.Reference,
+		PayerName:  req.PayerName,
 		Notes:      req.Notes,
 		ReceivedBy: actor.ID,
 	})
@@ -628,7 +649,7 @@ func (s *server) handleReceivePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.recordAudit(r, domain.ActionBillingPaymentReceive, "payment", payment.ID, nil, map[string]any{
-		"paymentNo": payment.PaymentNo, "amount": payment.Amount, "method": payment.Method,
+		"paymentNo": payment.PaymentNo, "amount": payment.Amount, "method": payment.Method, "payerName": payment.PayerName,
 	})
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"payment": newPaymentResponse(payment),
@@ -1271,4 +1292,143 @@ func (s *server) handleGetShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, newShiftResponse(sh))
+}
+
+// ─────────────────────────── Invoice Validation ───────────────────────────────
+
+func (s *server) handleValidateInvoice(w http.ResponseWriter, r *http.Request) {
+	invID := r.PathValue("id")
+	if invID == "" {
+		writeError(w, r, http.StatusBadRequest, "bad_request", "invoice id required")
+		return
+	}
+	u := userFromContext(r.Context())
+	if u == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "missing user")
+		return
+	}
+	if err := s.store.ValidateInvoice(r.Context(), invID, u.ID); err != nil {
+		if errors.Is(err, store.ErrValidationNotEligible) {
+			writeError(w, r, http.StatusConflict, "validation_not_eligible", "record at least one payment before sign-off")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	s.recordAudit(r, domain.ActionBillingInvoiceValidate, "invoice", invID, nil, map[string]any{"validatedBy": u.ID})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "validated"})
+}
+
+// ─────────────────────────── Invoice Update (super admin) ─────────────────────
+
+type updateInvoiceRequest struct {
+	Subtotal             float64  `json:"subtotal"`
+	DiscountAmount       float64  `json:"discountAmount"`
+	TaxAmount            float64  `json:"taxAmount"`
+	TotalAmount          float64  `json:"totalAmount"`
+	PaymentPlan          string   `json:"paymentPlan"`
+	InstallmentAmount    *float64 `json:"installmentAmount"`
+	InstallmentFrequency string   `json:"installmentFrequency"`
+	UpdateReason         string   `json:"updateReason"`
+}
+
+func (s *server) handleUpdateInvoice(w http.ResponseWriter, r *http.Request) {
+	invID := r.PathValue("id")
+	if invID == "" {
+		writeError(w, r, http.StatusBadRequest, "bad_request", "invoice id required")
+		return
+	}
+	var req updateInvoiceRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	u := userFromContext(r.Context())
+	if u == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "missing user")
+		return
+	}
+	p := store.UpdateInvoiceParams{
+		Subtotal:             req.Subtotal,
+		DiscountAmount:       req.DiscountAmount,
+		TaxAmount:            req.TaxAmount,
+		TotalAmount:          req.TotalAmount,
+		PaymentPlan:          req.PaymentPlan,
+		InstallmentAmount:    req.InstallmentAmount,
+		InstallmentFrequency: req.InstallmentFrequency,
+		UpdateReason:         req.UpdateReason,
+		UpdatedBy:            u.ID,
+	}
+	if err := s.store.UpdateInvoice(r.Context(), invID, p); err != nil {
+		if errors.Is(err, store.ErrInvalidBillingTransition) {
+			writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid bill update or installment plan")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	s.recordAudit(r, domain.ActionBillingInvoiceUpdate, "invoice", invID, nil, map[string]any{"reason": req.UpdateReason})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+// ─────────────────────────── Patient Balance ─────────────────────────────────
+
+func (s *server) handleGetPatientBalance(w http.ResponseWriter, r *http.Request) {
+	patientID := r.PathValue("id")
+	if patientID == "" {
+		writeError(w, r, http.StatusBadRequest, "bad_request", "patient id required")
+		return
+	}
+	result, err := s.store.PatientBalance(r.Context(), patientID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// ─────────────────────────── Doctor's Patients Bills ─────────────────────────
+
+func (s *server) handleGetDoctorsPatientsBills(w http.ResponseWriter, r *http.Request) {
+	u := userFromContext(r.Context())
+	if u == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "missing user")
+		return
+	}
+	result, err := s.store.DoctorsPatientsBills(r.Context(), u.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// ─────────────────────────── Auto-Invoice from Order ────────────────────────
+
+// handleAutoInvoiceFromOrder creates an invoice from an order, auto-matching
+// price list items. The doctor confirms the charge before it is created.
+func (s *server) handleAutoInvoiceFromOrder(w http.ResponseWriter, r *http.Request) {
+	orderID := r.PathValue("id")
+	if orderID == "" {
+		writeError(w, r, http.StatusBadRequest, "bad_request", "order id required")
+		return
+	}
+	u := userFromContext(r.Context())
+	if u == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "missing user")
+		return
+	}
+	invoice, err := s.store.CreateInvoiceFromOrder(r.Context(), orderID, u.ID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", err.Error())
+			return
+		}
+		writeError(w, r, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	s.recordAudit(r, domain.ActionBillingInvoiceCreate, "invoice", invoice.ID, nil, map[string]any{
+		"invoiceNo": invoice.InvoiceNo, "orderID": orderID, "total": invoice.TotalAmount,
+	})
+	writeJSON(w, http.StatusCreated, newInvoiceResponse(invoice))
 }

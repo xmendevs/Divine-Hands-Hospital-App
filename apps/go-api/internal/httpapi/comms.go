@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
@@ -86,8 +87,14 @@ type messageResponse struct {
 	ChannelID      *string              `json:"channelId,omitempty"`
 	ChannelName    string               `json:"channelName,omitempty"`
 	Body           string               `json:"body"`
+	Priority       string               `json:"priority"`
+	ReplyToID      *string              `json:"replyToId,omitempty"`
+	EditedAt       *string              `json:"editedAt,omitempty"`
+	IsDeleted      bool                 `json:"isDeleted"`
 	CreatedAt      string               `json:"createdAt"`
 	Attachments    []attachmentResponse `json:"attachments"`
+	ReadBy         []string             `json:"readBy,omitempty"`
+	ReplyCount     int                  `json:"replyCount,omitempty"`
 }
 
 func newMessageResponse(m *domain.Message) messageResponse {
@@ -98,10 +105,16 @@ func newMessageResponse(m *domain.Message) messageResponse {
 		SenderName:     m.SenderName,
 		SenderUsername: m.SenderUsername,
 		RecipientID:    m.RecipientID,
+		Priority:       m.Priority,
+		IsDeleted:      m.IsDeleted,
+		ReadBy:         m.ReadBy,
+		ReplyCount:     m.ReplyCount,
 		RecipientName:  m.RecipientName,
 		ChannelID:      m.ChannelID,
 		ChannelName:    m.ChannelName,
 		Body:           m.Body,
+		ReplyToID:      m.ReplyToID,
+		EditedAt:       editedAtPtr(m.EditedAt),
 		CreatedAt:      m.CreatedAt.UTC().Format(timeRFC3339),
 		Attachments:    []attachmentResponse{},
 	}
@@ -415,8 +428,9 @@ func (s *server) handleListChannelMessages(w http.ResponseWriter, r *http.Reques
 }
 
 type announcementRequest struct {
-	Body      string `json:"body"`
-	ChannelID string `json:"channelId"`
+	Body        string                   `json:"body"`
+	ChannelID   string                   `json:"channelId"`
+	Attachments []domain.MessageAttachment `json:"attachments,omitempty"`
 }
 
 // handleCreateAnnouncement posts an announcement (global or channel-scoped).
@@ -435,7 +449,7 @@ func (s *server) handleCreateAnnouncement(w http.ResponseWriter, r *http.Request
 	if req.ChannelID != "" {
 		channelID = &req.ChannelID
 	}
-	m, err := s.store.CreateAnnouncement(r.Context(), actor.ID, channelID, req.Body)
+	m, err := s.store.CreateAnnouncement(r.Context(), actor.ID, channelID, req.Body, req.Attachments)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
@@ -568,4 +582,349 @@ func (s *server) handleRunRetention(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"messagesPurged": messages, "notificationsPurged": notifications,
 	})
+}
+
+// ---- Enterprise Comms Handlers ----
+
+func editedAtPtr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.UTC().Format(timeRFC3339)
+	return &s
+}
+
+type markReadRequest struct {
+	MessageIDs []string `json:"messageIds"`
+}
+
+// handleMarkMessagesRead marks messages as read.
+func (s *server) handleMarkMessagesRead(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	var req markReadRequest
+	if err := decodeJSON(r, &req); err != nil || len(req.MessageIDs) == 0 {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "messageIds is required")
+		return
+	}
+	if err := s.store.MarkMessagesRead(r.Context(), actor.ID, req.MessageIDs); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"marked": len(req.MessageIDs)})
+}
+
+// handleMarkConversationRead marks all DM messages as read for a peer.
+func (s *server) handleMarkConversationRead(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	peerID := r.URL.Query().Get("peerId")
+	if peerID == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "peerId is required")
+		return
+	}
+	if err := s.store.MarkConversationRead(r.Context(), actor.ID, peerID); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleMarkChannelRead marks all channel messages as read.
+func (s *server) handleMarkChannelRead(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	channelID := r.PathValue("id")
+	if err := s.store.MarkChannelRead(r.Context(), actor.ID, channelID); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleGetUnreadCounts returns unread counts for the current user.
+func (s *server) handleGetUnreadCounts(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	dm, ch, total, err := s.store.GetUnreadCounts(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"dm":        dm,
+		"channels":   ch,
+		"total":      total,
+	})
+}
+
+// handleSetTypingIndicator records that the user is typing.
+func (s *server) handleSetTypingIndicator(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	var req struct {
+		ChannelID *string `json:"channelId"`
+		PeerID    *string `json:"peerId"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request")
+		return
+	}
+	if err := s.store.SetTypingIndicator(r.Context(), actor.ID, req.ChannelID, req.PeerID); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleGetTypingIndicators returns who is currently typing.
+func (s *server) handleGetTypingIndicators(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	channelID := r.URL.Query().Get("channelId")
+	peerID := r.URL.Query().Get("peerId")
+	var chID, pID *string
+	if channelID != "" {
+		chID = &channelID
+	}
+	if peerID != "" {
+		pID = &peerID
+	}
+	names, err := s.store.GetTypingIndicators(r.Context(), actor.ID, chID, pID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"typingUserIds": names,
+		"count":         len(names),
+	})
+}
+
+type editMessageRequest struct {
+	Body string `json:"body"`
+}
+
+// handleEditMessage edits a message (sender only).
+func (s *server) handleEditMessage(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	id := r.PathValue("id")
+	var req editMessageRequest
+	if err := decodeJSON(r, &req); err != nil || req.Body == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "body is required")
+		return
+	}
+	if err := s.store.EditMessage(r.Context(), id, actor.ID, req.Body); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "message not found or not yours")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionCommsMessageSend, "comms_message", id, nil, map[string]any{"action": "edit"})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleDeleteMessage soft-deletes a message (sender only).
+func (s *server) handleDeleteMessage(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	id := r.PathValue("id")
+	if err := s.store.SoftDeleteMessage(r.Context(), id, actor.ID); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "message not found or not yours")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionCommsMessageSend, "comms_message", id, nil, map[string]any{"action": "delete"})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleGetThreadReplies returns replies to a parent message.
+func (s *server) handleGetThreadReplies(w http.ResponseWriter, r *http.Request) {
+	parentID := r.PathValue("id")
+	limit, offset := pagination(r)
+	msgs, err := s.store.GetThreadReplies(r.Context(), parentID, limit, offset)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]messageResponse, 0, len(msgs))
+	for i := range msgs {
+		out = append(out, newMessageResponse(&msgs[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type searchMessagesRequest struct {
+	Query  string `json:"query"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
+}
+
+// handleSearchMessages allows authenticated users to search their accessible messages.
+func (s *server) handleSearchMessages(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		var req searchMessagesRequest
+		if decodeJSON(r, &req) == nil && req.Query != "" {
+			query = req.Query
+		}
+	}
+	if query == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "q is required")
+		return
+	}
+	limit, offset := pagination(r)
+	msgs, err := s.store.SearchUserMessages(r.Context(), actor.ID, query, limit, offset)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]messageResponse, 0, len(msgs))
+	for i := range msgs {
+		out = append(out, newMessageResponse(&msgs[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type notifPrefsRequest struct {
+	InApp   bool `json:"inApp"`
+	Sound   bool `json:"sound"`
+	Desktop bool `json:"desktop"`
+}
+
+// handleGetNotificationPrefs returns the user's notification preferences.
+func (s *server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	inApp, sound, desktop, err := s.store.GetNotificationPrefs(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, notifPrefsRequest{InApp: inApp, Sound: sound, Desktop: desktop})
+}
+
+// handleUpdateNotificationPrefs saves the user's notification preferences.
+func (s *server) handleUpdateNotificationPrefs(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	var req notifPrefsRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request")
+		return
+	}
+	if err := s.store.UpsertNotificationPrefs(r.Context(), actor.ID, req.InApp, req.Sound, req.Desktop); err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ---- Call Log Handlers ----
+
+type callLogResponse struct {
+	ID              string  `json:"id"`
+	CallerID        string  `json:"callerId"`
+	CalleeID        *string `json:"calleeId,omitempty"`
+	ChannelID       *string `json:"channelId,omitempty"`
+	CallType        string  `json:"callType"`
+	Direction       string  `json:"direction"`
+	Status          string  `json:"status"`
+	DurationSeconds int     `json:"durationSeconds"`
+	StartedAt       string  `json:"startedAt"`
+	AnsweredAt      *string `json:"answeredAt,omitempty"`
+	EndedAt         *string `json:"endedAt,omitempty"`
+	CallerName      string  `json:"callerName"`
+	CalleeName      string  `json:"calleeName,omitempty"`
+}
+
+func newCallLogResponse(cl *domain.CallLog) callLogResponse {
+	out := callLogResponse{
+		ID:              cl.ID,
+		CallerID:        cl.CallerID,
+		CalleeID:        cl.CalleeID,
+		ChannelID:       cl.ChannelID,
+		CallType:        cl.CallType,
+		Direction:       cl.Direction,
+		Status:          cl.Status,
+		DurationSeconds: cl.DurationSeconds,
+		StartedAt:       cl.StartedAt.UTC().Format(timeRFC3339),
+		CallerName:      cl.CallerName,
+		CalleeName:      cl.CalleeName,
+	}
+	if cl.AnsweredAt != nil {
+		s := cl.AnsweredAt.UTC().Format(timeRFC3339)
+		out.AnsweredAt = &s
+	}
+	if cl.EndedAt != nil {
+		s := cl.EndedAt.UTC().Format(timeRFC3339)
+		out.EndedAt = &s
+	}
+	return out
+}
+
+type startCallRequest struct {
+	CalleeID string `json:"calleeId"`
+	CallType string `json:"callType"` // voice or video
+}
+
+// handleStartCall creates a new call log entry.
+func (s *server) handleStartCall(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	var req startCallRequest
+	if err := decodeJSON(r, &req); err != nil || req.CalleeID == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "calleeId is required")
+		return
+	}
+	callType := req.CallType
+	if callType != "voice" && callType != "video" {
+		callType = "voice"
+	}
+	cl, err := s.store.CreateCallLog(r.Context(), actor.ID, &req.CalleeID, nil, callType, "outgoing", "missed")
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionCommsMessageSend, "comms_call_log", cl.ID, &req.CalleeID, map[string]any{"callType": callType, "action": "start"})
+	writeJSON(w, http.StatusCreated, newCallLogResponse(cl))
+}
+
+type updateCallRequest struct {
+	Status          string `json:"status"`
+	DurationSeconds int    `json:"durationSeconds"`
+}
+
+// handleUpdateCall updates a call log (answer, reject, end).
+func (s *server) handleUpdateCall(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req updateCallRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request")
+		return
+	}
+	now := time.Now()
+	var answeredAt *time.Time
+	if req.Status == "answered" {
+		answeredAt = &now
+	}
+	err := s.store.UpdateCallLogStatus(r.Context(), id, req.Status, req.DurationSeconds, answeredAt, &now)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionCommsMessageSend, "comms_call_log", id, nil, map[string]any{"status": req.Status, "duration": req.DurationSeconds})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleListCallLogs returns call logs for the current user.
+func (s *server) handleListCallLogs(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	limit, offset := pagination(r)
+	logs, err := s.store.ListCallLogs(r.Context(), actor.ID, limit, offset)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]callLogResponse, 0, len(logs))
+	for i := range logs {
+		out = append(out, newCallLogResponse(&logs[i]))
+	}
+	writeJSON(w, http.StatusOK, out)
 }

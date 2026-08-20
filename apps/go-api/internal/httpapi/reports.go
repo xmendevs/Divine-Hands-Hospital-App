@@ -123,6 +123,37 @@ func (s *server) handleMyReport(w http.ResponseWriter, r *http.Request) {
 	s.recordAudit(r, domain.ActionReportViewed, "reports.my", "", nil, map[string]any{"role": roles[0].Code})
 }
 
+// handleDoctorReport returns the doctor workload report for the caller. It is
+// available to doctors and super-admins (who can access everything), so the
+// Clinical page's workload dashboard works for the super-admin too.
+func (s *server) handleDoctorReport(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	roles, err := s.store.GetUserRoles(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	allowed := false
+	for _, rl := range roles {
+		if rl.Code == "doctor" || rl.Code == "super_admin" {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		writeError(w, r, http.StatusForbidden, "forbidden", "doctor workload is available to doctors and super-admins")
+		return
+	}
+	rep, err := s.store.DoctorReport(r.Context(), actor.ID)
+	if err != nil {
+		s.logger.Error("doctor report failed", "error", err)
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionReportViewed, "reports.doctor", "", nil, map[string]any{"role": "doctor"})
+	writeJSON(w, http.StatusOK, rep)
+}
+
 // handleExportReport streams a permission-controlled report export. Sensitive
 // exports are audited with the report, format and row count.
 func (s *server) handleExportReport(w http.ResponseWriter, r *http.Request) {
