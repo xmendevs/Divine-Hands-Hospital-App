@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../auth/AuthContext";
 import {
   theme,
   Button,
@@ -181,7 +182,19 @@ function StatCard({
 /* ------------------------------------------------------------------ */
 
 export default function AttendancePage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
+  const { me } = useAuth();
+
+  /* RBAC: admin roles see all tabs; standard staff see only Clock + Leave */
+  const isAdmin = useMemo(() => {
+    if (!me?.roles) return false;
+    return me.roles.some((r) => r.code === "super_admin" || r.code === "admin" || r.code === "matron" || r.code === "billing_supervisor" || r.code === "lab_supervisor" || r.code === "storekeeper");
+  }, [me]);
+  const isSuperAdmin = useMemo(() => {
+    if (!me?.roles) return false;
+    return me.roles.some((r) => r.code === "super_admin");
+  }, [me]);
+
+  const [activeTab, setActiveTab] = useState<TabKey>(isAdmin ? "dashboard" : "clock");
 
   /* Shared state */
   const [shifts, setShifts] = useState<StaffShift[]>([]);
@@ -268,10 +281,14 @@ export default function AttendancePage() {
   useEffect(() => {
     setLoading(true);
     void (async () => {
-      await Promise.allSettled([loadShifts(), loadDashboard(), loadRecords(), loadReport(), loadLeaveRequests()]);
+      const tasks: Promise<void>[] = [loadShifts(), loadLeaveRequests()];
+      if (isAdmin) {
+        tasks.push(loadDashboard(), loadRecords(), loadReport());
+      }
+      await Promise.allSettled(tasks);
       setLoading(false);
     })();
-  }, [loadShifts, loadDashboard, loadRecords, loadReport, loadLeaveRequests]);
+  }, [loadShifts, loadDashboard, loadRecords, loadReport, loadLeaveRequests, isAdmin]);
 
   /* ---------------------------------------------------------------- */
   /*  Clock in / out                                                   */
@@ -349,14 +366,15 @@ export default function AttendancePage() {
     }
   }
 
-  async function handleReviewLeave(id: string, action: "approved" | "rejected") {
+  async function handleReviewLeave(id: string, action: "approved" | "rejected" | "revert") {
     try {
       await apiFetch(`/attendance/leave/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: action, reviewNotes: action === "approved" ? "Approved" : "Rejected" }),
+        body: JSON.stringify({ action, notes: action === "approved" ? "Approved" : action === "rejected" ? "Rejected" : "Reverted by Super Admin" }),
       });
       await loadLeaveRequests();
-      toast.success(`Leave request ${action}.`);
+      const msg = action === "revert" ? "Leave request reverted to pending." : `Leave request ${action}.`;
+      toast.success(msg);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not review leave request.");
     }
@@ -428,65 +446,87 @@ export default function AttendancePage() {
     },
   ];
 
-  const leaveColumns = [
-    {
-      key: "staff",
-      header: "Staff",
-      render: (r: LeaveRequest) => (
-        <strong style={{ color: theme.text.primary }}>{r.staffName || r.staffId}</strong>
-      ),
-    },
-    {
-      key: "type",
-      header: "Type",
-      render: (r: LeaveRequest) => (
-        <span style={{ textTransform: "capitalize" }}>{r.leaveType}</span>
-      ),
-    },
-    { key: "start", header: "Start", render: (r: LeaveRequest) => fmtDate(r.startDate) },
-    { key: "end", header: "End", render: (r: LeaveRequest) => fmtDate(r.endDate) },
-    {
-      key: "reason",
-      header: "Reason",
-      render: (r: LeaveRequest) => (
-        <span style={{ color: theme.text.secondary, maxWidth: 200, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {r.reason}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (r: LeaveRequest) => (
-        <StatusBadge variant={statusVariant(r.status)} label={r.status} />
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      render: (r: LeaveRequest) =>
-        r.status === "pending" ? (
-          <div style={{ display: "flex", gap: theme.spacing["1"] }}>
-            <Button
-              size="sm"
-              style={{ background: theme.action.success, color: "#fff", fontSize: theme.fontSize.xs }}
-              onClick={() => void handleReviewLeave(r.id, "approved")}
-            >
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              style={{ background: theme.action.danger, color: "#fff", fontSize: theme.fontSize.xs }}
-              onClick={() => void handleReviewLeave(r.id, "rejected")}
-            >
-              Reject
-            </Button>
-          </div>
-        ) : (
-          <span style={{ color: theme.text.muted, fontSize: theme.fontSize.xs }}>\u2014</span>
+  const leaveColumns = useMemo(() => {
+    const cols: { key: string; header: string; render?: (r: LeaveRequest) => React.ReactNode }[] = [];
+    if (isAdmin) {
+      cols.push({
+        key: "staff",
+        header: "Staff",
+        render: (r: LeaveRequest) => (
+          <strong style={{ color: theme.text.primary }}>{r.staffName || r.staffId}</strong>
         ),
-    },
-  ];
+      });
+    }
+    cols.push(
+      {
+        key: "type",
+        header: "Type",
+        render: (r: LeaveRequest) => (
+          <span style={{ textTransform: "capitalize" }}>{r.leaveType}</span>
+        ),
+      },
+      { key: "start", header: "Start", render: (r: LeaveRequest) => fmtDate(r.startDate) },
+      { key: "end", header: "End", render: (r: LeaveRequest) => fmtDate(r.endDate) },
+      {
+        key: "reason",
+        header: "Reason",
+        render: (r: LeaveRequest) => (
+          <span style={{ color: theme.text.secondary, maxWidth: 200, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {r.reason}
+          </span>
+        ),
+      },
+      {
+        key: "status",
+        header: "Status",
+        render: (r: LeaveRequest) => (
+          <StatusBadge variant={statusVariant(r.status)} label={r.status} />
+        ),
+      },
+    );
+    if (isAdmin) {
+      cols.push({
+        key: "actions",
+        header: "",
+        render: (r: LeaveRequest) => {
+          if (r.status === "pending") {
+            return (
+              <div style={{ display: "flex", gap: theme.spacing["1"] }}>
+                <Button
+                  size="sm"
+                  style={{ background: theme.action.success, color: "#fff", fontSize: theme.fontSize.xs }}
+                  onClick={() => void handleReviewLeave(r.id, "approved")}
+                >
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  style={{ background: theme.action.danger, color: "#fff", fontSize: theme.fontSize.xs }}
+                  onClick={() => void handleReviewLeave(r.id, "rejected")}
+                >
+                  Reject
+                </Button>
+              </div>
+            );
+          }
+          /* Super Admin can revert approved/rejected back to pending */
+          if (isSuperAdmin && (r.status === "approved" || r.status === "rejected")) {
+            return (
+              <Button
+                size="sm"
+                style={{ background: "#f59e0b", color: "#fff", fontSize: theme.fontSize.xs }}
+                onClick={() => void handleReviewLeave(r.id, "revert")}
+              >
+                Call Back
+              </Button>
+            );
+          }
+          return <span style={{ color: theme.text.muted, fontSize: theme.fontSize.xs }}>\u2014</span>;
+        },
+      });
+    }
+    return cols;
+  }, [isAdmin]);
 
   const reportColumns = [
     { key: "staff", header: "Staff", render: (r: ReportRow) => <strong>{r.staffName}</strong> },
@@ -512,7 +552,10 @@ export default function AttendancePage() {
     <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["5"] }}>
       <PageHeader
         title="Attendance & Clock In/Out"
-        description="Enterprise attendance management: clock in/out, leave requests, records, analytics, and export."
+        description={isAdmin
+          ? "Enterprise attendance management: clock in/out, leave requests, records, analytics, and export."
+          : "Clock in/out and manage your leave requests."
+        }
         badge={
           dashboard ? (
             <StatusBadge
@@ -524,16 +567,27 @@ export default function AttendancePage() {
       />
 
       <TabNav
-        tabs={[
-          { key: "dashboard", label: "Dashboard" },
-          { key: "clock", label: "Clock In / Out" },
-          { key: "leave", label: "Leave Requests" },
-          { key: "records", label: "Records" },
-          { key: "analytics", label: "Analytics" },
-          { key: "export", label: "Export" },
-        ]}
+        tabs={isAdmin
+          ? [
+              { key: "dashboard", label: "Dashboard" },
+              { key: "clock", label: "Clock In / Out" },
+              { key: "leave", label: "Leave Requests" },
+              { key: "records", label: "Records" },
+              { key: "analytics", label: "Analytics" },
+              { key: "export", label: "Export" },
+            ]
+          : [
+              { key: "clock", label: "Clock In / Out" },
+              { key: "leave", label: "My Leave Requests" },
+            ]
+        }
         active={activeTab}
-        onChange={(k) => setActiveTab(k as TabKey)}
+        onChange={(k) => {
+          const next = k as TabKey;
+          /* Prevent non-admins from navigating to restricted tabs via code */
+          if (!isAdmin && (next === "dashboard" || next === "records" || next === "analytics" || next === "export")) return;
+          setActiveTab(next);
+        }}
       />
 
       {error && (
@@ -543,9 +597,9 @@ export default function AttendancePage() {
       )}
 
       {/* ============================================================ */}
-      {/*  TAB: Dashboard                                              */}
+      {/*  TAB: Dashboard (admin only)                                 */}
       {/* ============================================================ */}
-      {activeTab === "dashboard" && (
+      {activeTab === "dashboard" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: theme.spacing["3"] }}>
             <StatCard icon="users" label="Total Staff" value={dashboard?.totalStaff ?? "\u2014"} color={theme.action.primary} />
@@ -770,7 +824,7 @@ export default function AttendancePage() {
 
           <Card bodyStyle={{ padding: 0 }}>
             <div style={{ padding: `${theme.spacing["3"]} ${theme.spacing["4"]}`, borderBottom: `1px solid ${theme.surface.border}` }}>
-              <strong style={{ color: theme.text.primary }}>Leave Requests</strong>
+              <strong style={{ color: theme.text.primary }}>{isAdmin ? "Leave Requests" : "My Leave Requests"}</strong>
               <span style={{ marginLeft: theme.spacing["2"], color: theme.text.muted, fontSize: theme.fontSize.sm }}>
                 ({leaveRequests.length} total)
               </span>
@@ -787,9 +841,9 @@ export default function AttendancePage() {
       )}
 
       {/* ============================================================ */}
-      {/*  TAB: Records                                                */}
+      {/*  TAB: Records (admin only)                                   */}
       {/* ============================================================ */}
-      {activeTab === "records" && (
+      {activeTab === "records" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
           <Card bodyStyle={{ padding: theme.spacing["4"] }}>
             <div style={{ display: "flex", gap: theme.spacing["3"], alignItems: "flex-end", maxWidth: 320 }}>
@@ -811,9 +865,9 @@ export default function AttendancePage() {
       )}
 
       {/* ============================================================ */}
-      {/*  TAB: Analytics                                              */}
+      {/*  TAB: Analytics (admin only)                                 */}
       {/* ============================================================ */}
-      {activeTab === "analytics" && (
+      {activeTab === "analytics" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"] }}>
           <Card title="Attendance Analytics" hint="Daily report and attendance patterns.">
             <div style={{ display: "flex", gap: theme.spacing["3"], alignItems: "flex-end", maxWidth: 320, marginBottom: theme.spacing["4"] }}>
@@ -870,9 +924,9 @@ export default function AttendancePage() {
       )}
 
       {/* ============================================================ */}
-      {/*  TAB: Export                                                 */}
+      {/*  TAB: Export (admin only)                                    */}
       {/* ============================================================ */}
-      {activeTab === "export" && (
+      {activeTab === "export" && isAdmin && (
         <div style={{ display: "flex", flexDirection: "column", gap: theme.spacing["4"], maxWidth: 480 }}>
           <Card title="Export Attendance Data" hint="Download attendance records as a CSV file for a given month.">
             <FormField label="Month" required>

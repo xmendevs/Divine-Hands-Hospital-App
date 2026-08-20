@@ -740,3 +740,49 @@ Template for new entries:
 - **Status:** Applied
 
 ---
+
+## Fix #18 — Attendance & Clock In/Out: enterprise upgrade (6-tab module, dashboard, leave management, analytics, export)
+
+- **Date:** 2026-08-20
+- **Area:** Attendance & Clock In/Out module (frontend + backend + database)
+- **Issue:** The Attendance module had only 3 basic tabs (Clock In/Out, Attendance Records, Daily Report) with no dashboard stats, no leave request system, no analytics, and no CSV export. All operational roles had no `attendance.view` permission, so non-admin users couldn't access any attendance features at all.
+- **Fix:**
+  - **Migration 0042** (`0042_attendance_enterprise.up.sql`): Creates `leave_requests` table. Adds `overtime_minutes` column to `attendance_records`.
+  - **Backend `attendance.go`**: Added 5 new HTTP handlers: `handleAttendanceDashboard`, `handleListLeaveRequests`, `handleCreateLeaveRequest`, `handleReviewLeaveRequest`, `handleExportAttendance`.
+  - **Backend `store/attendance.go`**: Added `GetAttendanceDashboard`, `ListLeaveRequests`, `CreateLeaveRequest`, `UpdateLeaveRequestStatus` store methods.
+  - **Backend `domain.go`**: Added `LeaveRequest` struct. Added `OvertimeMinutes` field to `AttendanceRecord`.
+  - **Backend `router.go`**: Registered all new routes with proper permission guards.
+  - **Frontend `AttendancePage.tsx`**: Complete rewrite with 6 enterprise tabs — Dashboard, Clock In/Out, Leave Requests, Records, Analytics, Export.
+  - **Permission fix**: Granted `attendance.view` to all 8 operational roles.
+- **Files:**
+  - `db/migrations/0042_attendance_enterprise.up.sql` (new)
+  - `db/migrations/0042_attendance_enterprise.down.sql` (new)
+  - `apps/go-api/internal/domain/domain.go`
+  - `apps/go-api/internal/httpapi/attendance.go`
+  - `apps/go-api/internal/store/attendance.go`
+  - `apps/go-api/internal/httpapi/router.go`
+  - `apps/desktop/src/pages/AttendancePage.tsx`
+- **Verified:** `tsc --noEmit` 0 errors; `vitest run` 3/3 tests pass; `go build ./...` clean; API tested with curl against doctor1/nurse1/pharmacist1.
+- **Status:** Applied
+
+---
+
+## Fix #19 — Attendance RBAC: role-based tab visibility + super admin-only leave management + Call Back/Revert
+
+- **Date:** 2026-08-20
+- **Area:** Attendance module — RBAC enforcement (frontend + backend)
+- **Issue:** Three problems: (1) All 6 attendance tabs were visible to every role regardless of seniority. (2) The approve/reject action for leave requests had no role restriction and the action value mismatch (`"approved"` vs `"approve"`) caused all clicks to fail. (3) No way for super admin to call back or revert an already-processed leave decision.
+- **Fix:**
+  - **Backend `middleware_auth.go`**: Added `requireAttendanceAdmin` middleware + `attendanceAdmin` helper.
+  - **Backend `router.go`**: Changed 4 endpoints from `perm("attendance.view")` to `attendanceAdmin()`: GET /attendance, GET /attendance/report, GET /attendance/dashboard, GET /attendance/export.
+  - **Backend `attendance.go`**: Moved super_admin check to top of `handleReviewLeaveRequest` so it applies to ALL actions. Fixed switch to accept both `"approve"`/`"approved"` and `"reject"`/`"rejected"`. Added `"revert"` action.
+  - **Frontend `AttendancePage.tsx`**: Added `isAdmin` and `isSuperAdmin` flags. Standard staff see only Clock In/Out + My Leave Requests. Admin sees all 6 tabs. SuperAdmin sees amber "Call Back" button on processed requests.
+- **Files:**
+  - `apps/go-api/internal/httpapi/middleware_auth.go`
+  - `apps/go-api/internal/httpapi/router.go`
+  - `apps/go-api/internal/httpapi/attendance.go`
+  - `apps/desktop/src/pages/AttendancePage.tsx`
+- **Verified:** `tsc --noEmit` 0 errors; `vitest run` 3/3 tests pass; `go build ./...` clean. API tested: doctor1 gets 403 on dashboard/records/report/export/approve; matron1 gets 403 on approve; superadmin approve/revert/reject all return 204.
+- **Status:** Applied
+
+---

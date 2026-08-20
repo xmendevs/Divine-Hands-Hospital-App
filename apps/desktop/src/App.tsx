@@ -86,7 +86,7 @@ function AppShell() {
   const [switching, setSwitching] = useState(false);
 
   // Store superadmin credentials for quick switch-back
-  const superAdminCreds = useRef({ username: "superadmin", password: "61922939070a1707696c" });
+  const superAdminCreds = useRef({ username: "superadmin", password: "superadmin" });
 
   const navGroups = useMemo(() => buildNavGroups(me), [me]);
   const isSuperAdmin = hasRole(me, "super_admin");

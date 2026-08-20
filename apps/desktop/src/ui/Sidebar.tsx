@@ -34,13 +34,9 @@ interface TestAccount {
 }
 
 const TEST_ACCOUNTS: TestAccount[] = [
-  { username: "doctor1", label: "Dr. Chidi Okonkwo", role: "Doctor", password: "Doctor123!" },
-  { username: "nurse1", label: "Adaeze Nwosu", role: "Nurse", password: "Nurse123!" },
-  { username: "matron1", label: "Chief Ngozi Eze", role: "Matron", password: "Matron123!" },
-  { username: "pharmacist1", label: "Emeka Adeyemi", role: "Pharmacist", password: "Pharm123!" },
-  { username: "cashier1", label: "Funke Adeyemi", role: "Cashier", password: "Cashier123!" },
-  { username: "labtech1", label: "Tunde Bakare", role: "Lab Tech", password: "LabTech123!" },
-  { username: "labsupervisor1", label: "Dr. Aisha Mohammed", role: "Lab Supervisor", password: "LabSup123!" },
+  { username: "EMP-0007", label: "Dr. Adebayo Okonkwo", role: "Doctor", password: "doctor1" },
+  { username: "EMP-0002", label: "Nurse Ngozi Okafor", role: "Nurse", password: "nurse1" },
+  { username: "EMP-0011", label: "Pharm. Emeka Adeleke", role: "Pharmacist", password: "pharm1" },
 ];
 
 const navBtnBase: CSSProperties = {

@@ -42,6 +42,10 @@ type Staff struct {
 	ContactEmail     string
 	EmploymentStatus string
 	Availability     string
+	ShiftTag         string  // Night-Only, Day-Only, Afternoon-Only, Flexible
+	CanWorkWeekends  bool
+	MinDaysOff       int
+	MaxDaysOff       int
 	Skills           []string
 	Certifications   []string
 	HireDate         *string // ISO date; nil when none
@@ -67,9 +71,9 @@ type Permission struct {
 }
 
 type Department struct {
-	ID   string
-	Code string
-	Name string
+	ID   string `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type Session struct {
@@ -1736,6 +1740,7 @@ type RosterPlan struct {
 	ApprovedBy           *string
 	ApprovedAt           *time.Time
 	RejectedReason       string
+	IsPublished          bool
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	Assignments          []RosterAssignment

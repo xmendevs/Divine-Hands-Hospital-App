@@ -6,6 +6,7 @@ require (
 	github.com/go-pdf/fpdf v0.9.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/lib/pq v1.10.9
 	github.com/pquerna/otp v1.5.0
 	golang.org/x/crypto v0.55.0
 )

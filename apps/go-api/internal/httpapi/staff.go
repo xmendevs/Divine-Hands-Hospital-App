@@ -22,6 +22,10 @@ type staffResponse struct {
 	ContactEmail     string                   `json:"contactEmail,omitempty"`
 	EmploymentStatus string                   `json:"employmentStatus"`
 	Availability     string                   `json:"availability,omitempty"`
+	ShiftTag         string                   `json:"shiftTag"`
+	CanWorkWeekends  bool                     `json:"canWorkWeekends"`
+	MinDaysOff       int                      `json:"minDaysOff"`
+	MaxDaysOff       int                      `json:"maxDaysOff"`
 	Skills           []string                 `json:"skills,omitempty"`
 	Certifications   []string                 `json:"certifications,omitempty"`
 	HireDate         *string                  `json:"hireDate,omitempty"`
@@ -44,6 +48,10 @@ func newStaffResponse(st *domain.Staff) staffResponse {
 		ContactEmail:     st.ContactEmail,
 		EmploymentStatus: st.EmploymentStatus,
 		Availability:     st.Availability,
+		ShiftTag:         st.ShiftTag,
+		CanWorkWeekends:  st.CanWorkWeekends,
+		MinDaysOff:       st.MinDaysOff,
+		MaxDaysOff:       st.MaxDaysOff,
 		Skills:           st.Skills,
 		Certifications:   st.Certifications,
 		HireDate:         st.HireDate,
@@ -100,6 +108,10 @@ type updateStaffRequest struct {
 	ContactEmail     string   `json:"contactEmail"`
 	EmploymentStatus string   `json:"employmentStatus"`
 	Availability     string   `json:"availability"`
+	ShiftTag         string   `json:"shiftTag"`
+	CanWorkWeekends  *bool    `json:"canWorkWeekends"`
+	MinDaysOff       *int     `json:"minDaysOff"`
+	MaxDaysOff       *int     `json:"maxDaysOff"`
 	Skills           []string `json:"skills"`
 	Certifications   []string `json:"certifications"`
 	HireDate         string   `json:"hireDate"`
@@ -139,6 +151,10 @@ func (s *server) handleUpdateStaff(w http.ResponseWriter, r *http.Request) {
 		ContactEmail:     req.ContactEmail,
 		EmploymentStatus: req.EmploymentStatus,
 		Availability:     req.Availability,
+		ShiftTag:         req.ShiftTag,
+		CanWorkWeekends:  req.CanWorkWeekends,
+		MinDaysOff:       req.MinDaysOff,
+		MaxDaysOff:       req.MaxDaysOff,
 		Skills:           req.Skills,
 		Certifications:   req.Certifications,
 		HireDate:         hireDate,

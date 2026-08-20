@@ -1,0 +1,3 @@
+ALTER TABLE staff DROP COLUMN IF EXISTS can_work_weekends;
+ALTER TABLE staff DROP COLUMN IF EXISTS min_days_off;
+ALTER TABLE staff DROP COLUMN IF EXISTS max_days_off;

@@ -29,7 +29,7 @@ const rosterPlanCols = `rp.id::text, rp.plan_no, rp.name, rp.department_id::text
 	rp.status::text, rp.version, rp.amended_from::text,
 	rp.created_by::text, rp.submitted_by::text, rp.submitted_at,
 	rp.approved_by::text, rp.approved_at, rp.rejected_reason,
-	rp.created_at, rp.updated_at`
+	rp.is_published, rp.created_at, rp.updated_at`
 
 const rosterPlanFrom = ` FROM roster_plans rp LEFT JOIN departments d ON d.id = rp.department_id`
 
@@ -42,7 +42,7 @@ func scanRosterPlan(r pgx.Row) (*domain.RosterPlan, error) {
 		&p.Status, &p.Version, &p.AmendedFrom,
 		&p.CreatedBy, &p.SubmittedBy, &p.SubmittedAt,
 		&p.ApprovedBy, &p.ApprovedAt, &p.RejectedReason,
-		&p.CreatedAt, &p.UpdatedAt)
+		&p.IsPublished, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -252,12 +252,26 @@ type rosterShift struct {
 	Dur     int // minutes
 }
 
+// AssignedShiftInfo holds the published roster assignment for a staff member.
+type AssignedShiftInfo struct {
+	ShiftID   string
+	ShiftCode string
+	ShiftName string
+	StartTime string
+	EndTime   string
+	IsNight   bool
+}
+
 type rosterStaff struct {
-	ID          string
-	EmployeeNo  string
-	Name        string
-	Unavailable map[string]bool // ISO date -> true
-	PrefRank    map[string]int  // shiftID -> rank
+	ID             string
+	EmployeeNo     string
+	Name           string
+	ShiftTag       string           // flexible, day-only, night-only, afternoon-only
+	CanWorkWeekends bool
+	MinDaysOff     int
+	MaxDaysOff     int
+	Unavailable    map[string]bool // ISO date -> true
+	PrefRank       map[string]int  // shiftID -> rank
 }
 
 func parseHHMM(s string) (int, error) {
@@ -302,7 +316,8 @@ func (s *Store) loadRosterShifts(ctx context.Context, plan *domain.RosterPlan) (
 
 func (s *Store) loadRosterStaff(ctx context.Context, plan *domain.RosterPlan) ([]rosterStaff, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, employee_no, first_name || ' ' || last_name
+		SELECT id::text, employee_no, first_name || ' ' || last_name, COALESCE(shift_tag, 'flexible'),
+		       can_work_weekends, min_days_off, max_days_off
 		FROM staff WHERE department_id = $1::uuid AND employment_status = 'active'
 		ORDER BY employee_no ASC`, plan.DepartmentID)
 	if err != nil {
@@ -314,7 +329,7 @@ func (s *Store) loadRosterStaff(ctx context.Context, plan *domain.RosterPlan) ([
 	byID := map[string]*rosterStaff{}
 	for rows.Next() {
 		var st rosterStaff
-		if err := rows.Scan(&st.ID, &st.EmployeeNo, &st.Name); err != nil {
+		if err := rows.Scan(&st.ID, &st.EmployeeNo, &st.Name, &st.ShiftTag, &st.CanWorkWeekends, &st.MinDaysOff, &st.MaxDaysOff); err != nil {
 			return nil, err
 		}
 		st.Unavailable = map[string]bool{}
@@ -407,6 +422,8 @@ type staffState struct {
 	consecutive int
 	nightRun    int
 	weekHours   map[string]float64
+	daysWorked  int
+	daysOff     int
 }
 
 func weekKey(t time.Time) string {
@@ -456,6 +473,32 @@ func generateAssignments(plan *domain.RosterPlan, shifts map[string]rosterShift,
 			for _, st := range states {
 				if st.info.Unavailable[ds] {
 					continue
+				}
+				// Enforce staff shift tag constraints
+				if st.info.ShiftTag == "night-only" && !sh.IsNight {
+					continue
+				}
+				if st.info.ShiftTag == "day-only" && sh.IsNight {
+					continue
+				}
+				if st.info.ShiftTag == "afternoon-only" {
+					// Afternoon = shift starts between 12:00 (720) and 18:00 (1080)
+					if sh.Start < 720 || sh.Start >= 1080 {
+						continue
+					}
+				}
+				// Enforce weekend working rules
+				if !st.info.CanWorkWeekends {
+					weekday := d.Weekday()
+					if weekday == time.Saturday || weekday == time.Sunday {
+						continue
+					}
+				}
+				// Enforce max days off (must work at least totalDays - maxDaysOff)
+				totalDays := int(end.Sub(start).Hours()/24) + 1
+				minWorkDays := totalDays - st.info.MaxDaysOff
+				if minWorkDays > 0 && st.daysWorked >= minWorkDays {
+					continue // has met minimum work requirement, skip for days off
 				}
 				nextConsecutive := 1
 				if !st.lastDate.IsZero() && d.Equal(st.lastDate.AddDate(0, 0, 1)) {
@@ -507,6 +550,7 @@ func generateAssignments(plan *domain.RosterPlan, shifts map[string]rosterShift,
 				st := c.st
 				out = append(out, assignmentInput{StaffID: st.info.ID, ShiftID: sh.ID, WorkDate: ds})
 				st.totalHours += float64(sh.Dur) / 60
+				st.daysWorked++
 				st.lastDate = d
 				st.lastEndAbs = sh.EndAbs
 				st.consecutive = c.nextConsecutive
@@ -575,7 +619,7 @@ func (s *Store) UpsertRosterAssignment(ctx context.Context, planID, staffID, shi
 	if err != nil {
 		return nil, err
 	}
-	if plan.Status != domain.RosterStatusDraft {
+	if plan.Status != domain.RosterStatusDraft && plan.Status != domain.RosterStatusApproved {
 		return nil, ErrRosterNotDraft
 	}
 	var id string
@@ -594,16 +638,35 @@ func (s *Store) UpsertRosterAssignment(ctx context.Context, planID, staffID, shi
 	return a, nil
 }
 
-// DeleteRosterAssignment removes an assignment (draft only).
+// DeleteRosterAssignment removes an assignment (draft or approved).
 func (s *Store) DeleteRosterAssignment(ctx context.Context, planID, assignmentID string) error {
 	plan, err := s.getRosterPlanBase(ctx, planID)
 	if err != nil {
 		return err
 	}
-	if plan.Status != domain.RosterStatusDraft {
+	if plan.Status != domain.RosterStatusDraft && plan.Status != domain.RosterStatusApproved {
 		return ErrRosterNotDraft
 	}
 	ct, err := s.pool.Exec(ctx, `DELETE FROM roster_assignments WHERE id = $1::uuid AND plan_id = $2::uuid`, assignmentID, planID)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteRosterAssignmentByStaffDate removes an assignment by staff and date.
+func (s *Store) DeleteRosterAssignmentByStaffDate(ctx context.Context, planID, staffID, workDate string) error {
+	plan, err := s.getRosterPlanBase(ctx, planID)
+	if err != nil {
+		return err
+	}
+	if plan.Status != domain.RosterStatusDraft && plan.Status != domain.RosterStatusApproved {
+		return ErrRosterNotDraft
+	}
+	ct, err := s.pool.Exec(ctx, `DELETE FROM roster_assignments WHERE plan_id = $1::uuid AND staff_id = $2::uuid AND work_date = $3`, planID, staffID, workDate)
 	if err != nil {
 		return err
 	}
@@ -749,4 +812,38 @@ func (s *Store) AmendRoster(ctx context.Context, planID, createdBy string) (*dom
 		return nil, err
 	}
 	return s.GetRosterPlan(ctx, id)
+}
+
+// PublishRosterPlan marks an approved plan as published (live).
+func (s *Store) PublishRosterPlan(ctx context.Context, planID, publishedBy string) error {
+	ct, err := s.pool.Exec(ctx, `
+		UPDATE roster_plans SET is_published = TRUE, published_by = $2::uuid,
+		       published_at = now(), updated_at = now()
+		WHERE id = $1::uuid`, planID, publishedBy)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetAssignedShiftForToday returns the staff member's assigned shift from a published roster.
+func (s *Store) GetAssignedShiftForToday(ctx context.Context, staffID, date string) (*AssignedShiftInfo, error) {
+	var info AssignedShiftInfo
+	err := s.pool.QueryRow(ctx, `
+		SELECT ra.shift_id::text, COALESCE(ss.code, ''), COALESCE(ss.name, ''),
+		       to_char(ss.start_time, 'HH24:MI'), to_char(ss.end_time, 'HH24:MI'), ss.is_night
+		FROM roster_assignments ra
+		JOIN roster_plans rp ON rp.id = ra.plan_id
+		JOIN staff_shifts ss ON ss.id = ra.shift_id
+		WHERE ra.staff_id = $1::uuid AND ra.work_date = $2::date
+		  AND rp.status = 'approved'
+		LIMIT 1`, staffID, date).Scan(
+		&info.ShiftID, &info.ShiftCode, &info.ShiftName, &info.StartTime, &info.EndTime, &info.IsNight)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
 }

@@ -580,11 +580,12 @@ func (s *server) handleListLeaveRequests(w http.ResponseWriter, r *http.Request)
 }
 
 type reviewLeaveRequest struct {
-	Action string `json:"action"` // "approve" or "reject"
+	Action string `json:"action"` // "approve", "reject", or "revert"
 	Notes  string `json:"notes"`
 }
 
-// handleReviewLeaveRequest approves or rejects a leave request.
+// handleReviewLeaveRequest approves, rejects, or reverts a leave request.
+// Only super_admin can approve, reject, or revert leave requests.
 func (s *server) handleReviewLeaveRequest(w http.ResponseWriter, r *http.Request) {
 	actor := userFromContext(r.Context())
 	id := r.PathValue("id")
@@ -593,10 +594,38 @@ func (s *server) handleReviewLeaveRequest(w http.ResponseWriter, r *http.Request
 		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
 		return
 	}
-	status := "approved"
-	if req.Action == "reject" {
-		status = "rejected"
+
+	// Only super_admin can approve, reject, or revert leave requests
+	roles, err := s.store.GetUserRoles(r.Context(), actor.ID)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
 	}
+	isSuperAdmin := false
+	for _, rl := range roles {
+		if rl.Code == "super_admin" {
+			isSuperAdmin = true
+			break
+		}
+	}
+	if !isSuperAdmin {
+		writeError(w, r, http.StatusForbidden, "forbidden", "only super admin can manage leave requests")
+		return
+	}
+
+	var status string
+	switch req.Action {
+	case "approve", "approved":
+		status = "approved"
+	case "reject", "rejected":
+		status = "rejected"
+	case "revert":
+		status = "pending"
+	default:
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "action must be approve, reject, or revert")
+		return
+    }
+
 	if err := s.store.ReviewLeaveRequest(r.Context(), id, actor.ID, status, req.Notes); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			writeError(w, r, http.StatusNotFound, "not_found", "leave request not found")

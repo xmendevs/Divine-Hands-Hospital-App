@@ -53,6 +53,7 @@ type rosterPlanResponse struct {
 	ApprovedBy           *string                         `json:"approvedBy,omitempty"`
 	ApprovedAt           *string                         `json:"approvedAt,omitempty"`
 	RejectedReason       string                          `json:"rejectedReason,omitempty"`
+	IsPublished          bool                            `json:"isPublished"`
 	CreatedAt            string                          `json:"createdAt"`
 	UpdatedAt            string                          `json:"updatedAt"`
 	Assignments          []rosterAssignmentResponse      `json:"assignments,omitempty"`
@@ -79,6 +80,7 @@ func newRosterPlanResponse(p *domain.RosterPlan) rosterPlanResponse {
 		SubmittedBy:          p.SubmittedBy,
 		ApprovedBy:           p.ApprovedBy,
 		RejectedReason:       p.RejectedReason,
+		IsPublished:          p.IsPublished,
 		CreatedAt:            p.CreatedAt.UTC().Format(timeRFC3339),
 		UpdatedAt:            p.UpdatedAt.UTC().Format(timeRFC3339),
 	}
@@ -158,7 +160,15 @@ func (s *server) handleCreateRosterPlan(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s.recordAudit(r, domain.ActionRosterPlanCreate, "roster_plan", p.ID, nil, map[string]any{"planNo": p.PlanNo})
-	s.recordAudit(r, domain.ActionRosterGenerate, "roster_plan", p.ID, nil, map[string]any{"version": p.Version})
+	// Auto-generate assignments after plan creation.
+	if genErr := s.store.RegenerateRoster(r.Context(), p.ID); genErr == nil {
+		s.recordAudit(r, domain.ActionRosterGenerate, "roster_plan", p.ID, nil, map[string]any{"version": p.Version})
+		// Reload plan with assignments.
+		p2, _ := s.store.GetRosterPlan(r.Context(), p.ID)
+		if p2 != nil {
+			p = p2
+		}
+	}
 	writeJSON(w, http.StatusCreated, newRosterPlanResponse(p))
 }
 

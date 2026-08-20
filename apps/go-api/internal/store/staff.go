@@ -15,7 +15,7 @@ var ErrLeaveNotPending = errors.New("leave request is not pending")
 // staffCols is the canonical staff projection with department and user context.
 const staffCols = `st.id::text, st.user_id::text, st.department_id::text, st.employee_no,
 	st.first_name, st.last_name, st.job_title, st.contact_phone, st.contact_email,
-	st.employment_status::text, st.availability, st.skills, st.certifications, st.hire_date::text,
+	st.employment_status::text, st.availability, COALESCE(st.shift_tag, 'flexible'), st.can_work_weekends, st.min_days_off, st.max_days_off, st.skills, st.certifications, st.hire_date::text,
 	COALESCE(d.name, ''), COALESCE(u.username, '')`
 
 const staffFrom = ` FROM staff st
@@ -26,7 +26,7 @@ func scanStaff(r pgx.Row) (*domain.Staff, error) {
 	var st domain.Staff
 	err := r.Scan(&st.ID, &st.UserID, &st.DepartmentID, &st.EmployeeNo,
 		&st.FirstName, &st.LastName, &st.JobTitle, &st.ContactPhone, &st.ContactEmail,
-		&st.EmploymentStatus, &st.Availability, &st.Skills, &st.Certifications, &st.HireDate,
+		&st.EmploymentStatus, &st.Availability, &st.ShiftTag, &st.CanWorkWeekends, &st.MinDaysOff, &st.MaxDaysOff, &st.Skills, &st.Certifications, &st.HireDate,
 		&st.DepartmentName, &st.Username)
 	if err != nil {
 		return nil, err
@@ -71,6 +71,10 @@ type UpdateStaffProfileParams struct {
 	ContactEmail     string
 	EmploymentStatus string
 	Availability     string
+	ShiftTag         string
+	CanWorkWeekends  *bool
+	MinDaysOff       *int
+	MaxDaysOff       *int
 	Skills           []string
 	Certifications   []string
 	HireDate         *string
@@ -84,13 +88,28 @@ func (s *Store) UpdateStaffProfile(ctx context.Context, id string, p UpdateStaff
 	if p.Certifications == nil {
 		p.Certifications = []string{}
 	}
+	// Set defaults for optional fields
+	canWeekends := true
+	if p.CanWorkWeekends != nil {
+		canWeekends = *p.CanWorkWeekends
+	}
+	minOff := 4
+	if p.MinDaysOff != nil {
+		minOff = *p.MinDaysOff
+	}
+	maxOff := 10
+	if p.MaxDaysOff != nil {
+		maxOff = *p.MaxDaysOff
+	}
 	ct, err := s.pool.Exec(ctx, `
 		UPDATE staff SET department_id = $2::uuid, job_title = $3, contact_phone = $4,
 		                 contact_email = $5, employment_status = $6, availability = $7,
-		                 skills = $8, certifications = $9, hire_date = $10::date, updated_at = now()
+		                 shift_tag = $8, can_work_weekends = $9, min_days_off = $10, max_days_off = $11,
+		                 skills = $12, certifications = $13, hire_date = $14::date, updated_at = now()
 		WHERE id = $1::uuid`,
 		id, nullableUUID(p.DepartmentID), p.JobTitle, p.ContactPhone, p.ContactEmail,
-		p.EmploymentStatus, p.Availability, p.Skills, p.Certifications, nullableTextPtr(p.HireDate))
+		p.EmploymentStatus, p.Availability, p.ShiftTag, canWeekends, minOff, maxOff,
+		p.Skills, p.Certifications, nullableTextPtr(p.HireDate))
 	if err != nil {
 		return err
 	}

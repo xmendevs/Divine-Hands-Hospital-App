@@ -132,3 +132,32 @@ func (s *server) perm(perm string, h http.HandlerFunc) http.Handler {
 func (s *server) superAdmin(h http.HandlerFunc) http.Handler {
 	return s.requireAuth(s.requireSuperAdmin(h))
 }
+
+// requireAttendanceAdmin restricts to roles that manage attendance (super_admin,
+// admin, matron, billing_supervisor, lab_supervisor, storekeeper).
+func (s *server) requireAttendanceAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := userFromContext(r.Context())
+		if u == nil {
+			writeError(w, r, http.StatusUnauthorized, "unauthorized", "authentication required")
+			return
+		}
+		roles, err := s.store.GetUserRoles(r.Context(), u.ID)
+		if err != nil {
+			writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+		for _, rl := range roles {
+			switch rl.Code {
+			case "super_admin", "admin", "matron", "billing_supervisor", "lab_supervisor", "storekeeper":
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+		writeError(w, r, http.StatusForbidden, "forbidden", "attendance admin access required")
+	})
+}
+
+func (s *server) attendanceAdmin(h http.HandlerFunc) http.Handler {
+	return s.requireAuth(s.requireAttendanceAdmin(h))
+}
