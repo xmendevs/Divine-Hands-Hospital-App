@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -573,4 +574,109 @@ func (s *Store) DeleteRoster(ctx context.Context, id string) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Leave Requests (Phase 18)
+// ───────────────────────────────────────────────────────────────────────────
+
+// CreateLeaveRequest creates a new leave request.
+func (s *Store) CreateLeaveRequest(ctx context.Context, staffID, leaveType, startDate, endDate, reason string) (*domain.LeaveRequest, error) {
+	var lr domain.LeaveRequest
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO leave_requests (staff_id, leave_type, start_date, end_date, reason)
+		VALUES ($1::uuid, $2, $3, $4, $5)
+		RETURNING id::text, staff_id::text, leave_type, start_date::text, end_date::text,
+		          reason, status, review_notes, created_at::text`,
+		staffID, leaveType, startDate, endDate, reason,
+	).Scan(&lr.ID, &lr.StaffID, &lr.LeaveType, &lr.StartDate, &lr.EndDate,
+		&lr.Reason, &lr.Status, &lr.ReviewNotes, &lr.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &lr, nil
+}
+
+// ListLeaveRequestsParams filters leave requests.
+type ListLeaveRequestsParams struct {
+	StaffID string
+	Status  string
+	Limit   int
+	Offset  int
+}
+
+// ListLeaveRequests returns leave requests with optional filters.
+func (s *Store) ListLeaveRequests(ctx context.Context, p ListLeaveRequestsParams) ([]domain.LeaveRequest, error) {
+	query := `
+		SELECT lr.id::text, lr.staff_id::text, COALESCE(u.username, '') AS staff_name,
+		       lr.leave_type, lr.start_date::text, lr.end_date::text, lr.reason,
+		       lr.status, lr.review_notes, lr.created_at::text
+		FROM leave_requests lr
+		LEFT JOIN users u ON u.id = lr.staff_id
+		WHERE 1=1`
+	args := []any{}
+	argIdx := 1
+	if p.StaffID != "" {
+		query += fmt.Sprintf(` AND lr.staff_id = $%d::uuid`, argIdx)
+		args = append(args, p.StaffID)
+		argIdx++
+	}
+	if p.Status != "" {
+		query += fmt.Sprintf(` AND lr.status = $%d`, argIdx)
+		args = append(args, p.Status)
+		argIdx++
+	}
+	query += ` ORDER BY lr.created_at DESC`
+	if p.Limit > 0 {
+		query += fmt.Sprintf(` LIMIT $%d`, argIdx)
+		args = append(args, p.Limit)
+		argIdx++
+	}
+	if p.Offset > 0 {
+		query += fmt.Sprintf(` OFFSET $%d`, argIdx)
+		args = append(args, p.Offset)
+		argIdx++
+	}
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]domain.LeaveRequest, 0)
+	for rows.Next() {
+		var lr domain.LeaveRequest
+		if err := rows.Scan(&lr.ID, &lr.StaffID, &lr.StaffName, &lr.LeaveType,
+			&lr.StartDate, &lr.EndDate, &lr.Reason, &lr.Status, &lr.ReviewNotes, &lr.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, lr)
+	}
+	return out, rows.Err()
+}
+
+// ReviewLeaveRequest approves or rejects a leave request.
+func (s *Store) ReviewLeaveRequest(ctx context.Context, id, reviewerID, status, notes string) error {
+	ct, err := s.pool.Exec(ctx, `
+		UPDATE leave_requests SET status = $1, reviewed_by = $2::uuid,
+		       reviewed_at = now(), review_notes = $3, updated_at = now()
+		WHERE id = $4::uuid`, status, reviewerID, notes, id)
+	if err != nil {
+		return err
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CountPendingLeaveRequests returns the count of pending leave requests.
+func (s *Store) CountPendingLeaveRequests(ctx context.Context) (int, error) {
+	var count int
+	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM leave_requests WHERE status = 'pending'`).Scan(&count)
+	return count, err
+}
+
+// ListAttendanceByDate returns attendance records for a specific date.
+func (s *Store) ListAttendanceByDate(ctx context.Context, date string) ([]domain.AttendanceRecord, error) {
+	return s.ListAttendance(ctx, ListAttendanceParams{Date: date, Limit: 500})
 }

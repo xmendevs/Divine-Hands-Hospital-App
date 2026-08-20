@@ -1,9 +1,12 @@
 package httpapi
 
 import (
+	"encoding/csv"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/domain"
 	"github.com/xmendevs/divine-hands-hospital-app/apps/go-api/internal/store"
@@ -414,4 +417,243 @@ func (s *server) handleDeleteRoster(w http.ResponseWriter, r *http.Request) {
 	}
 	s.recordAudit(r, domain.ActionRosterRemove, "staff_roster", id, nil, nil)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Enterprise attendance endpoints (Phase 18)
+// ───────────────────────────────────────────────────────────────────────────
+
+type attendanceDashboardResponse struct {
+	TotalStaff    int `json:"totalStaff"`
+	ClockedIn     int `json:"clockedIn"`
+	Absent        int `json:"absent"`
+	LateToday     int `json:"lateToday"`
+	OvertimeHours int `json:"overtimeHours"`
+	LeavePending  int `json:"leavePending"`
+}
+
+// handleAttendanceDashboard returns KPI metrics for the attendance dashboard.
+func (s *server) handleAttendanceDashboard(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	today := time.Now().Format("2006-01-02")
+
+	// Total active staff
+	allStaff, err := s.store.ListStaff(r.Context())
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	totalStaff := len(allStaff)
+
+	// Today's attendance
+	records, err := s.store.ListAttendanceByDate(r.Context(), today)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	clockedIn := 0
+	lateToday := 0
+	overtimeMinutes := 0
+	for _, rec := range records {
+		if rec.Status == "clocked_in" {
+			clockedIn++
+		}
+		if rec.IsLate {
+			lateToday++
+		}
+		overtimeMinutes += rec.OvertimeMinutes
+	}
+	absent := totalStaff - clockedIn - len(records) + clockedIn
+	if absent < 0 {
+		absent = 0
+	}
+
+	// Pending leave requests
+	leavePending := 0
+	if actor != nil {
+		leavePending, _ = s.store.CountPendingLeaveRequests(r.Context())
+	}
+
+	writeJSON(w, http.StatusOK, attendanceDashboardResponse{
+		TotalStaff:    totalStaff,
+		ClockedIn:     clockedIn,
+		Absent:        absent,
+		LateToday:     lateToday,
+		OvertimeHours: overtimeMinutes / 60,
+		LeavePending:  leavePending,
+	})
+}
+
+type leaveRequestResponse struct {
+	ID           string  `json:"id"`
+	StaffID      string  `json:"staffId"`
+	StaffName    string  `json:"staffName"`
+	LeaveType    string  `json:"leaveType"`
+	StartDate    string  `json:"startDate"`
+	EndDate      string  `json:"endDate"`
+	Reason       string  `json:"reason"`
+	Status       string  `json:"status"`
+	ReviewedBy   *string `json:"reviewedBy,omitempty"`
+	ReviewNotes  string  `json:"reviewNotes"`
+	CreatedAt    string  `json:"createdAt"`
+}
+
+type createLeaveRequest struct {
+	LeaveType string `json:"leaveType"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
+	Reason    string `json:"reason"`
+}
+
+// handleCreateLeaveRequest submits a new leave request.
+func (s *server) handleCreateLeaveRequest(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	if actor == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	var req createLeaveRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	if req.LeaveType == "" {
+		req.LeaveType = "annual"
+	}
+	if req.StartDate == "" || req.EndDate == "" {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "start and end dates are required")
+		return
+	}
+	lr, err := s.store.CreateLeaveRequest(r.Context(), actor.ID, req.LeaveType, req.StartDate, req.EndDate, req.Reason)
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	s.recordAudit(r, domain.ActionLeaveRequest, "leave_request", lr.ID, nil, nil)
+	writeJSON(w, http.StatusCreated, leaveRequestResponse{
+		ID: lr.ID, StaffID: lr.StaffID, LeaveType: lr.LeaveType,
+		StartDate: lr.StartDate, EndDate: lr.EndDate, Reason: lr.Reason,
+		Status: lr.Status, CreatedAt: lr.CreatedAt,
+	})
+}
+
+// handleListLeaveRequests lists leave requests (own for non-admin, all for admin/super_admin).
+func (s *server) handleListLeaveRequests(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	if actor == nil {
+		writeError(w, r, http.StatusUnauthorized, "unauthorized", "authentication required")
+		return
+	}
+	statuses := r.URL.Query().Get("status")
+	limit, offset := pagination(r)
+
+	// Non-admins only see their own requests
+	staffID := ""
+	roles, _ := s.store.GetUserRoles(r.Context(), actor.ID)
+	isAdmin := false
+	for _, rl := range roles {
+		if rl.Code == "super_admin" || rl.Code == "admin" || rl.Code == "matron" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		staffID = actor.ID
+	}
+
+	requests, err := s.store.ListLeaveRequests(r.Context(), store.ListLeaveRequestsParams{
+		StaffID: staffID, Status: statuses, Limit: limit, Offset: offset,
+	})
+	if err != nil {
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	out := make([]leaveRequestResponse, 0, len(requests))
+	for _, lr := range requests {
+		out = append(out, leaveRequestResponse{
+			ID: lr.ID, StaffID: lr.StaffID, StaffName: lr.StaffName, LeaveType: lr.LeaveType,
+			StartDate: lr.StartDate, EndDate: lr.EndDate, Reason: lr.Reason,
+			Status: lr.Status, ReviewNotes: lr.ReviewNotes, CreatedAt: lr.CreatedAt,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+type reviewLeaveRequest struct {
+	Action string `json:"action"` // "approve" or "reject"
+	Notes  string `json:"notes"`
+}
+
+// handleReviewLeaveRequest approves or rejects a leave request.
+func (s *server) handleReviewLeaveRequest(w http.ResponseWriter, r *http.Request) {
+	actor := userFromContext(r.Context())
+	id := r.PathValue("id")
+	var req reviewLeaveRequest
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, r, http.StatusUnprocessableEntity, "validation_error", "invalid request body")
+		return
+	}
+	status := "approved"
+	if req.Action == "reject" {
+		status = "rejected"
+	}
+	if err := s.store.ReviewLeaveRequest(r.Context(), id, actor.ID, status, req.Notes); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, r, http.StatusNotFound, "not_found", "leave request not found")
+			return
+		}
+		writeError(w, r, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleExportAttendance exports attendance records as CSV.
+func (s *server) handleExportAttendance(w http.ResponseWriter, r *http.Request) {
+	from := r.URL.Query().Get("from")
+	to := r.URL.Query().Get("to")
+	if from == "" {
+		from = time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	}
+	if to == "" {
+		now := time.Now()
+		to = now.Format("2006-01-02")
+	}
+
+	// Fetch all attendance in range (iterate dates)
+	records := []domain.AttendanceRecord{}
+	t, _ := time.Parse("2006-01-02", from)
+	te, _ := time.Parse("2006-01-02", to)
+	for !t.After(te) {
+		recs, _ := s.store.ListAttendanceByDate(r.Context(), t.Format("2006-01-02"))
+		records = append(records, recs...)
+		t = t.AddDate(0, 0, 1)
+	}
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="attendance_%s_to_%s.csv"`, from, to))
+	writer := csv.NewWriter(w)
+	writer.Write([]string{"Staff", "Employee No", "Department", "Shift", "Work Date", "Clock In", "Clock Out", "Status", "Late", "Early Leave", "Overtime (min)", "Notes"})
+	for _, rec := range records {			writer.Write([]string{
+				rec.StaffName, rec.EmployeeNo, rec.DepartmentName, rec.ShiftName,
+				rec.WorkDate, rec.ClockInAt.Format("15:04"), timePtrStr(rec.ClockOutAt),
+				rec.Status, boolStr(rec.IsLate), boolStr(rec.IsEarlyLeave),
+				strconv.Itoa(rec.OvertimeMinutes), rec.Notes,
+			})
+	}
+	writer.Flush()
+}
+
+func timePtrStr(t *time.Time) string {
+	if t == nil {
+		return "—"
+	}
+	return t.Format("15:04")
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "Yes"
+	}
+	return "No"
 }

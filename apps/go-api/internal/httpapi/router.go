@@ -290,6 +290,13 @@ func NewRouter(cfg config.Config, logger *slog.Logger, st *store.Store, opts ...
 	mux.Handle("GET /api/v1/attendance/rosters", s.perm("attendance.view", s.handleListRoster))
 	mux.Handle("DELETE /api/v1/attendance/rosters/{id}", s.perm("attendance.manage", s.handleDeleteRoster))
 
+	// Enterprise attendance endpoints (Phase 18).
+	mux.Handle("GET /api/v1/attendance/dashboard", s.perm("attendance.view", s.handleAttendanceDashboard))
+	mux.Handle("GET /api/v1/attendance/export", s.perm("attendance.view", s.handleExportAttendance))
+	mux.Handle("POST /api/v1/attendance/leave", s.perm("staff.leave_request", s.handleCreateLeaveRequest))
+	mux.Handle("GET /api/v1/attendance/leave", s.perm("staff.leave_request", s.handleListLeaveRequests))
+	mux.Handle("PATCH /api/v1/attendance/leave/{id}", s.perm("attendance.manage", s.handleReviewLeaveRequest))
+
 	mux.Handle("POST /api/v1/handovers", s.perm("handover.create", s.handleCreateHandover))
 	mux.Handle("GET /api/v1/handovers", s.perm("handover.view", s.handleListHandovers))
 	mux.Handle("GET /api/v1/handovers/{id}", s.perm("handover.view", s.handleGetHandover))

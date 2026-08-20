@@ -1569,27 +1569,43 @@ type StaffShift struct {
 
 // AttendanceRecord is one clock-in/out event for a staff member.
 type AttendanceRecord struct {
-	ID             string
-	StaffID        string
-	ShiftID        string
-	WorkDate       string // ISO date
-	ClockInAt      time.Time
-	ClockOutAt     *time.Time
-	ClockInMethod  string
-	ClockOutMethod string
-	ClockInDevice  string
-	ClockOutDevice string
-	IsLate         bool
-	IsEarlyLeave   bool
-	Status         string
-	Notes          string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	StaffName      string // joined
-	EmployeeNo     string // joined
-	ShiftName      string // joined
-	ShiftCode      string // joined
-	DepartmentName string // joined
+	ID               string
+	StaffID          string
+	ShiftID          string
+	WorkDate         string // ISO date
+	ClockInAt        time.Time
+	ClockOutAt       *time.Time
+	ClockInMethod    string
+	ClockOutMethod   string
+	ClockInDevice    string
+	ClockOutDevice   string
+	IsLate           bool
+	IsEarlyLeave     bool
+	Status           string
+	Notes            string
+	OvertimeMinutes  int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	StaffName        string // joined
+	EmployeeNo       string // joined
+	ShiftName        string // joined
+	ShiftCode        string // joined
+	DepartmentName   string // joined
+}
+
+// LeaveRequest represents a staff leave request.
+type LeaveRequest struct {
+	ID          string
+	StaffID     string
+	LeaveType   string
+	StartDate   string
+	EndDate     string
+	Reason      string
+	Status      string
+	ReviewedBy  *string
+	ReviewNotes string
+	CreatedAt   string
+	StaffName   string // joined
 }
 
 // HandoverNote is a structured nursing shift handover.
